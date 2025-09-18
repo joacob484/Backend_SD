@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: faltauno-postgres
+    ports: ["${POSTGRES_PORT-5432}:5432"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB-faltauno}
+      POSTGRES_USER: ${POSTGRES_USER-faltauno}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD-secret}
+    volumes: [ "pgdata:/var/lib/postgresql/data" ]
+
+  redis:
+    image: redis:7-alpine
+    container_name: faltauno-redis
+    ports: ["${REDIS_PORT-6379}:6379"]
+
+volumes:
+  pgdata:

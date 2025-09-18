@@ -1,0 +1,7 @@
+uy/um/faltauno/FaltaUnoApplication.class
+uy/um/faltauno/dto/CanchaDto.class
+uy/um/faltauno/repository/CanchaRepository.class
+uy/um/faltauno/controller/HealthController.class
+uy/um/faltauno/controller/PingController.class
+uy/um/faltauno/controller/CanchaController.class
+uy/um/faltauno/entity/Cancha.class
