@@ -1,7 +1,13 @@
-/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/repository/CanchaRepository.java
-/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/controller/CanchaController.java
+/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/config/RabbitConfig.java
+/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/dto/CanchaDto.java
+/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/controller/PartidoController.java
+/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/dto/PartidoDto.java
+/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/util/PartidoMapper.java
 /Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/controller/HealthController.java
+/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/service/PartidoService.java
 /Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/controller/PingController.java
 /Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/FaltaUnoApplication.java
-/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/dto/CanchaDto.java
-/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/entity/Cancha.java
+/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/repository/PartidoRepository.java
+/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/config/CacheConfig.java
+/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/events/NotificationListener.java
+/Users/joaco/Desktop/Backend_SD/Backend_SD/src/main/java/uy/um/faltauno/entity/Partido.java
