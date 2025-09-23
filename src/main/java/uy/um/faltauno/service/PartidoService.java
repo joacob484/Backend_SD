@@ -1,73 +1,41 @@
 package uy.um.faltauno.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.transaction.support.TransactionSynchronizationAdapter;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import uy.um.faltauno.repository.PartidoRepository;
+import uy.um.faltauno.dto.PartidoDto;
+import uy.um.faltauno.util.PartidoMapper;
 import uy.um.faltauno.entity.Partido;
+import uy.um.faltauno.repository.PartidoRepository;
+import uy.um.faltauno.repository.UsuarioRepository;
+
 import java.util.List;
-import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class PartidoService {
 
-    private final PartidoRepository repo;
-    private final RabbitTemplate rabbitTemplate;
+    private final PartidoRepository partidoRepository;
+    private final UsuarioRepository usuarioRepository;
 
-    public PartidoService(PartidoRepository repo, RabbitTemplate rabbitTemplate) {
-        this.repo = repo;
-        this.rabbitTemplate = rabbitTemplate;
+    public List<PartidoDto> listarPartidos() {
+        return partidoRepository.findAll()
+                .stream()
+                .map(PartidoMapper.INSTANCE::toDto)
+                .collect(Collectors.toList());
     }
 
-    @Cacheable(value = "partidosPorZona", key = "#zona + '_' + #nivel", unless="#result==null || #result.isEmpty()")
-    public List<Partido> buscarPartidos(String zona, String nivel) {
-        return repo.findByZonaAndNivel(zona, nivel);
+    public PartidoDto crearPartido(PartidoDto dto) {
+        Partido partido = PartidoMapper.INSTANCE.toEntity(dto);
+        partido.setOrganizador(usuarioRepository.findById(dto.getOrganizadorId())
+                .orElseThrow(() -> new RuntimeException("Organizador no encontrado")));
+        return PartidoMapper.INSTANCE.toDto(partidoRepository.save(partido));
     }
 
-    @Transactional
-    @CacheEvict(value = "partidosPorZona", allEntries = true) // puedes hacer evict selectivo
-    public Partido crearPartido(Partido p) {
-        Partido saved = repo.save(p);
-
-        // publicar evento DESPUÉS de commit para evitar inconsistencias
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
-            @Override
-            public void afterCommit() {
-                Map<String, Object> payload = Map.of(
-                    "event", "PARTIDO_CREATED",
-                    "partidoId", saved.getId(),
-                    "fechaHora", saved.getFechaHora().toString(),
-                    "zona", saved.getZona(),
-                    "nivel", saved.getNivel()
-                );
-                rabbitTemplate.convertAndSend("exchange.partidos", "partidos.created", payload);
-            }
-        });
-
-        return saved;
-    }
-
-    @Transactional
-    @CacheEvict(value = "partidosPorZona", allEntries = true)
-    public void joinPartido(Long partidoId) {
-        Partido p = repo.findById(partidoId).orElseThrow(() -> new RuntimeException("Partido no encontrado"));
-        if (p.getConfirmados() >= p.getMaxJugadores()) throw new RuntimeException("Partido lleno");
-        p.setConfirmados(p.getConfirmados() + 1);
-        repo.save(p);
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
-            @Override
-            public void afterCommit() {
-                Map<String, Object> payload = Map.of(
-                    "event","PLAYER_JOINED",
-                    "partidoId", p.getId()
-                );
-                rabbitTemplate.convertAndSend("exchange.partidos", "partidos.created", payload);
-            }
-        });
+    public PartidoDto obtenerPorId(UUID id) {
+        return partidoRepository.findById(id)
+                .map(PartidoMapper.INSTANCE::toDto)
+                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
     }
 }

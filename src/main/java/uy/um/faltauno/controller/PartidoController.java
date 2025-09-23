@@ -1,32 +1,33 @@
 package uy.um.faltauno.controller;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import uy.um.faltauno.dto.PartidoDto;
 import uy.um.faltauno.service.PartidoService;
-import uy.um.faltauno.entity.Partido;
+
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/partidos")
+@RequiredArgsConstructor
 public class PartidoController {
 
-    private final PartidoService service;
-
-    public PartidoController(PartidoService service) {
-        this.service = service;
-    }
+    private final PartidoService partidoService;
 
     @GetMapping
-    public List<Partido> buscar(@RequestParam String zona, @RequestParam String nivel) {
-        return service.buscarPartidos(zona, nivel);
+    public ResponseEntity<List<PartidoDto>> listar() {
+        return ResponseEntity.ok(partidoService.listarPartidos());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PartidoDto> obtener(@PathVariable UUID id) {
+        return ResponseEntity.ok(partidoService.obtenerPorId(id));
     }
 
     @PostMapping
-    public Partido crear(@RequestBody Partido p) {
-        return service.crearPartido(p);
-    }
-
-    @PostMapping("/{id}/join")
-    public void join(@PathVariable Long id) {
-        service.joinPartido(id);
+    public ResponseEntity<PartidoDto> crear(@RequestBody PartidoDto dto) {
+        return ResponseEntity.ok(partidoService.crearPartido(dto));
     }
 }

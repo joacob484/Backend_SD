@@ -1,14 +1,24 @@
 package uy.um.faltauno.dto;
 
-import java.time.LocalDateTime;
+import lombok.Data;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.UUID;
+
+@Data
 public class PartidoDto {
-    public Long id;
-    public String cancha;
-    public LocalDateTime fechaHora;
-    public int maxJugadores;
-    public int confirmados;
-    public String zona;
-    public String nivel;
+    private UUID id;
+    private String tipoPartido;        // F5, F7, etc
+    private String genero;             // Mixto, Hombres, Mujeres
+    private LocalDate fecha;
+    private LocalTime hora;
+    private Integer duracionMinutos;
+    private String nombreUbicacion;
+    private String direccionUbicacion;
+    private BigDecimal precioTotal;
+    private Integer maxJugadores;
+    private String descripcion;
+    private UUID organizadorId;
 }
-

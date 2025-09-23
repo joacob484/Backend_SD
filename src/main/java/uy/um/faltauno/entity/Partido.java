@@ -1,51 +1,51 @@
 package uy.um.faltauno.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import lombok.*;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Entity
-@Table(name = "partidos")
+@Table(name = "partido")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Partido {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue
+    private UUID id;
 
-  @Column(nullable = false)
-  private String cancha;
+    private String tipoPartido; // F5, F7, ...
+    private String genero; // Mixto, Hombres, Mujeres
+    private LocalDate fecha;
+    private LocalTime hora;
+    private Integer duracionMinutos;
+    private String nombreUbicacion;
+    private String direccionUbicacion;
+    private BigDecimal latitud;
+    private BigDecimal longitud;
+    private String descripcion;
+    private Integer maxJugadores;
+    private Integer jugadoresActuales = 0;
+    private BigDecimal precioTotal = BigDecimal.ZERO;
+    private String estado = "PENDIENTE";
 
-  @Column(nullable = false)
-  private LocalDateTime fechaHora;
+    @ManyToOne
+    @JoinColumn(name = "organizador_id", nullable = false)
+    private Usuario organizador;
 
-  @Column(nullable = false)
-  private Integer maxJugadores;
+    @Column(nullable = false, updatable = false)
+    private OffsetDateTime createdAt = OffsetDateTime.now();
 
-  @Column(nullable = false)
-  private Integer confirmados = 0;
+    @OneToMany(mappedBy = "partido", cascade = CascadeType.ALL)
+    private List<Inscripcion> inscripciones;
 
-  @Column(nullable = false)
-  private String zona;   // si después querés enum/tabla aparte, lo cambiamos
-
-  @Column(nullable = false)
-  private String nivel;  // idem (BEGINNER/INTERMEDIATE/ADVANCED)
-
-  // ==== Getters & Setters ====
-  public Long getId() { return id; }
-  public String getCancha() { return cancha; }
-  public void setCancha(String cancha) { this.cancha = cancha; }
-
-  public LocalDateTime getFechaHora() { return fechaHora; }
-  public void setFechaHora(LocalDateTime fechaHora) { this.fechaHora = fechaHora; }
-
-  public Integer getMaxJugadores() { return maxJugadores; }
-  public void setMaxJugadores(Integer maxJugadores) { this.maxJugadores = maxJugadores; }
-
-  public Integer getConfirmados() { return confirmados; }
-  public void setConfirmados(Integer confirmados) { this.confirmados = confirmados; }
-
-  public String getZona() { return zona; }
-  public void setZona(String zona) { this.zona = zona; }
-
-  public String getNivel() { return nivel; }
-  public void setNivel(String nivel) { this.nivel = nivel; }
+    @OneToMany(mappedBy = "partido", cascade = CascadeType.ALL)
+    private List<Review> reviews;
 }
