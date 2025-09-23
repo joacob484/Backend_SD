@@ -2,7 +2,8 @@ package uy.um.faltauno.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import uy.um.faltauno.entity.Partido;
+import java.util.List;
 
 public interface PartidoRepository extends JpaRepository<Partido, Long> {
-  // acá podés agregar queries tipo findByZonaAndNivel(...)
+  List<Partido> findByZonaAndNivel(String zona, String nivel);
 }

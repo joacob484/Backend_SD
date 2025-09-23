@@ -12,13 +12,8 @@
   <properties>
     <java.version>21</java.version>
     <spring-boot.version>3.3.3</spring-boot.version>
-    <!-- Flyway >=10.16 agrega soporte para Postgres 16.x (incl. 16.10) -->
     <flyway.version>10.17.0</flyway.version>
   </properties>
-  <properties>
-    <java.version>21</java.version>
-  </properties>
-
 
   <!-- BOM de Spring Boot para versionar dependencias automáticamente -->
   <dependencyManagement>
@@ -66,31 +61,17 @@
       <groupId>org.springframework</groupId>
       <artifactId>spring-messaging</artifactId>
     </dependency>
-    <dependency>
-  <groupId>org.springframework.boot</groupId>
-  <artifactId>spring-boot-starter-data-jpa</artifactId>
-  </dependency>
 
-  <dependency>
-    <groupId>org.postgresql</groupId>
-    <artifactId>postgresql</artifactId>
-    <scope>runtime</scope>
-  </dependency>
-
-  <dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-validation</artifactId>
-  </dependency>
-
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-amqp</artifactId>
-    </dependency>
-
-    <!-- Validación -->
+    <!-- Validation -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+
+    <!-- RabbitMQ -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-amqp</artifactId>
     </dependency>
 
     <!-- Observabilidad -->
@@ -99,7 +80,7 @@
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
 
-    <!-- Migraciones: Flyway + driver específico para PostgreSQL -->
+    <!-- Flyway -->
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-core</artifactId>
@@ -121,13 +102,14 @@
 
   <build>
     <plugins>
-      <!-- IMPORTANTE: fijar versión del plugin de Spring Boot -->
+      <!-- Spring Boot Plugin -->
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
         <version>${spring-boot.version}</version>
       </plugin>
 
+      <!-- Compiler Plugin -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
