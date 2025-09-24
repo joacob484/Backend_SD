@@ -43,14 +43,14 @@ public class ReviewService {
     }
 
     public List<ReviewDTO> listarReviewsUsuario(UUID usuarioId) {
-        return reviewRepository.findByUsuarioCalificadoId(usuarioId)
+        return reviewRepository.findByUsuarioCalificado_Id(usuarioId)
                 .stream()
                 .map(reviewMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     public List<ReviewDTO> listarReviewsPartido(UUID partidoId) {
-        return reviewRepository.findByPartidoId(partidoId)
+        return reviewRepository.findByPartido_Id(partidoId)
                 .stream()
                 .map(reviewMapper::toDTO)
                 .collect(Collectors.toList());

@@ -7,7 +7,13 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ReviewRepository extends JpaRepository<Review, UUID> {
-    List<Review> findByUsuarioCalificadoId(UUID usuarioId);
-    List<Review> findByPartidoId(UUID partidoId);
-    List<Review> findByUsuarioQueCalificaAndNivelIsNull(UUID usuarioId);
+    List<Review> findByUsuarioCalificado_Id(UUID usuarioCalificadoId);
+    List<Review> findByUsuarioQueCalifica_Id(UUID usuarioQueCalificaId);
+    List<Review> findByUsuarioQueCalifica_IdAndNivelIsNull(UUID usuarioQueCalificaId);
+    boolean existsByPartido_IdAndUsuarioQueCalifica_IdAndUsuarioCalificado_Id(
+        UUID partidoId,
+        UUID usuarioQueCalificaId,
+        UUID usuarioCalificadoId
+    );
+    List<Review> findByPartido_Id(UUID partidoId);
 }

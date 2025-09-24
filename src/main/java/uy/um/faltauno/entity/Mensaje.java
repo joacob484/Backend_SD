@@ -2,7 +2,6 @@ package uy.um.faltauno.entity;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -12,7 +11,6 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 public class Mensaje {
-
     @Id
     @GeneratedValue
     private UUID id;
