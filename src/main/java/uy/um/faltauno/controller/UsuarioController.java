@@ -48,46 +48,70 @@ public class UsuarioController {
     }
 
     @PostMapping("/{id}/foto")
-public ResponseEntity<?> subirFoto(@PathVariable UUID id, @RequestParam("foto") MultipartFile foto) {
-    try {
-        // Guardar el archivo en la carpeta "uploads"
-        String uploadsDir = "uploads/";
-        Path uploadPath = Paths.get(uploadsDir);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
+    public ResponseEntity<?> subirFoto(@PathVariable UUID id, @RequestParam("foto") MultipartFile foto) {
+        try {
+            // Guardar el archivo en la carpeta "uploads"
+            String uploadsDir = "uploads/";
+            Path uploadPath = Paths.get(uploadsDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            String originalFileName = foto.getOriginalFilename();
+            // para evitar colisiones, podés prefijar el filename con UUID por ejemplo
+            String safeFileName = UUID.randomUUID().toString() + "-" + (originalFileName != null ? originalFileName : "foto");
+            Path filePath = uploadPath.resolve(safeFileName);
+            Files.copy(foto.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            // Construir URL pública completa (opcionalmente usar propiedad de aplicación para base URL)
+            // Si tu API corre en https://api.miapp.com, la URL final sería: https://api.miapp.com/uploads/{safeFileName}
+            // Aquí devolvemos la ruta relativa; el frontend puede prepender el host si lo desea.
+            String fotoUrl = "/uploads/" + safeFileName;
+
+            // Guardar la URL de la foto en la base de datos
+            usuarioService.actualizarFoto(id, fotoUrl);
+
+            // Respuesta con la estructura que espera el front: { data: { url: string }, message, success }
+            Map<String, Object> data = Map.of("url", fotoUrl);
+            return ResponseEntity.ok().body(Map.of(
+                "data", data,
+                "message", "Foto subida correctamente",
+                "success", true
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of(
+                "data", Map.of(),
+                "message", "Error subiendo la foto",
+                "success", false
+            ));
         }
-
-        String originalFileName = foto.getOriginalFilename();
-        // para evitar colisiones, podés prefijar el filename con UUID por ejemplo
-        String safeFileName = UUID.randomUUID().toString() + "-" + (originalFileName != null ? originalFileName : "foto");
-        Path filePath = uploadPath.resolve(safeFileName);
-        Files.copy(foto.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-        // Construir URL pública completa (opcionalmente usar propiedad de aplicación para base URL)
-        // Si tu API corre en https://api.miapp.com, la URL final sería: https://api.miapp.com/uploads/{safeFileName}
-        // Aquí devolvemos la ruta relativa; el frontend puede prepender el host si lo desea.
-        String fotoUrl = "/uploads/" + safeFileName;
-
-        // Guardar la URL de la foto en la base de datos
-        usuarioService.actualizarFoto(id, fotoUrl);
-
-        // Respuesta con la estructura que espera el front: { data: { url: string }, message, success }
-        Map<String, Object> data = Map.of("url", fotoUrl);
-        return ResponseEntity.ok().body(Map.of(
-            "data", data,
-            "message", "Foto subida correctamente",
-            "success", true
-        ));
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500).body(Map.of(
-            "data", Map.of(),
-            "message", "Error subiendo la foto",
-            "success", false
-        ));
     }
-}
 
+    @GetMapping("/{id}/friend-requests")
+    public ApiResponse<List<Map<String, Object>>> getFriendRequests(@PathVariable UUID id) {
+        // Llamamos a un método del service que devuelva solicitudes pendientes
+        List<Map<String, Object>> requests = usuarioService.obtenerSolicitudesAmistadPendientes(id);
+        return new ApiResponse<>(requests, "Solicitudes de amistad pendientes", true);
+    }
+
+    @GetMapping("/{id}/messages")
+    public ApiResponse<List<Map<String, Object>>> getUnreadMessages(@PathVariable UUID id) {
+        List<Map<String, Object>> mensajes = usuarioService.obtenerMensajesNoLeidos(id);
+        return new ApiResponse<>(mensajes, "Mensajes no leídos", true);
+    }
+
+    @GetMapping("/{id}/match-updates")
+    public ApiResponse<List<Map<String, Object>>> getMatchUpdates(@PathVariable UUID id) {
+        List<Map<String, Object>> updates = usuarioService.obtenerActualizacionesPartidos(id);
+        return new ApiResponse<>(updates, "Actualizaciones de partidos", true);
+    }
+
+    @GetMapping("/{id}/match-invitations")
+    public ApiResponse<List<Map<String, Object>>> getMatchInvitations(@PathVariable UUID id) {
+        List<Map<String, Object>> invites = usuarioService.obtenerInvitaciones(id);
+        return new ApiResponse<>(invites, "Invitaciones a partidos", true);
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<UsuarioDTO> getUsuario(@PathVariable UUID id) {

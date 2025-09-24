@@ -71,3 +71,22 @@ CREATE TABLE review (
 );
 
 CREATE INDEX idx_review_usuario_calificado ON review(usuario_calificado_id);
+
+CREATE TABLE amistad (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id UUID NOT NULL REFERENCES usuario(id),
+    amigo_id UUID NOT NULL REFERENCES usuario(id),
+    estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE', -- PENDIENTE, ACEPTADO, RECHAZADO
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(usuario_id, amigo_id)
+);
+
+CREATE TABLE mensaje (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    remitente_id UUID NOT NULL REFERENCES usuario(id),
+    destinatario_id UUID NOT NULL REFERENCES usuario(id),
+    partido_id UUID REFERENCES partido(id),
+    contenido VARCHAR(500) NOT NULL,
+    leido BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
