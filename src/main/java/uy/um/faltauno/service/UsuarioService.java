@@ -73,7 +73,7 @@ public class UsuarioService {
     public List<PendingReviewResponse> obtenerPendingReviews(UUID userId) {
         // 1) Obtener todas las inscripciones del usuario (o sólo las de partidos finalizados si preferís)
         // Si querés sólo partidos pasados: puedes filtrar por fecha/hora del partido comparando con LocalDate.now()
-        List<Inscripcion> misInscripciones = inscripcionRepository.findByUsuario_Id(userId);
+        List<Inscripcion> misInscripciones = inscripcionRepository.findByUsuarioId(userId);
 
         // Map para agrupar pendientes por partidoId
         Map<UUID, List<UsuarioMinDTO>> pendientesPorPartido = new HashMap<>();
@@ -88,7 +88,7 @@ public class UsuarioService {
             // if (partido.getFecha().isAfter(LocalDate.now())) continue;
 
             // 2) Obtener todas las inscripciones de ese partido (todos los jugadores)
-            List<Inscripcion> inscDelPartido = inscripcionRepository.findByPartido_Id(partidoId);
+            List<Inscripcion> inscDelPartido = inscripcionRepository.findByPartidoId(partidoId);
 
             for (Inscripcion inscOtro : inscDelPartido) {
                 // Saltar al propio usuario
@@ -181,7 +181,7 @@ public class UsuarioService {
 }
 
     public List<Map<String, Object>> obtenerActualizacionesPartidos(UUID userId) {
-        List<Inscripcion> inscripciones = inscripcionRepository.findByUsuario_Id(userId);
+        List<Inscripcion> inscripciones = inscripcionRepository.findByUsuarioId(userId);
         List<Map<String,Object>> updates = new ArrayList<>();
         for (Inscripcion insc : inscripciones) {
             Partido p = insc.getPartido();

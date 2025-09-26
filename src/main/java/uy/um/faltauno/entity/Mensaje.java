@@ -7,9 +7,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "mensaje")
 @Data
 @NoArgsConstructor
+@Table(name = "mensaje")
 public class Mensaje {
     @Id
     @GeneratedValue

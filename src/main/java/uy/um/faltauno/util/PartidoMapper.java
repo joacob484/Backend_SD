@@ -2,17 +2,24 @@ package uy.um.faltauno.util;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
-import uy.um.faltauno.dto.PartidoDto;
 import uy.um.faltauno.entity.Partido;
+import uy.um.faltauno.dto.PartidoDTO;
+import java.util.List;
 
-@Mapper
+@Mapper(componentModel = "spring")
 public interface PartidoMapper {
-    PartidoMapper INSTANCE = Mappers.getMapper(PartidoMapper.class);
 
+    // Entity -> DTO
     @Mapping(source = "organizador.id", target = "organizadorId")
-    PartidoDto toDto(Partido partido);
+    @Mapping(source = "organizador.nombre", target = "organizadorNombre")
+    PartidoDTO toDto(Partido partido);
 
+    List<PartidoDTO> toDtoList(List<Partido> partidos);
+
+    // DTO -> Entity
     @Mapping(source = "organizadorId", target = "organizador.id")
-    Partido toEntity(PartidoDto dto);
+    @Mapping(source = "organizadorNombre", target = "organizador.nombre")
+    Partido toEntity(PartidoDTO dto);
+
+    List<Partido> toEntityList(List<PartidoDTO> dtos);
 }

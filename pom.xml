@@ -15,6 +15,7 @@
     <flyway.version>10.17.0</flyway.version>
     <mapstruct.version>1.5.5.Final</mapstruct.version>
     <lombok.version>1.18.34</lombok.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
   <dependencyManagement>
@@ -103,11 +104,19 @@
       <version>${flyway.version}</version>
     </dependency>
 
-    <!-- MapStruct -->
+    <!-- MapStruct (API) -->
     <dependency>
       <groupId>org.mapstruct</groupId>
       <artifactId>mapstruct</artifactId>
       <version>${mapstruct.version}</version>
+    </dependency>
+
+    <!-- MapStruct processor: como dependency provided (útil para IDEs) -->
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct-processor</artifactId>
+      <version>${mapstruct.version}</version>
+      <scope>provided</scope>
     </dependency>
 
     <!-- Lombok -->
@@ -115,6 +124,14 @@
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <version>${lombok.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Lombok <-> MapStruct binding (ayuda en el orden de procesadores) -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok-mapstruct-binding</artifactId>
+      <version>0.2.0</version>
       <scope>provided</scope>
     </dependency>
 
@@ -148,21 +165,41 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.11.0</version>
         <configuration>
+          <!-- Usamos release para Java 21 -->
           <release>${java.version}</release>
+
+          <!-- Prevent incremental compile problems: forzar encoding -->
+          <encoding>${project.build.sourceEncoding}</encoding>
+
+          <!-- Annotation processors en el orden correcto:
+               Lombok -> lombok-mapstruct-binding -> MapStruct processor -->
           <annotationProcessorPaths>
-            <!-- MapStruct Processor -->
-            <path>
-              <groupId>org.mapstruct</groupId>
-              <artifactId>mapstruct-processor</artifactId>
-              <version>${mapstruct.version}</version>
-            </path>
             <!-- Lombok -->
             <path>
               <groupId>org.projectlombok</groupId>
               <artifactId>lombok</artifactId>
               <version>${lombok.version}</version>
             </path>
+
+            <!-- lombok-mapstruct-binding -->
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok-mapstruct-binding</artifactId>
+              <version>0.2.0</version>
+            </path>
+
+            <!-- MapStruct Processor -->
+            <path>
+              <groupId>org.mapstruct</groupId>
+              <artifactId>mapstruct-processor</artifactId>
+              <version>${mapstruct.version}</version>
+            </path>
           </annotationProcessorPaths>
+
+          <compilerArgs>
+            <!-- Verbose para MapStruct (útil para debug) -->
+            <arg>-Amapstruct.verbose=true</arg>
+          </compilerArgs>
         </configuration>
       </plugin>
     </plugins>

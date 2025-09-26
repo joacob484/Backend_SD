@@ -10,7 +10,7 @@ import uy.um.faltauno.entity.Usuario;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-24T10:50:52-0300",
+    date = "2025-09-25T21:01:56-0300",
     comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.43.0.v20250819-1513, environment: Java 21.0.8 (Eclipse Adoptium)"
 )
 @Component
@@ -40,8 +40,6 @@ public class InscripcionMapperImpl implements InscripcionMapper {
 
         Inscripcion.InscripcionBuilder inscripcion = Inscripcion.builder();
 
-        inscripcion.partido( inscripcionDTOToPartido( dto ) );
-        inscripcion.usuario( inscripcionDTOToUsuario( dto ) );
         inscripcion.estado( dto.getEstado() );
         inscripcion.id( dto.getId() );
 
@@ -76,29 +74,5 @@ public class InscripcionMapperImpl implements InscripcionMapper {
             return null;
         }
         return id;
-    }
-
-    protected Partido inscripcionDTOToPartido(InscripcionDTO inscripcionDTO) {
-        if ( inscripcionDTO == null ) {
-            return null;
-        }
-
-        Partido.PartidoBuilder partido = Partido.builder();
-
-        partido.id( inscripcionDTO.getPartidoId() );
-
-        return partido.build();
-    }
-
-    protected Usuario inscripcionDTOToUsuario(InscripcionDTO inscripcionDTO) {
-        if ( inscripcionDTO == null ) {
-            return null;
-        }
-
-        Usuario.UsuarioBuilder usuario = Usuario.builder();
-
-        usuario.id( inscripcionDTO.getUsuarioId() );
-
-        return usuario.build();
     }
 }

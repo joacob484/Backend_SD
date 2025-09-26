@@ -6,13 +6,14 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@Builder
 @Table(name = "inscripcion", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"partido_id", "usuario_id"})
 })
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Inscripcion {
 
     @Id
@@ -27,9 +28,11 @@ public class Inscripcion {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    @Builder.Default
     @Column(nullable = false)
     private String estado = "PENDIENTE";
 
+    @Builder.Default
     @Column(nullable = false)
     private Instant createdAt = Instant.now();
 }

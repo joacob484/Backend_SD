@@ -10,11 +10,12 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "partido")
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
+@Table(name = "partido")
 public class Partido {
 
     @Id
@@ -32,20 +33,25 @@ public class Partido {
     private BigDecimal longitud;
     private String descripcion;
     private Integer maxJugadores;
+
+    @Builder.Default
     private Integer jugadoresActuales = 0;
+    @Builder.Default
     private BigDecimal precioTotal = BigDecimal.ZERO;
+    @Builder.Default
     private String estado = "PENDIENTE";
 
     @ManyToOne
     @JoinColumn(name = "organizador_id", nullable = false)
     private Usuario organizador;
 
+    @Builder.Default
     @Column(nullable = false, updatable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
-    @OneToMany(mappedBy = "partido", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "partido", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Inscripcion> inscripciones;
 
-    @OneToMany(mappedBy = "partido", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "partido", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Review> reviews;
 }

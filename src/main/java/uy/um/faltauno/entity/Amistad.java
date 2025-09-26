@@ -7,9 +7,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "amistad", uniqueConstraints = @UniqueConstraint(columnNames = {"usuario_id", "amigo_id"}))
 @Data
 @NoArgsConstructor
+@Table(name = "amistad", uniqueConstraints = @UniqueConstraint(columnNames = {"usuario_id", "amigo_id"}))
 public class Amistad {
     @Id
     @GeneratedValue

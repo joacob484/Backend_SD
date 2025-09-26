@@ -10,7 +10,7 @@ import uy.um.faltauno.entity.Usuario;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-24T10:50:52-0300",
+    date = "2025-09-25T21:01:56-0300",
     comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.43.0.v20250819-1513, environment: Java 21.0.8 (Eclipse Adoptium)"
 )
 @Component
@@ -44,9 +44,6 @@ public class ReviewMapperImpl implements ReviewMapper {
 
         Review.ReviewBuilder review = Review.builder();
 
-        review.partido( reviewDTOToPartido( dto ) );
-        review.usuarioQueCalifica( reviewDTOToUsuario( dto ) );
-        review.usuarioCalificado( reviewDTOToUsuario1( dto ) );
         review.comentario( dto.getComentario() );
         review.companerismo( dto.getCompanerismo() );
         review.deportividad( dto.getDeportividad() );
@@ -99,41 +96,5 @@ public class ReviewMapperImpl implements ReviewMapper {
             return null;
         }
         return id;
-    }
-
-    protected Partido reviewDTOToPartido(ReviewDTO reviewDTO) {
-        if ( reviewDTO == null ) {
-            return null;
-        }
-
-        Partido.PartidoBuilder partido = Partido.builder();
-
-        partido.id( reviewDTO.getPartidoId() );
-
-        return partido.build();
-    }
-
-    protected Usuario reviewDTOToUsuario(ReviewDTO reviewDTO) {
-        if ( reviewDTO == null ) {
-            return null;
-        }
-
-        Usuario.UsuarioBuilder usuario = Usuario.builder();
-
-        usuario.id( reviewDTO.getUsuarioQueCalificaId() );
-
-        return usuario.build();
-    }
-
-    protected Usuario reviewDTOToUsuario1(ReviewDTO reviewDTO) {
-        if ( reviewDTO == null ) {
-            return null;
-        }
-
-        Usuario.UsuarioBuilder usuario = Usuario.builder();
-
-        usuario.id( reviewDTO.getUsuarioCalificadoId() );
-
-        return usuario.build();
     }
 }
