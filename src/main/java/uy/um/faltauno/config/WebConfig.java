@@ -10,7 +10,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig {
 
-    @Value("${FRONTEND_URL:http://localhost:3000}")
+    @Value("${FRONTEND_URL}")
     private String frontendUrl;
 
     @Bean
@@ -19,11 +19,12 @@ public class WebConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins(frontendUrl)
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedHeaders("*")
-                        .allowCredentials(true)
-                        .maxAge(3600);
+                    .allowedOrigins(frontendUrl)
+                    .allowedOriginPatterns("http://localhost:*", "http://host.docker.internal:*")
+                    .allowedMethods("*")
+                    .allowedHeaders("*")
+                    .allowCredentials(true);
+
             }
             
             // Sirve archivos estáticos desde la carpeta 'uploads' en el filesystem

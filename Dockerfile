@@ -9,11 +9,19 @@ RUN mvn -B -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-# Copiamos el JAR final a /app/app.jar
+# Copiamos el JAR final
 COPY --from=builder /app/target/*.jar app.jar
 
-# Instalar unzip (opcional, útil para inspeccionar el JAR dentro del contenedor)
-RUN apt-get update && apt-get install -y unzip && rm -rf /var/lib/apt/lists/*
+# Copiamos script de espera
+COPY wait-for-services.sh /app/wait-for-services.sh
+RUN chmod +x /app/wait-for-services.sh
+
+# Instalar herramientas necesarias
+RUN apt-get update \
+    && apt-get install -y unzip postgresql-client netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
+# Entry point: espera servicios y arranca backend
+ENTRYPOINT ["./wait-for-services.sh", "java", "-jar", "app.jar"]
