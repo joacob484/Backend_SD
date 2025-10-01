@@ -16,6 +16,8 @@ services:
       timeout: 5s
       retries: 6
       start_period: 5s
+    networks:
+      - appnet
 
   redis:
     image: redis:7
@@ -28,6 +30,8 @@ services:
       timeout: 5s
       retries: 6
       start_period: 5s
+    networks:
+      - appnet
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -44,6 +48,8 @@ services:
       timeout: 5s
       retries: 6
       start_period: 5s
+    networks:
+      - appnet
 
   backend:
     build: .
@@ -75,6 +81,12 @@ services:
       timeout: 5s
       retries: 6
       start_period: 15s
+    networks:
+      - appnet
 
 volumes:
   pgdata:
+
+networks:
+  appnet:
+    external: true

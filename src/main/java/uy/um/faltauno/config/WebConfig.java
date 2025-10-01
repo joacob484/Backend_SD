@@ -10,31 +10,30 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig {
 
-    @Value("${FRONTEND_URL}")
+    @Value("${FRONTEND_URL:http://localhost:3000}")
     private String frontendUrl;
 
     @Bean
-    public WebMvcConfigurer corsConfigurer() {
+    public WebMvcConfigurer webMvcConfigurer() {
         return new WebMvcConfigurer() {
+            // CORS global: permite dev (localhost) + el FRONTEND_URL especificado
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
+                    // permitir explícitamente FRONTEND_URL y patterns localhost/dev
                     .allowedOrigins(frontendUrl)
                     .allowedOriginPatterns("http://localhost:*", "http://host.docker.internal:*")
-                    .allowedMethods("*")
+                    .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                     .allowedHeaders("*")
-                    .allowCredentials(true);
-
+                    .exposedHeaders("Authorization", "Location")
+                    .allowCredentials(true)
+                    .maxAge(3600);
             }
-            
-            // Sirve archivos estáticos desde la carpeta 'uploads' en el filesystem
+
             @Override
             public void addResourceHandlers(ResourceHandlerRegistry registry) {
-                // "file:uploads/" apunta a ./uploads/ en el working directory del servidor
-                registry.addResourceHandler("/uploads/**")
-                        .addResourceLocations("file:uploads/");
+                registry.addResourceHandler("/uploads/**").addResourceLocations("file:uploads/");
             }
-            
         };
     }
 }
