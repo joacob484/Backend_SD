@@ -25,11 +25,15 @@ public class Usuario {
     private String celular;
     private Double altura;
     private Double peso;
-    private String posicion; // e.g. Arquero, Zaguero, etc.
-    private String fotoPerfil;
-    private String cedula; // para verificación
-    private String provider; // GOOGLE, FACEBOOK, APPLE, LOCAL
-    private String password; // null si es social login
+    private String posicion;
+
+    @Lob
+    @Column(name = "foto_perfil")
+    private byte[] fotoPerfil; // BYTEA en Postgres
+
+    private String cedula;
+    private String provider;
+    private String password;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

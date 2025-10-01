@@ -3,7 +3,7 @@ package uy.um.faltauno.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -21,42 +21,41 @@ public class SecurityConfig {
         String frontendLoginUrl = frontendUrl + "/login";
 
         http
-            // CORS habilitado (usa tu WebMvcConfigurer si lo tenés)
+            // Habilitamos CORS
             .cors(Customizer.withDefaults())
 
-            // Desactivamos CSRF para API SPA; si usás cookies y quieres protección CSRF, cambiar esto.
+            // CSRF deshabilitado para SPA
             .csrf().disable()
 
             // Configuración de rutas
             .authorizeHttpRequests(authorize -> authorize
-                // endpoints públicos
+                // Endpoints públicos
+                .requestMatchers(HttpMethod.POST, "/api/usuarios", "/api/auth/register", "/api/auth/register-user").permitAll()
                 .requestMatchers("/auth/**", "/oauth2/**", "/public/**", "/actuator/health", "/h2-console/**").permitAll()
-                // rutas estáticas (ajusta si tenés otras)
                 .requestMatchers("/static/**", "/favicon.ico").permitAll()
-                // todo lo demás requiere autenticación
+                // Todo lo demás requiere autenticación
                 .anyRequest().authenticated()
             )
 
-            // Configurar punto de entrada (si no autenticado)
+            // Punto de entrada si no autenticado
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint(new FrontendRedirectAuthenticationEntryPoint(frontendLoginUrl))
             )
 
-            // Configurar logout (opcional)
+            // Logout
             .logout(logout -> logout
                 .logoutUrl("/auth/logout")
                 .logoutSuccessHandler((request, response, authentication) -> {
-                    // redirigir al frontend después del logout
                     response.sendRedirect(frontendUrl + "/login?logged_out=1");
                 })
             )
 
-            // Si usás OAuth2 login (Google), habilitalo
+            // OAuth2 login (Google)
             .oauth2Login(oauth -> oauth
-                .defaultSuccessUrl(frontendUrl + "/") // a donde ir despues de login OAuth
+                .defaultSuccessUrl(frontendUrl + "/")
             );
 
-        // Si usas H2 console en dev:
+        // Permitir H2 console en dev
         http.headers().frameOptions().disable();
 
         return http.build();

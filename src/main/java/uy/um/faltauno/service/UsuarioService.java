@@ -2,10 +2,13 @@ package uy.um.faltauno.service;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.transaction.Transactional;
 import uy.um.faltauno.dto.PendingReviewResponse;
+import uy.um.faltauno.dto.PerfilDTO;
 import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.util.UsuarioMapper;
@@ -22,19 +25,15 @@ import uy.um.faltauno.repository.PartidoRepository;
 import uy.um.faltauno.repository.ReviewRepository;
 import uy.um.faltauno.repository.UsuarioRepository;
 
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class UsuarioService {
 
-    @Autowired
     private final UsuarioRepository usuarioRepository;
     private final AmistadRepository amistadRepository;
     private final MensajeRepository mensajeRepository;
@@ -42,25 +41,70 @@ public class UsuarioService {
     private final ReviewRepository reviewRepository;
     private final InscripcionRepository inscripcionRepository;
     private final PartidoRepository partidoRepository;
-    
+
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
     public boolean verificarCedula(String cedula) {
         // Lógica de verificación con el registro uruguayo
-        // Por ahora devuelve true temporalmente
         return true;
     }
 
-
     public UsuarioDTO createUsuario(UsuarioDTO dto) {
-        Usuario usuario = usuarioMapper.toEntity(dto);
-        usuario.setCreatedAt(java.time.LocalDateTime.now());
+        if (dto.getEmail() == null || dto.getPassword() == null) {
+            throw new IllegalArgumentException("Email y password son requeridos");
+        }
+
+        if (usuarioRepository.existsByEmail(dto.getEmail())) {
+            throw new IllegalArgumentException("El email ya está registrado");
+        }
+
+        Usuario usuario = new Usuario();
+        usuario.setEmail(dto.getEmail());
+        usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
+        usuario.setProvider("LOCAL");
+        usuario.setCreatedAt(LocalDateTime.now());
+
+        // nombre/apellido quedan para completar luego
         usuario = usuarioRepository.save(usuario);
-        return usuarioMapper.toDTO(usuario);
+
+        UsuarioDTO out = usuarioMapper.toDTO(usuario);
+        // nunca devolver password al frontend
+        out.setPassword(null);
+        return out;
     }
 
     public UsuarioDTO getUsuario(UUID id) {
         return usuarioRepository.findById(id)
                 .map(usuarioMapper::toDTO)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    }
+
+    @Transactional
+    public Usuario actualizarPerfil(UUID usuarioId, PerfilDTO perfilDTO) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        usuario.setNombre(perfilDTO.getNombre());
+        usuario.setApellido(perfilDTO.getApellido());
+        usuario.setCelular(perfilDTO.getCelular());
+        usuario.setPosicion(perfilDTO.getPosicion());
+        usuario.setAltura(perfilDTO.getAltura() != null && !perfilDTO.getAltura().isEmpty()
+                ? Double.valueOf(perfilDTO.getAltura()) : null);
+        usuario.setPeso(perfilDTO.getPeso() != null && !perfilDTO.getPeso().isEmpty()
+                ? Double.valueOf(perfilDTO.getPeso()) : null);
+
+        // Si querés guardar direccion/placeDetails: agregar campos en entidad y guardarlos acá
+
+        return usuarioRepository.save(usuario);
+    }
+
+    @Transactional
+    public void subirFoto(UUID usuarioId, MultipartFile file) throws IOException {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        usuario.setFotoPerfil(file.getBytes());
+        usuarioRepository.save(usuario);
     }
 
     public List<UsuarioDTO> getAllUsuarios() {
@@ -71,11 +115,8 @@ public class UsuarioService {
     }
 
     public List<PendingReviewResponse> obtenerPendingReviews(UUID userId) {
-        // 1) Obtener todas las inscripciones del usuario (o sólo las de partidos finalizados si preferís)
-        // Si querés sólo partidos pasados: puedes filtrar por fecha/hora del partido comparando con LocalDate.now()
         List<Inscripcion> misInscripciones = inscripcionRepository.findByUsuarioId(userId);
 
-        // Map para agrupar pendientes por partidoId
         Map<UUID, List<UsuarioMinDTO>> pendientesPorPartido = new HashMap<>();
 
         for (Inscripcion miInsc : misInscripciones) {
@@ -83,20 +124,13 @@ public class UsuarioService {
             if (partido == null) continue;
 
             UUID partidoId = partido.getId();
-
-            // Opcional: sólo considerar partidos con fecha pasada:
-            // if (partido.getFecha().isAfter(LocalDate.now())) continue;
-
-            // 2) Obtener todas las inscripciones de ese partido (todos los jugadores)
             List<Inscripcion> inscDelPartido = inscripcionRepository.findByPartidoId(partidoId);
 
             for (Inscripcion inscOtro : inscDelPartido) {
-                // Saltar al propio usuario
                 if (inscOtro.getUsuario() == null) continue;
                 UUID otroUsuarioId = inscOtro.getUsuario().getId();
                 if (userId.equals(otroUsuarioId)) continue;
 
-                // 3) Verificar si ya existe una review del current user hacia ese jugador en este partido
                 boolean yaReseñado = reviewRepository.existsByPartido_IdAndUsuarioQueCalifica_IdAndUsuarioCalificado_Id(
                         partidoId,
                         userId,
@@ -104,22 +138,18 @@ public class UsuarioService {
                 );
 
                 if (!yaReseñado) {
-                    // agregar a pendientesPorPartido
                     Usuario u = inscOtro.getUsuario();
                     UsuarioMinDTO um = new UsuarioMinDTO(u.getId(), u.getNombre(), u.getApellido(), u.getFotoPerfil());
-
                     pendientesPorPartido.computeIfAbsent(partidoId, k -> new ArrayList<>()).add(um);
                 }
             }
         }
 
-        // 4) Mapear pendientesPorPartido a List<PendingReviewResponse>
         List<PendingReviewResponse> result = new ArrayList<>();
         for (Map.Entry<UUID, List<UsuarioMinDTO>> entry : pendientesPorPartido.entrySet()) {
             UUID partidoId = entry.getKey();
             List<UsuarioMinDTO> jugadoresPendientes = entry.getValue();
 
-            // Obtener partido para info (si no lo tenemos, saltamos)
             Partido partido = partidoRepository.findById(partidoId).orElse(null);
             if (partido == null) continue;
 
@@ -136,12 +166,6 @@ public class UsuarioService {
         return result;
     }
 
-    public void actualizarFoto(UUID usuarioId, String fotoUrl) {
-        Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-        usuario.setFotoPerfil(fotoUrl);
-        usuarioRepository.save(usuario);
-    }
-
     public List<Map<String, Object>> obtenerSolicitudesAmistadPendientes(UUID userId) {
         List<Amistad> pendientes = amistadRepository.findByAmigoIdAndEstado(userId, "PENDIENTE");
         return pendientes.stream().map(a -> {
@@ -152,7 +176,6 @@ public class UsuarioService {
             return m;
         }).collect(Collectors.toList());
     }
-
 
     public List<Map<String, Object>> obtenerMensajesNoLeidos(UUID userId) {
         List<Mensaje> mensajes = mensajeRepository.findByDestinatarioIdAndLeido(userId, false);
@@ -167,18 +190,18 @@ public class UsuarioService {
     }
 
     public List<Map<String, Object>> obtenerInvitaciones(UUID userId) {
-    List<Inscripcion> pendientes = inscripcionRepository.findByUsuario_IdAndEstado(userId, "PENDIENTE");
-    return pendientes.stream().map(i -> {
-        Map<String,Object> m = new HashMap<>();
-        m.put("id", i.getId());
-        m.put("usuarioId", i.getUsuario().getId());
-        m.put("matchId", i.getPartido().getId());
-        m.put("title", "Invitación a partido");
-        m.put("message", "Te han invitado al partido " + i.getPartido().getNombreUbicacion());
-        m.put("time", i.getCreatedAt());
-        return m;
-    }).collect(Collectors.toList());
-}
+        List<Inscripcion> pendientes = inscripcionRepository.findByUsuario_IdAndEstado(userId, "PENDIENTE");
+        return pendientes.stream().map(i -> {
+            Map<String,Object> m = new HashMap<>();
+            m.put("id", i.getId());
+            m.put("usuarioId", i.getUsuario().getId());
+            m.put("matchId", i.getPartido().getId());
+            m.put("title", "Invitación a partido");
+            m.put("message", "Te han invitado al partido " + i.getPartido().getNombreUbicacion());
+            m.put("time", i.getCreatedAt());
+            return m;
+        }).collect(Collectors.toList());
+    }
 
     public List<Map<String, Object>> obtenerActualizacionesPartidos(UUID userId) {
         List<Inscripcion> inscripciones = inscripcionRepository.findByUsuarioId(userId);
@@ -199,6 +222,9 @@ public class UsuarioService {
         return updates;
     }
 
+    public Usuario findUsuarioEntityById(UUID id) {
+        return usuarioRepository.findById(id).orElse(null);
+    }
 
     public void deleteUsuario(UUID id) {
         usuarioRepository.deleteById(id);

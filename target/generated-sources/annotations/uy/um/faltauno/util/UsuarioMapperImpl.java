@@ -1,5 +1,6 @@
 package uy.um.faltauno.util;
 
+import java.util.Arrays;
 import javax.annotation.processing.Generated;
 import org.springframework.stereotype.Component;
 import uy.um.faltauno.dto.UsuarioDTO;
@@ -7,7 +8,7 @@ import uy.um.faltauno.entity.Usuario;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-30T18:43:31-0300",
+    date = "2025-10-01T14:52:10-0300",
     comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.43.0.v20250819-1513, environment: Java 21.0.8 (Eclipse Adoptium)"
 )
 @Component
@@ -21,15 +22,19 @@ public class UsuarioMapperImpl implements UsuarioMapper {
 
         UsuarioDTO.UsuarioDTOBuilder usuarioDTO = UsuarioDTO.builder();
 
+        byte[] fotoPerfil = usuario.getFotoPerfil();
+        if ( fotoPerfil != null ) {
+            usuarioDTO.fotoPerfil( Arrays.copyOf( fotoPerfil, fotoPerfil.length ) );
+        }
         usuarioDTO.altura( usuario.getAltura() );
         usuarioDTO.apellido( usuario.getApellido() );
         usuarioDTO.cedula( usuario.getCedula() );
         usuarioDTO.celular( usuario.getCelular() );
         usuarioDTO.edad( usuario.getEdad() );
         usuarioDTO.email( usuario.getEmail() );
-        usuarioDTO.fotoPerfil( usuario.getFotoPerfil() );
         usuarioDTO.id( usuario.getId() );
         usuarioDTO.nombre( usuario.getNombre() );
+        usuarioDTO.password( usuario.getPassword() );
         usuarioDTO.peso( usuario.getPeso() );
         usuarioDTO.posicion( usuario.getPosicion() );
 
@@ -44,15 +49,19 @@ public class UsuarioMapperImpl implements UsuarioMapper {
 
         Usuario.UsuarioBuilder usuario = Usuario.builder();
 
+        byte[] fotoPerfil = dto.getFotoPerfil();
+        if ( fotoPerfil != null ) {
+            usuario.fotoPerfil( Arrays.copyOf( fotoPerfil, fotoPerfil.length ) );
+        }
         usuario.altura( dto.getAltura() );
         usuario.apellido( dto.getApellido() );
         usuario.cedula( dto.getCedula() );
         usuario.celular( dto.getCelular() );
         usuario.edad( dto.getEdad() );
         usuario.email( dto.getEmail() );
-        usuario.fotoPerfil( dto.getFotoPerfil() );
         usuario.id( dto.getId() );
         usuario.nombre( dto.getNombre() );
+        usuario.password( dto.getPassword() );
         usuario.peso( dto.getPeso() );
         usuario.posicion( dto.getPosicion() );
 

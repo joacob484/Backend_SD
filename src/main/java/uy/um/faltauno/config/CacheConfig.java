@@ -20,7 +20,6 @@ import org.springframework.beans.factory.annotation.Value;
 @EnableCaching
 public class CacheConfig {
 
-    // Inyectamos host y puerto desde application.yml / variables de entorno
     @Value("${spring.redis.host:redis}")
     private String redisHost;
 
@@ -29,21 +28,19 @@ public class CacheConfig {
 
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
-        // Usamos LettuceConnectionFactory con host/puerto dinámicos
         return new LettuceConnectionFactory(redisHost, redisPort);
     }
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-            .entryTtl(Duration.ofMinutes(10))
-            .serializeValuesWith(
-                RedisSerializationContext.SerializationPair.fromSerializer(
-                    new GenericJackson2JsonRedisSerializer()
-                )
-            );
+                .entryTtl(Duration.ofMinutes(10))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(
+                        new GenericJackson2JsonRedisSerializer()
+                ));
+
         return RedisCacheManager.builder(connectionFactory)
-            .cacheDefaults(config)
-            .build();
+                .cacheDefaults(config)
+                .build();
     }
 }

@@ -1,7 +1,6 @@
 package uy.um.faltauno.dto;
 
 import lombok.*;
-
 import java.util.UUID;
 
 @Data
@@ -18,6 +17,7 @@ public class UsuarioDTO {
     private Double altura;
     private Double peso;
     private String posicion;
-    private String fotoPerfil;
+    private byte[] fotoPerfil;
     private String cedula;
+    private String password; // solo para recepción; se nulificará antes de devolver
 }

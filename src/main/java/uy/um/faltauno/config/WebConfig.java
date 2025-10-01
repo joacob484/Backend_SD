@@ -16,18 +16,16 @@ public class WebConfig {
     @Bean
     public WebMvcConfigurer webMvcConfigurer() {
         return new WebMvcConfigurer() {
-            // CORS global: permite dev (localhost) + el FRONTEND_URL especificado
+
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**")
-                    // permitir explícitamente FRONTEND_URL y patterns localhost/dev
-                    .allowedOrigins(frontendUrl)
-                    .allowedOriginPatterns("http://localhost:*", "http://host.docker.internal:*")
-                    .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                    .allowedHeaders("*")
-                    .exposedHeaders("Authorization", "Location")
-                    .allowCredentials(true)
-                    .maxAge(3600);
+                registry.addMapping("/api/**")
+                        .allowedOrigins(frontendUrl) // origen principal
+                        .allowedOriginPatterns("http://localhost:3000", "http://host.docker.internal:*") // patterns para dev
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                        .allowedHeaders("Content-Type","Authorization","X-USER-ID")
+                        .allowCredentials(true)
+                        .maxAge(3600);
             }
 
             @Override

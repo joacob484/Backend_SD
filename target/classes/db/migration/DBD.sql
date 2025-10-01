@@ -15,17 +15,18 @@ CREATE TABLE usuario (
     celular VARCHAR(30),
     altura NUMERIC(5,2),
     peso NUMERIC(5,2),
-    posicion VARCHAR(50), -- ARQUERO, ZAGUERO, LATERAL, MEDIOCAMPISTA, VOLANTE, DELANTERO
-    foto_perfil VARCHAR(255),
+    posicion VARCHAR(50),
+    foto_perfil BYTEA,
     cedula VARCHAR(20),
+    provider VARCHAR(50),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Tabla partido
+-- Resto de tablas (sin cambios)
 CREATE TABLE partido (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tipo_partido VARCHAR(5) NOT NULL,          -- F5, F7, F8, F9, F11
-    genero VARCHAR(10) NOT NULL,               -- Mixto, Hombres, Mujeres
+    tipo_partido VARCHAR(5) NOT NULL,
+    genero VARCHAR(10) NOT NULL,
     fecha DATE NOT NULL,
     hora TIME NOT NULL,
     duracion_minutos INT NOT NULL,
@@ -43,12 +44,11 @@ CREATE TABLE partido (
 CREATE INDEX idx_partido_fecha_hora ON partido(fecha, hora);
 CREATE INDEX idx_partido_ubicacion ON partido(latitud, longitud);
 
--- Tabla inscripcion
 CREATE TABLE inscripcion (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     partido_id UUID NOT NULL REFERENCES partido(id) ON DELETE CASCADE,
     usuario_id UUID NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
-    estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE', -- o CONFIRMADO según lógica
+    estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (partido_id, usuario_id)
 );
@@ -56,7 +56,6 @@ CREATE TABLE inscripcion (
 CREATE INDEX idx_inscripcion_partido ON inscripcion(partido_id);
 CREATE INDEX idx_inscripcion_usuario ON inscripcion(usuario_id);
 
--- Tabla review (reseñas entre usuarios)
 CREATE TABLE review (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     partido_id UUID NOT NULL REFERENCES partido(id) ON DELETE CASCADE,
@@ -76,7 +75,7 @@ CREATE TABLE amistad (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     usuario_id UUID NOT NULL REFERENCES usuario(id),
     amigo_id UUID NOT NULL REFERENCES usuario(id),
-    estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE', -- PENDIENTE, ACEPTADO, RECHAZADO
+    estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(usuario_id, amigo_id)
 );

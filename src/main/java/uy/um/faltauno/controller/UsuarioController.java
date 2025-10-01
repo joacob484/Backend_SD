@@ -2,154 +2,119 @@ package uy.um.faltauno.controller;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.actuate.web.exchanges.HttpExchange.Principal;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import uy.um.faltauno.dto.UsuarioDTO;
-import uy.um.faltauno.service.UsuarioService;
 import uy.um.faltauno.dto.ApiResponse;
-import uy.um.faltauno.dto.PendingReviewResponse;
-import uy.um.faltauno.dto.VerificarCedulaResponse;
+import uy.um.faltauno.dto.PerfilDTO;
+import uy.um.faltauno.dto.UsuarioDTO;
+import uy.um.faltauno.entity.Usuario;
+import uy.um.faltauno.service.UsuarioService;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-
+import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/usuarios")
 @RequiredArgsConstructor
 public class UsuarioController {
+    private final UsuarioService usuarioService;
 
-    @Autowired
-    private final UsuarioService usuarioService;    
-
-    @PostMapping
-    public ResponseEntity<UsuarioDTO> createUsuario(@RequestBody UsuarioDTO dto) {
-        return ResponseEntity.ok(usuarioService.createUsuario(dto));
-    }
-
-    @PostMapping("/verificar-cedula")
-    public ApiResponse<VerificarCedulaResponse> verificarCedula(@RequestBody Map<String, String> body) {
-        String cedula = body.get("cedula");
-        if (cedula == null) {
-            return new ApiResponse<>(null, "Cédula requerida", false);
-        }
-
-        boolean verified = usuarioService.verificarCedula(cedula);
-        return new ApiResponse<>(new VerificarCedulaResponse(verified), "Verificación completada", true);
-    }
-
-    @PostMapping("/{id}/foto")
-    public ResponseEntity<?> subirFoto(@PathVariable UUID id, @RequestParam("foto") MultipartFile foto) {
+    @PostMapping(consumes = "application/json", produces = "application/json")
+    public ResponseEntity<ApiResponse<UsuarioDTO>> createUsuario(@RequestBody UsuarioDTO dto) {
         try {
-            // Guardar el archivo en la carpeta "uploads"
-            String uploadsDir = "uploads/";
-            Path uploadPath = Paths.get(uploadsDir);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            String originalFileName = foto.getOriginalFilename();
-            // para evitar colisiones, podés prefijar el filename con UUID por ejemplo
-            String safeFileName = UUID.randomUUID().toString() + "-" + (originalFileName != null ? originalFileName : "foto");
-            Path filePath = uploadPath.resolve(safeFileName);
-            Files.copy(foto.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-            // Construir URL pública completa (opcionalmente usar propiedad de aplicación para base URL)
-            // Si tu API corre en https://api.miapp.com, la URL final sería: https://api.miapp.com/uploads/{safeFileName}
-            // Aquí devolvemos la ruta relativa; el frontend puede prepender el host si lo desea.
-            String fotoUrl = "/uploads/" + safeFileName;
-
-            // Guardar la URL de la foto en la base de datos
-            usuarioService.actualizarFoto(id, fotoUrl);
-
-            // Respuesta con la estructura que espera el front: { data: { url: string }, message, success }
-            Map<String, Object> data = Map.of("url", fotoUrl);
-            return ResponseEntity.ok().body(Map.of(
-                "data", data,
-                "message", "Foto subida correctamente",
-                "success", true
-            ));
+            UsuarioDTO u = usuarioService.createUsuario(dto);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new ApiResponse<>(u, "Usuario creado", true));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(Map.of(
-                "data", Map.of(),
-                "message", "Error subiendo la foto",
-                "success", false
-            ));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         }
     }
 
-    @GetMapping("/{id}/friend-requests")
-    public ApiResponse<List<Map<String, Object>>> getFriendRequests(@PathVariable UUID id) {
-        // Llamamos a un método del service que devuelva solicitudes pendientes
-        List<Map<String, Object>> requests = usuarioService.obtenerSolicitudesAmistadPendientes(id);
-        return new ApiResponse<>(requests, "Solicitudes de amistad pendientes", true);
-    }
-
-    @GetMapping("/{id}/messages")
-    public ApiResponse<List<Map<String, Object>>> getUnreadMessages(@PathVariable UUID id) {
-        List<Map<String, Object>> mensajes = usuarioService.obtenerMensajesNoLeidos(id);
-        return new ApiResponse<>(mensajes, "Mensajes no leídos", true);
-    }
-
-    @GetMapping("/{id}/match-updates")
-    public ApiResponse<List<Map<String, Object>>> getMatchUpdates(@PathVariable UUID id) {
-        List<Map<String, Object>> updates = usuarioService.obtenerActualizacionesPartidos(id);
-        return new ApiResponse<>(updates, "Actualizaciones de partidos", true);
-    }
-
-    @GetMapping("/{id}/match-invitations")
-    public ApiResponse<List<Map<String, Object>>> getMatchInvitations(@PathVariable UUID id) {
-        List<Map<String, Object>> invites = usuarioService.obtenerInvitaciones(id);
-        return new ApiResponse<>(invites, "Invitaciones a partidos", true);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<UsuarioDTO> getUsuario(@PathVariable UUID id) {
-        return ResponseEntity.ok(usuarioService.getUsuario(id));
-    }
-
-    @GetMapping
-    public ResponseEntity<List<UsuarioDTO>> getAllUsuarios() {
-        return ResponseEntity.ok(usuarioService.getAllUsuarios());
-    }
-
-    @GetMapping("/me")
-    public ResponseEntity<?> getMe(Principal principal) {
-        // Esto asume que el principal contiene el UUID como nombre o que tenés seguridad configurada.
-        // Ajustá según tu mecanismo de autenticación (JWT, session, etc.)
+     @PutMapping(path = "/me", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<?> actualizarPerfil(@RequestBody PerfilDTO perfilDTO,
+                                              @RequestHeader("X-USER-ID") UUID usuarioId) {
         try {
-            if (principal == null) {
-                return ResponseEntity.status(401).body(Map.of("data", null, "message", "No autenticado", "success", false));
-            }
-            // suponer principal.getName() devuelve el UUID en string
-            UUID userId = UUID.fromString(principal.getName());
-            UsuarioDTO dto = usuarioService.getUsuario(userId);
-            return ResponseEntity.ok(dto);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("data", null, "message", "Error", "success", false));
+            Usuario updated = usuarioService.actualizarPerfil(usuarioId, perfilDTO);
+            return ResponseEntity.ok(new ApiResponse<>(updated, "Perfil actualizado", true));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse<>(null, e.getMessage(), false));
         }
     }
 
-
-    @GetMapping("/{id}/pending-reviews")
-    public ApiResponse<List<PendingReviewResponse>> getPendingReviews(@PathVariable UUID id) {
-        List<PendingReviewResponse> pendientes = usuarioService.obtenerPendingReviews(id);
-        return new ApiResponse<>(pendientes, "Reseñas pendientes", true);
+    @PostMapping(value = "/{id}/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "application/json")
+    public ResponseEntity<?> subirFotoPorId(@PathVariable("id") UUID id, @RequestParam("file") MultipartFile file,
+                                           @RequestHeader(value = "X-USER-ID", required = false) UUID headerUserId) {
+        // Si el front envía header X-USER-ID el controller lo usa; si no, comparamos path id con header
+        try {
+            // validar que el id/path coincida con header si header presente
+            if (headerUserId != null && !headerUserId.equals(id)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse<>(null, "User ID mismatch", false));
+            }
+            usuarioService.subirFoto(id, file);
+            return ResponseEntity.ok(new ApiResponse<>(null, "Foto subida", true));
+        } catch (IOException ioe) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(null, "Error guardando foto", false));
+        } catch (RuntimeException re) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse<>(null, re.getMessage(), false));
+        }
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUsuario(@PathVariable UUID id) {
+    // endpoint alternativo que el front puede usar: POST /api/usuarios/me/foto (usa X-USER-ID header)
+    @PostMapping(value = "/me/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "application/json")
+    public ResponseEntity<?> subirFotoMe(@RequestParam("file") MultipartFile file,
+                                        @RequestHeader("X-USER-ID") UUID usuarioId) {
+        try {
+            usuarioService.subirFoto(usuarioId, file);
+            return ResponseEntity.ok(new ApiResponse<>(null, "Foto subida", true));
+        } catch (IOException ioe) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(null, "Error guardando foto", false));
+        } catch (RuntimeException re) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse<>(null, re.getMessage(), false));
+        }
+    }
+
+    @GetMapping(path = "/{id}/foto", produces = { MediaType.IMAGE_JPEG_VALUE, MediaType.APPLICATION_OCTET_STREAM_VALUE })
+    public ResponseEntity<byte[]> getFoto(@PathVariable("id") UUID id) {
+        Usuario u = usuarioService.findUsuarioEntityById(id); // implementá este helper en service
+        if (u == null || u.getFotoPerfil() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        byte[] data = u.getFotoPerfil();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.IMAGE_JPEG); // asumimos jpeg; podés almacenar mime en la DB si querés
+        return new ResponseEntity<>(data, headers, HttpStatus.OK);
+    }
+
+    @GetMapping(produces = "application/json")
+    public ResponseEntity<ApiResponse<List<UsuarioDTO>>> getAllUsuarios() {
+        List<UsuarioDTO> all = usuarioService.getAllUsuarios();
+        return ResponseEntity.ok(new ApiResponse<>(all, "Lista de usuarios", true));
+    }
+
+    @GetMapping(path = "/{id}", produces = "application/json")
+    public ResponseEntity<ApiResponse<UsuarioDTO>> getUsuario(@PathVariable UUID id) {
+        try {
+            UsuarioDTO dto = usuarioService.getUsuario(id);
+            return ResponseEntity.ok(new ApiResponse<>(dto, "Usuario encontrado", true));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        }
+    }
+
+    @DeleteMapping(path = "/{id}", produces = "application/json")
+    public ResponseEntity<ApiResponse<Void>> deleteUsuario(@PathVariable UUID id) {
         usuarioService.deleteUsuario(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(new ApiResponse<>(null, "Usuario eliminado", true));
     }
 }
