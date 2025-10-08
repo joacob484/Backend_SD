@@ -2,7 +2,7 @@ package uy.um.faltauno.service;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,7 +42,7 @@ public class UsuarioService {
     private final InscripcionRepository inscripcionRepository;
     private final PartidoRepository partidoRepository;
 
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder; // inyectado en vez de new BCryptPasswordEncoder()
 
     public boolean verificarCedula(String cedula) {
         // Lógica de verificación con el registro uruguayo
