@@ -11,7 +11,7 @@ public class UsuarioDTO {
     private UUID id;
     private String nombre;
     private String apellido;
-    private Integer edad;
+    private String fechaNacimiento;
     private String email;
     private String celular;
     private Double altura;
@@ -19,5 +19,6 @@ public class UsuarioDTO {
     private String posicion;
     private byte[] fotoPerfil;
     private String cedula;
+    private Boolean cedulaVerificada;
     private String password; // solo para recepción; se nulificará antes de devolver
 }

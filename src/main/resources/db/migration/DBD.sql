@@ -1,4 +1,3 @@
--- V2__init.sql
 -- Extensiones necesarias
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -10,7 +9,7 @@ CREATE TABLE usuario (
     apellido VARCHAR(100),
     email VARCHAR(120) UNIQUE,
     password VARCHAR(255),
-    edad INT,
+    fecha_nacimiento DATE,
     ubicacion VARCHAR(255),
     celular VARCHAR(30),
     altura NUMERIC(5,2),

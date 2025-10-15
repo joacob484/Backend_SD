@@ -2,6 +2,8 @@ package uy.um.faltauno.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -20,7 +22,7 @@ public class Usuario {
 
     private String nombre;
     private String apellido;
-    private Integer edad;
+    private LocalDate fechaNacimiento;
     private String email;
     private String celular;
     private Double altura;
@@ -28,8 +30,9 @@ public class Usuario {
     private String posicion;
 
     @Lob
+    @Basic(fetch = FetchType.LAZY)
     @Column(name = "foto_perfil")
-    private byte[] fotoPerfil; // BYTEA en Postgres
+    private byte[] fotoPerfil;
 
     private String cedula;
     private String provider;
@@ -37,4 +40,6 @@ public class Usuario {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
+
+    // getters/setters generados por Lombok (@Getter/@Setter) seguirán funcionando
 }

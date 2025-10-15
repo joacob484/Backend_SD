@@ -10,10 +10,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import uy.um.faltauno.config.CustomUserDetailsService;
 import uy.um.faltauno.dto.ApiResponse;
 import uy.um.faltauno.dto.PerfilDTO;
 import uy.um.faltauno.dto.UsuarioDTO;
@@ -25,6 +28,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -35,37 +39,28 @@ public class UsuarioController {
     private final UsuarioService usuarioService;
     private final AuthenticationManager authenticationManager; // inyectado
 
+    // Registro con auto-login
     @PostMapping(consumes = "application/json", produces = "application/json")
     public ResponseEntity<ApiResponse<UsuarioDTO>> createUsuario(@RequestBody UsuarioDTO dto,
                                                                  HttpServletRequest request,
                                                                  HttpServletResponse response) {
         try {
-            // 1) crear usuario en BD (password se guarda hashed dentro del service)
             UsuarioDTO u = usuarioService.createUsuario(dto);
 
-            // 2) Autenticación automática: intentamos autenticar con email + contraseña original
-            //    (AuthenticationManager debe estar configurado en SecurityConfig)
+            // intentar auto-login (silencioso)
             try {
                 UsernamePasswordAuthenticationToken token =
                         new UsernamePasswordAuthenticationToken(dto.getEmail(), dto.getPassword());
                 Authentication auth = authenticationManager.authenticate(token);
 
-                // 3) setear en el contexto de security
                 SecurityContextHolder.getContext().setAuthentication(auth);
-
-                // 4) asegurar que exista la sesión HTTP para que JSESSIONID quede asociada
                 request.getSession(true);
-
                 log.info("Usuario {} autenticado automáticamente tras registro", dto.getEmail());
             } catch (Exception authEx) {
-                // No queremos exponer el fallo de autenticación al frontend como error 500.
                 log.warn("Auto-login falló para {}: {}", dto.getEmail(), authEx.getMessage());
-                // seguimos y devolvemos CREATED; el frontend puede hacer login manual si lo desea.
             }
 
-            // 5) nunca devolver password al frontend
             u.setPassword(null);
-
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponse<>(u, "Usuario creado", true));
         } catch (IllegalArgumentException e) {
@@ -77,27 +72,77 @@ public class UsuarioController {
         }
     }
 
+    // Obtener el usuario actual autenticado
+    @GetMapping(path = "/me", produces = "application/json")
+    public ResponseEntity<ApiResponse<UsuarioDTO>> getMe() {
+        try {
+            UUID currentUserId = resolveCurrentUserId();
+            if (currentUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(null, "No autenticado", false));
+            }
+            UsuarioDTO dto = usuarioService.getUsuario(currentUserId);
+            return ResponseEntity.ok(new ApiResponse<>(dto, "Usuario actual", true));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse<>(null, e.getMessage(), false));
+        }
+    }
+
+    // actualizar perfil: usa X-USER-ID si está, si no usa el usuario autenticado
     @PutMapping(path = "/me", consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> actualizarPerfil(@RequestBody PerfilDTO perfilDTO,
-                                              @RequestHeader("X-USER-ID") UUID usuarioId) {
+                                              @RequestHeader(value = "X-USER-ID", required = false) String usuarioIdHeader) {
         try {
+            UUID usuarioId = null;
+            if (usuarioIdHeader != null && !usuarioIdHeader.isBlank()) {
+                try {
+                    usuarioId = UUID.fromString(usuarioIdHeader);
+                } catch (IllegalArgumentException iae) {
+                    return ResponseEntity.badRequest().body(new ApiResponse<>(null, "X-USER-ID invalid UUID format", false));
+                }
+            } else {
+                usuarioId = resolveCurrentUserId();
+            }
+
+            if (usuarioId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(null, "No autenticado", false));
+            }
+
             Usuario updated = usuarioService.actualizarPerfil(usuarioId, perfilDTO);
-            return ResponseEntity.ok(new ApiResponse<>(updated, "Perfil actualizado", true));
+            UsuarioDTO dto = usuarioService.getUsuario(usuarioId);
+            return ResponseEntity.ok(new ApiResponse<>(dto, "Perfil actualizado", true));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse<>(null, e.getMessage(), false));
         }
     }
 
     @PostMapping(value = "/{id}/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "application/json")
-    public ResponseEntity<?> subirFotoPorId(@PathVariable("id") UUID id, @RequestParam("file") MultipartFile file,
-                                           @RequestHeader(value = "X-USER-ID", required = false) UUID headerUserId) {
+    public ResponseEntity<?> subirFotoPorId(@PathVariable("id") UUID id,
+                                           @RequestParam("file") MultipartFile file,
+                                           @RequestHeader(value = "X-USER-ID", required = false) String headerUserId) {
         try {
-            if (headerUserId != null && !headerUserId.equals(id)) {
+            UUID effectiveUserId = null;
+            if (headerUserId != null && !headerUserId.isBlank()) {
+                try {
+                    effectiveUserId = UUID.fromString(headerUserId);
+                } catch (IllegalArgumentException iae) {
+                    return ResponseEntity.badRequest().body(new ApiResponse<>(null, "X-USER-ID invalid UUID format", false));
+                }
+            } else {
+                effectiveUserId = resolveCurrentUserId();
+            }
+
+            if (effectiveUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(null, "No autenticado", false));
+            }
+
+            if (!effectiveUserId.equals(id)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse<>(null, "User ID mismatch", false));
             }
+
             usuarioService.subirFoto(id, file);
             return ResponseEntity.ok(new ApiResponse<>(null, "Foto subida", true));
         } catch (IOException ioe) {
+            log.error("Error guardando foto para id {}: {}", id, ioe.getMessage(), ioe);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(null, "Error guardando foto", false));
         } catch (RuntimeException re) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse<>(null, re.getMessage(), false));
@@ -106,16 +151,136 @@ public class UsuarioController {
 
     @PostMapping(value = "/me/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "application/json")
     public ResponseEntity<?> subirFotoMe(@RequestParam("file") MultipartFile file,
-                                        @RequestHeader("X-USER-ID") UUID usuarioId) {
+                                        @RequestHeader(value = "X-USER-ID", required = false) String usuarioIdHeader) {
         try {
+            UUID usuarioId = null;
+            if (usuarioIdHeader != null && !usuarioIdHeader.isBlank()) {
+                try {
+                    usuarioId = UUID.fromString(usuarioIdHeader);
+                } catch (IllegalArgumentException iae) {
+                    return ResponseEntity.badRequest().body(new ApiResponse<>(null, "X-USER-ID invalid UUID format", false));
+                }
+            } else {
+                usuarioId = resolveCurrentUserId();
+            }
+
+            if (usuarioId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(null, "No autenticado", false));
+            }
+
             usuarioService.subirFoto(usuarioId, file);
             return ResponseEntity.ok(new ApiResponse<>(null, "Foto subida", true));
         } catch (IOException ioe) {
+            log.error("Error guardando foto (me): {}", ioe.getMessage(), ioe);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(null, "Error guardando foto", false));
         } catch (RuntimeException re) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse<>(null, re.getMessage(), false));
         }
     }
+
+    // endpoint público para verificar cédula (sin asociar a usuario)
+    @PostMapping("/verificar-cedula")
+    public ResponseEntity<?> verificarCedula(@RequestBody Map<String, String> body) {
+        String cedula = body.get("cedula");
+        if (cedula == null) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "cédula requerida"));
+        }
+
+        UUID userId = resolveCurrentUserId();
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("success", false, "message", "No autenticado"));
+        }
+
+        boolean valida = usuarioService.verificarCedula(cedula);
+        if (!valida) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Cédula inválida"));
+        }
+
+        // Persistir la cédula para el usuario autenticado y devolver DTO actualizado
+        UsuarioDTO updated = usuarioService.saveCedulaForUser(userId, cedula);
+        return ResponseEntity.ok(new ApiResponse<>(updated, "Cédula verificada y guardada", true));
+    }
+
+    // endpoint para que el usuario autenticado verifique su propia cédula y se la guarde
+    @PostMapping(path = "/me/verify-cedula", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<?> verificarCedulaMe(
+            @RequestBody Map<String, String> body,
+            @RequestHeader(value = "X-USER-ID", required = false) String usuarioIdHeader,
+            HttpServletRequest request // necesitamos el request para la sesión
+    ) {
+        String cedula = body.get("cedula");
+        if (cedula == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Cédula requerida"
+            ));
+        }
+
+        UUID usuarioId = null;
+        if (usuarioIdHeader != null && !usuarioIdHeader.isBlank()) {
+            try {
+                usuarioId = UUID.fromString(usuarioIdHeader);
+            } catch (IllegalArgumentException iae) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "X-USER-ID invalid UUID format"
+                ));
+            }
+        } else {
+            usuarioId = resolveCurrentUserId();
+        }
+
+        if (usuarioId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "success", false,
+                    "message", "No autenticado"
+            ));
+        }
+
+        boolean valida = usuarioService.verificarCedula(cedula);
+        if (!valida) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "data", Map.of("verified", false),
+                    "message", "Cédula inválida"
+            ));
+        }
+
+        // Guardar cédula en usuario
+        Usuario updated = usuarioService.marcarCedula(usuarioId, cedula);
+
+        // --- Auto-login seguro: crear Authentication desde UserDetails (NO reintentar autenticar con password hasheada)
+        try {
+            // Creamos un UserPrincipal compatible con tu CustomUserDetailsService
+            CustomUserDetailsService.UserPrincipal userPrincipal =
+                    new CustomUserDetailsService.UserPrincipal(
+                            updated.getId(),
+                            updated.getEmail(),
+                            updated.getPassword(),
+                            List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                    );
+
+            // Credenciales a null porque no volvemos a chequear contraseña
+            Authentication auth = new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(auth);
+
+            // Aseguramos que exista sesión HTTP para que se emita la cookie de sesión al cliente
+            request.getSession(true);
+
+            log.info("Usuario {} autenticado automáticamente tras verificar cédula", updated.getEmail());
+        } catch (Exception e) {
+            log.warn("Auto-login tras verificar cédula falló: {}", e.getMessage());
+        }
+
+        UsuarioDTO dto = usuarioService.getUsuario(usuarioId);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Cédula verificada y guardada",
+                "data", Map.of("verified", true, "user", dto)
+        ));
+    }
+
 
     @GetMapping(path = "/{id}/foto", produces = { MediaType.IMAGE_JPEG_VALUE, MediaType.APPLICATION_OCTET_STREAM_VALUE })
     public ResponseEntity<byte[]> getFoto(@PathVariable("id") UUID id) {
@@ -150,5 +315,34 @@ public class UsuarioController {
     public ResponseEntity<ApiResponse<Void>> deleteUsuario(@PathVariable UUID id) {
         usuarioService.deleteUsuario(id);
         return ResponseEntity.ok(new ApiResponse<>(null, "Usuario eliminado", true));
+    }
+
+    // helper para resolver ID del principal autenticado (por email)
+    private UUID resolveCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        Object principal = auth.getPrincipal();
+
+        try {
+            // Si usas el UserPrincipal que expone getId()
+            if (principal instanceof uy.um.faltauno.config.CustomUserDetailsService.UserPrincipal) {
+                return ((uy.um.faltauno.config.CustomUserDetailsService.UserPrincipal) principal).getId();
+            }
+            // Si es UserDetails estándar: usamos username (email) para buscar el usuario
+            if (principal instanceof UserDetails) {
+                String username = ((UserDetails) principal).getUsername();
+                Usuario u = usuarioService.findByEmail(username);
+                if (u != null) return u.getId();
+            }
+            // Si principal es String (username)
+            if (principal instanceof String) {
+                String username = (String) principal;
+                Usuario u = usuarioService.findByEmail(username);
+                if (u != null) return u.getId();
+            }
+        } catch (Exception e) {
+            log.warn("No se pudo resolver usuario actual desde principal: {}", e.getMessage());
+        }
+        return null;
     }
 }

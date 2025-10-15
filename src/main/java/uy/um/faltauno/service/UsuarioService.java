@@ -5,8 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.transaction.Transactional;
 import uy.um.faltauno.dto.PendingReviewResponse;
 import uy.um.faltauno.dto.PerfilDTO;
 import uy.um.faltauno.dto.UsuarioDTO;
@@ -16,7 +16,6 @@ import uy.um.faltauno.entity.Amistad;
 import uy.um.faltauno.entity.Inscripcion;
 import uy.um.faltauno.entity.Mensaje;
 import uy.um.faltauno.entity.Partido;
-import uy.um.faltauno.entity.Review;
 import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.repository.AmistadRepository;
 import uy.um.faltauno.repository.InscripcionRepository;
@@ -26,7 +25,9 @@ import uy.um.faltauno.repository.ReviewRepository;
 import uy.um.faltauno.repository.UsuarioRepository;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -42,11 +43,50 @@ public class UsuarioService {
     private final InscripcionRepository inscripcionRepository;
     private final PartidoRepository partidoRepository;
 
-    private final PasswordEncoder passwordEncoder; // inyectado en vez de new BCryptPasswordEncoder()
+    private final PasswordEncoder passwordEncoder; // inyectado
 
     public boolean verificarCedula(String cedula) {
-        // Lógica de verificación con el registro uruguayo
-        return true;
+        if (cedula == null || cedula.isBlank()) {
+            return false;
+        }
+
+        String clean = cedula.replaceAll("[^\\d]", "");
+        if (clean.length() < 7 || clean.length() > 8) {
+            return false;
+        }
+        while (clean.length() < 8) {
+            clean = "0" + clean;
+        }
+
+        int[] pesos = {2, 9, 8, 7, 6, 3, 4};
+        int[] digitos = clean.chars().map(c -> c - '0').toArray();
+
+        int suma = 0;
+        for (int i = 0; i < pesos.length; i++) {
+            suma += digitos[i] * pesos[i];
+        }
+
+        int resto = suma % 10;
+        int verificadorCalculado = (resto == 0) ? 0 : 10 - resto;
+
+        return verificadorCalculado == digitos[7];
+    }
+
+    /**
+     * Guarda la cédula para un usuario y devuelve el DTO actualizado.
+     */
+    @Transactional
+    public UsuarioDTO saveCedulaForUser(UUID usuarioId, String cedula) {
+        if (usuarioId == null) throw new RuntimeException("Usuario no encontrado");
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        usuario.setCedula(cedula);
+        usuario = usuarioRepository.save(usuario);
+
+        UsuarioDTO dto = usuarioMapper.toDTO(usuario);
+        dto.setPassword(null);
+        return dto;
     }
 
     public UsuarioDTO createUsuario(UsuarioDTO dto) {
@@ -64,15 +104,14 @@ public class UsuarioService {
         usuario.setProvider("LOCAL");
         usuario.setCreatedAt(LocalDateTime.now());
 
-        // nombre/apellido quedan para completar luego
         usuario = usuarioRepository.save(usuario);
 
         UsuarioDTO out = usuarioMapper.toDTO(usuario);
-        // nunca devolver password al frontend
         out.setPassword(null);
         return out;
     }
 
+    @Transactional(readOnly = true)
     public UsuarioDTO getUsuario(UUID id) {
         return usuarioRepository.findById(id)
                 .map(usuarioMapper::toDTO)
@@ -93,7 +132,27 @@ public class UsuarioService {
         usuario.setPeso(perfilDTO.getPeso() != null && !perfilDTO.getPeso().isEmpty()
                 ? Double.valueOf(perfilDTO.getPeso()) : null);
 
-        // Si querés guardar direccion/placeDetails: agregar campos en entidad y guardarlos acá
+        // fechaNacimiento si viene en el DTO como String "yyyy-MM-dd"
+        // Asegurate que PerfilDTO tenga getFechaNacimiento() que retorne String
+        try {
+            String fechaStr = null;
+            try {
+                // intenta método convencional
+                fechaStr = perfilDTO.getFechaNacimiento();
+            } catch (Exception ex) {
+                // si PerfilDTO usa otro nombre, adaptá aquí
+            }
+            if (fechaStr != null && !fechaStr.isBlank()) {
+                LocalDate ld = LocalDate.parse(fechaStr);
+                usuario.setFechaNacimiento(ld);
+            }
+        } catch (DateTimeParseException dtpe) {
+            throw new RuntimeException("Formato de fecha_nacimiento inválido. Use yyyy-MM-dd");
+        } catch (Exception ignore) {
+            // si PerfilDTO no contiene fechaNacimiento, se ignora
+        }
+
+        // Si querés guardar direccion/placeDetails: agregar campos en la entidad y guardarlos acá
 
         return usuarioRepository.save(usuario);
     }
@@ -105,6 +164,14 @@ public class UsuarioService {
 
         usuario.setFotoPerfil(file.getBytes());
         usuarioRepository.save(usuario);
+    }
+
+    @Transactional
+    public Usuario marcarCedula(UUID usuarioId, String cedula) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        usuario.setCedula(cedula);
+        return usuarioRepository.save(usuario);
     }
 
     public List<UsuarioDTO> getAllUsuarios() {
@@ -222,8 +289,13 @@ public class UsuarioService {
         return updates;
     }
 
+    @Transactional(readOnly = true)
     public Usuario findUsuarioEntityById(UUID id) {
         return usuarioRepository.findById(id).orElse(null);
+    }
+
+    public Usuario findByEmail(String email) {
+        return usuarioRepository.findByEmail(email).orElse(null);
     }
 
     public void deleteUsuario(UUID id) {
