@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -57,18 +56,17 @@ public class SecurityConfig {
             .and()
             .csrf().disable()
             .authorizeHttpRequests(auth -> auth
+                // ← IMPORTANTE: permitir /api/auth/** sin autenticación
                 .requestMatchers("/api/auth/**", "/api/usuarios", "/public/**", "/actuator/health", "/h2-console/**").permitAll()
                 .anyRequest().authenticated()
             )
-            // Login JSON sin popup
-            .formLogin(form -> form
-                .loginProcessingUrl("/api/auth/login-json")
-                .successHandler((request, response, authentication) -> {
+            // ← REMOVIDO: formLogin que causaba conflictos con JSON
+            .logout(logout -> logout
+                .logoutUrl("/api/auth/logout")
+                .logoutSuccessHandler((request, response, authentication) -> {
                     response.setStatus(HttpServletResponse.SC_OK);
-                })
-                .failureHandler((request, response, exception) -> {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.getWriter().write("{\"success\":false,\"message\":\"" + exception.getMessage() + "\"}");
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"success\":true,\"message\":\"Logout exitoso\"}");
                 })
             );
 

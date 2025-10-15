@@ -1,8 +1,14 @@
 package uy.um.faltauno.config;
 
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -10,17 +16,43 @@ import java.util.List;
  */
 @Component
 public class JwtUtil {
+    private final String SECRET_KEY = "mi_clave_super_segura";
+
+    // Generar token
+    public String generateToken(String userId) {
+        return Jwts.builder()
+                .setSubject(userId)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)) // 24h
+                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+                .compact();
+    }
+
+    // **Este es el que te falta**
+    public String extractUserId(String token) {
+        return Jwts.parser()
+                .setSigningKey(SECRET_KEY)
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
 
     // valida token (firma, expiración, etc)
     public boolean validateToken(String token) {
-        // implementar validación real
-        return token != null && !token.isBlank();
+        try {
+            Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    // extrae username/email del token
     public String getUsernameFromToken(String token) {
-        // implementar: parsear claims y devolver subject o claim "sub"/"email"
-        return "user@example.com"; // placeholder; reemplazar por valor real
+        return Jwts.parser()
+                .setSigningKey(SECRET_KEY)
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
     }
 
     // devuelve roles desde claims (si los tenés)

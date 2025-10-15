@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import uy.um.faltauno.config.CustomUserDetailsService;
+import uy.um.faltauno.config.JwtUtil;
 import uy.um.faltauno.dto.ApiResponse;
 import uy.um.faltauno.dto.PerfilDTO;
 import uy.um.faltauno.dto.UsuarioDTO;
@@ -37,7 +38,8 @@ import java.util.UUID;
 @Slf4j
 public class UsuarioController {
     private final UsuarioService usuarioService;
-    private final AuthenticationManager authenticationManager; // inyectado
+    private final JwtUtil jwtUtil;
+    private final AuthenticationManager authenticationManager;
 
     // Registro con auto-login
     @PostMapping(consumes = "application/json", produces = "application/json")
@@ -149,32 +151,26 @@ public class UsuarioController {
         }
     }
 
-    @PostMapping(value = "/me/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "application/json")
-    public ResponseEntity<?> subirFotoMe(@RequestParam("file") MultipartFile file,
-                                        @RequestHeader(value = "X-USER-ID", required = false) String usuarioIdHeader) {
+    @PostMapping("/me/foto")
+    public ResponseEntity<?> subirFotoMe(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam("file") MultipartFile file) {
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token faltante");
+        }
+
+        String token = authHeader.substring(7);
+        if (!jwtUtil.validateToken(token)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token inválido");
+        }
+
+        String userId = jwtUtil.extractUserId(token);
         try {
-            UUID usuarioId = null;
-            if (usuarioIdHeader != null && !usuarioIdHeader.isBlank()) {
-                try {
-                    usuarioId = UUID.fromString(usuarioIdHeader);
-                } catch (IllegalArgumentException iae) {
-                    return ResponseEntity.badRequest().body(new ApiResponse<>(null, "X-USER-ID invalid UUID format", false));
-                }
-            } else {
-                usuarioId = resolveCurrentUserId();
-            }
-
-            if (usuarioId == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(null, "No autenticado", false));
-            }
-
-            usuarioService.subirFoto(usuarioId, file);
-            return ResponseEntity.ok(new ApiResponse<>(null, "Foto subida", true));
-        } catch (IOException ioe) {
-            log.error("Error guardando foto (me): {}", ioe.getMessage(), ioe);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(null, "Error guardando foto", false));
-        } catch (RuntimeException re) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse<>(null, re.getMessage(), false));
+            usuarioService.subirFoto(UUID.fromString(userId), file);
+            return ResponseEntity.ok("Foto subida correctamente");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al subir la foto");
         }
     }
 
