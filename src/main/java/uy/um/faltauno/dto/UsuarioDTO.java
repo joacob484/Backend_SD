@@ -17,7 +17,7 @@ public class UsuarioDTO {
     private Double altura;
     private Double peso;
     private String posicion;
-    private byte[] fotoPerfil;
+    private String fotoPerfil;
     private String cedula;
     private Boolean cedulaVerificada;
     private String password; // solo para recepción; se nulificará antes de devolver

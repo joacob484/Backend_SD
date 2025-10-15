@@ -1,6 +1,5 @@
 package uy.um.faltauno.util;
 
-import java.util.Arrays;
 import javax.annotation.processing.Generated;
 import org.springframework.stereotype.Component;
 import uy.um.faltauno.dto.UsuarioDTO;
@@ -8,7 +7,7 @@ import uy.um.faltauno.entity.Usuario;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-10-15T10:07:43-0300",
+    date = "2025-10-15T17:51:05-0300",
     comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.44.0.v20251001-1143, environment: Java 21.0.8 (Eclipse Adoptium)"
 )
 @Component
@@ -22,10 +21,7 @@ public class UsuarioMapperImpl implements UsuarioMapper {
 
         UsuarioDTO.UsuarioDTOBuilder usuarioDTO = UsuarioDTO.builder();
 
-        byte[] fotoPerfil = usuario.getFotoPerfil();
-        if ( fotoPerfil != null ) {
-            usuarioDTO.fotoPerfil( Arrays.copyOf( fotoPerfil, fotoPerfil.length ) );
-        }
+        usuarioDTO.fotoPerfil( mapBytesToBase64( usuario.getFotoPerfil() ) );
         usuarioDTO.fechaNacimiento( mapLocalDateToString( usuario.getFechaNacimiento() ) );
         usuarioDTO.altura( usuario.getAltura() );
         usuarioDTO.apellido( usuario.getApellido() );
@@ -49,10 +45,7 @@ public class UsuarioMapperImpl implements UsuarioMapper {
 
         Usuario.UsuarioBuilder usuario = Usuario.builder();
 
-        byte[] fotoPerfil = dto.getFotoPerfil();
-        if ( fotoPerfil != null ) {
-            usuario.fotoPerfil( Arrays.copyOf( fotoPerfil, fotoPerfil.length ) );
-        }
+        usuario.fotoPerfil( mapBase64ToBytes( dto.getFotoPerfil() ) );
         usuario.fechaNacimiento( mapStringToLocalDate( dto.getFechaNacimiento() ) );
         usuario.altura( dto.getAltura() );
         usuario.apellido( dto.getApellido() );

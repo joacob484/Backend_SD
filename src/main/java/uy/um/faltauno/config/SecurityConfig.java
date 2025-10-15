@@ -7,16 +7,17 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import jakarta.servlet.http.HttpServletResponse;
-import uy.um.faltauno.config.JwtAuthenticationFilter;
-import uy.um.faltauno.config.JwtUtil;
 
 @Configuration
+@EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -52,28 +53,58 @@ public class SecurityConfig {
         http.authenticationProvider(authenticationProvider());
 
         http
-            .cors() // tu WebConfig ya maneja CORS
+            .cors() // Configurado en WebConfig
             .and()
             .csrf().disable()
+            
+            // Política de sesión STATELESS para JWT
+            .sessionManagement()
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            .and()
+            
+            // Autorización de requests
             .authorizeHttpRequests(auth -> auth
-                // ← IMPORTANTE: permitir /api/auth/** sin autenticación
-                .requestMatchers("/api/auth/**", "/api/usuarios", "/public/**", "/actuator/health", "/h2-console/**").permitAll()
+                // Endpoints públicos
+                .requestMatchers(
+                    "/api/auth/**",           // Login, logout, etc.
+                    "/api/usuarios",          // POST para registro
+                    "/public/**",
+                    "/actuator/health",
+                    "/h2-console/**",
+                    "/error"
+                ).permitAll()
+                
+                // Todo lo demás requiere autenticación
                 .anyRequest().authenticated()
             )
-            // ← REMOVIDO: formLogin que causaba conflictos con JSON
+            
+            // Handler para autenticación fallida (devuelve JSON 401)
+            .exceptionHandling()
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write(
+                        "{\"success\":false,\"message\":\"Unauthorized\",\"data\":null}"
+                    );
+                })
+            .and()
+            
+            // Logout handler
             .logout(logout -> logout
                 .logoutUrl("/api/auth/logout")
                 .logoutSuccessHandler((request, response, authentication) -> {
                     response.setStatus(HttpServletResponse.SC_OK);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"success\":true,\"message\":\"Logout exitoso\"}");
+                    response.getWriter().write(
+                        "{\"success\":true,\"message\":\"Logout exitoso\",\"data\":null}"
+                    );
                 })
             );
 
-        // Quitar HTTP Basic para evitar popup
-        // .httpBasic(Customizer.withDefaults());
-
+        // Agregar filtro JWT antes del filtro de autenticación estándar
         http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+        
+        // Deshabilitar frame options para H2 console (solo en desarrollo)
         http.headers().frameOptions().disable();
 
         return http.build();

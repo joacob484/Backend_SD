@@ -42,8 +42,17 @@ public class UsuarioService {
     private final ReviewRepository reviewRepository;
     private final InscripcionRepository inscripcionRepository;
     private final PartidoRepository partidoRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    private final PasswordEncoder passwordEncoder; // inyectado
+    /**
+     * Encuentra el ID de un usuario por email SIN cargar LOBs.
+     * Usa la proyección AuthProjection que solo trae id, email, password.
+     */
+    public UUID findUserIdByEmail(String email) {
+        return usuarioRepository.findAuthProjectionByEmail(email)
+                .map(UsuarioRepository.AuthProjection::getId)
+                .orElse(null);
+    }
 
     public boolean verificarCedula(String cedula) {
         if (cedula == null || cedula.isBlank()) {
@@ -72,9 +81,6 @@ public class UsuarioService {
         return verificadorCalculado == digitos[7];
     }
 
-    /**
-     * Guarda la cédula para un usuario y devuelve el DTO actualizado.
-     */
     @Transactional
     public UsuarioDTO saveCedulaForUser(UUID usuarioId, String cedula) {
         if (usuarioId == null) throw new RuntimeException("Usuario no encontrado");
@@ -89,6 +95,7 @@ public class UsuarioService {
         return dto;
     }
 
+    @Transactional
     public UsuarioDTO createUsuario(UsuarioDTO dto) {
         if (dto.getEmail() == null || dto.getPassword() == null) {
             throw new IllegalArgumentException("Email y password son requeridos");
@@ -132,16 +139,8 @@ public class UsuarioService {
         usuario.setPeso(perfilDTO.getPeso() != null && !perfilDTO.getPeso().isEmpty()
                 ? Double.valueOf(perfilDTO.getPeso()) : null);
 
-        // fechaNacimiento si viene en el DTO como String "yyyy-MM-dd"
-        // Asegurate que PerfilDTO tenga getFechaNacimiento() que retorne String
         try {
-            String fechaStr = null;
-            try {
-                // intenta método convencional
-                fechaStr = perfilDTO.getFechaNacimiento();
-            } catch (Exception ex) {
-                // si PerfilDTO usa otro nombre, adaptá aquí
-            }
+            String fechaStr = perfilDTO.getFechaNacimiento();
             if (fechaStr != null && !fechaStr.isBlank()) {
                 LocalDate ld = LocalDate.parse(fechaStr);
                 usuario.setFechaNacimiento(ld);
@@ -151,8 +150,6 @@ public class UsuarioService {
         } catch (Exception ignore) {
             // si PerfilDTO no contiene fechaNacimiento, se ignora
         }
-
-        // Si querés guardar direccion/placeDetails: agregar campos en la entidad y guardarlos acá
 
         return usuarioRepository.save(usuario);
     }
@@ -174,6 +171,7 @@ public class UsuarioService {
         return usuarioRepository.save(usuario);
     }
 
+    @Transactional(readOnly = true)
     public List<UsuarioDTO> getAllUsuarios() {
         return usuarioRepository.findAll()
                 .stream()
@@ -181,6 +179,7 @@ public class UsuarioService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<PendingReviewResponse> obtenerPendingReviews(UUID userId) {
         List<Inscripcion> misInscripciones = inscripcionRepository.findByUsuarioId(userId);
 
@@ -233,6 +232,7 @@ public class UsuarioService {
         return result;
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> obtenerSolicitudesAmistadPendientes(UUID userId) {
         List<Amistad> pendientes = amistadRepository.findByAmigoIdAndEstado(userId, "PENDIENTE");
         return pendientes.stream().map(a -> {
@@ -244,6 +244,7 @@ public class UsuarioService {
         }).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> obtenerMensajesNoLeidos(UUID userId) {
         List<Mensaje> mensajes = mensajeRepository.findByDestinatarioIdAndLeido(userId, false);
         return mensajes.stream().map(m -> {
@@ -256,6 +257,7 @@ public class UsuarioService {
         }).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> obtenerInvitaciones(UUID userId) {
         List<Inscripcion> pendientes = inscripcionRepository.findByUsuario_IdAndEstado(userId, "PENDIENTE");
         return pendientes.stream().map(i -> {
@@ -270,6 +272,7 @@ public class UsuarioService {
         }).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> obtenerActualizacionesPartidos(UUID userId) {
         List<Inscripcion> inscripciones = inscripcionRepository.findByUsuarioId(userId);
         List<Map<String,Object>> updates = new ArrayList<>();
@@ -294,10 +297,16 @@ public class UsuarioService {
         return usuarioRepository.findById(id).orElse(null);
     }
 
+    /**
+     * Busca usuario por email (carga TODA la entidad incluyendo LOB).
+     * SOLO usar dentro de transacciones activas.
+     */
+    @Transactional(readOnly = true)
     public Usuario findByEmail(String email) {
         return usuarioRepository.findByEmail(email).orElse(null);
     }
 
+    @Transactional
     public void deleteUsuario(UUID id) {
         usuarioRepository.deleteById(id);
     }

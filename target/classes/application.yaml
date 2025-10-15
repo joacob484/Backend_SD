@@ -49,3 +49,18 @@ management:
     web:
       exposure:
         include: "*"
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:mi_clave_super_segura_que_debe_ser_al_menos_256_bits_para_hs256_seguridad_maxima_2024}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 horas en milisegundos
+
+# Frontend URL for CORS
+frontend:
+  url: ${FRONTEND_URL:http://localhost:3000}
+
+logging:
+  level:
+    uy.um.faltauno.config.JwtAuthenticationFilter: DEBUG
+    uy.um.faltauno.config.JwtUtil: DEBUG
+    org.springframework.security: DEBUG

@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import uy.um.faltauno.config.JwtUtil;
 import uy.um.faltauno.dto.ApiResponse;
 import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.entity.Usuario;
@@ -16,17 +17,9 @@ import uy.um.faltauno.service.UsuarioService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
-/**
- * Controlador de autenticación REST:
- * - /api/auth/login-json : login via JSON (email/password)
- * - /api/auth/logout     : invalidate session and logout
- * - /api/auth/me         : obtener usuario actual (si está autenticado)
- *
- * No reemplaza al formLogin de Spring ("/api/auth/login") — es una alternativa JSON.
- */
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -35,15 +28,15 @@ public class AuthenticationController {
 
     private final AuthenticationManager authenticationManager;
     private final UsuarioService usuarioService;
+    private final JwtUtil jwtUtil;
 
     public static record LoginRequest(String email, String password) {}
 
     /**
-     * Login vía JSON (útil para SPA). Establece Authentication en SecurityContext
-     * y crea sesión HTTP.
+     * Login vía JSON con generación de token JWT.
      */
     @PostMapping(path = "/login-json", consumes = "application/json", produces = "application/json")
-    public ResponseEntity<ApiResponse<UsuarioDTO>> loginJson(@RequestBody LoginRequest req, HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> loginJson(@RequestBody LoginRequest req, HttpServletRequest request) {
         if (req == null || req.email() == null || req.password() == null) {
             return ResponseEntity.badRequest().body(new ApiResponse<>(null, "email y password requeridos", false));
         }
@@ -61,27 +54,41 @@ public class AuthenticationController {
 
             // obtener usuario y transformar a DTO
             Usuario u = usuarioService.findByEmail(req.email());
-            UsuarioDTO dto = null;
-            if (u != null) {
-                dto = usuarioService.getUsuario(u.getId());
-                // no devolver password en DTO
-                if (dto != null) dto.setPassword(null);
+            if (u == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(null, "Usuario no encontrado", false));
             }
 
-            return ResponseEntity.ok(new ApiResponse<>(dto, "Autenticado", true));
+            UsuarioDTO dto = usuarioService.getUsuario(u.getId());
+            dto.setPassword(null); // No devolver password
+
+            // Generar token JWT
+            String token = jwtUtil.generateToken(u.getId(), u.getEmail());
+
+            // Respuesta con token y usuario
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("token", token);
+            responseData.put("user", dto);
+
+            return ResponseEntity.ok(new ApiResponse<>(responseData, "Autenticado", true));
         } catch (BadCredentialsException ex) {
             log.warn("Credenciales inválidas para {}: {}", req.email(), ex.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(null, "Credenciales inválidas", false));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(null, "Credenciales inválidas", false));
         } catch (DisabledException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(null, "Cuenta deshabilitada", false));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(null, "Cuenta deshabilitada", false));
         } catch (LockedException ex) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(null, "Cuenta bloqueada", false));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(null, "Cuenta bloqueada", false));
         } catch (AuthenticationException ex) {
             log.warn("Error autenticación: {}", ex.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(null, "No autorizado", false));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(null, "No autorizado", false));
         } catch (Exception ex) {
             log.error("Error inesperado en loginJson", ex);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(null, "Error interno", false));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error interno", false));
         }
     }
 
@@ -91,7 +98,6 @@ public class AuthenticationController {
     @PostMapping(path = "/logout", produces = "application/json")
     public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
         try {
-            // invalidar sesión si existe
             HttpSession session = request.getSession(false);
             if (session != null) {
                 session.invalidate();
@@ -100,7 +106,8 @@ public class AuthenticationController {
             return ResponseEntity.ok(new ApiResponse<>(null, "Desconectado", true));
         } catch (Exception ex) {
             log.warn("Error en logout: {}", ex.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(null, "Error cerrando sesión", false));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error cerrando sesión", false));
         }
     }
 
@@ -112,29 +119,30 @@ public class AuthenticationController {
         try {
             var auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth == null || !auth.isAuthenticated() || auth.getPrincipal() == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(null, "No autenticado", false));
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(null, "No autenticado", false));
             }
 
-            // el principal puede ser String (username) o tu UserPrincipal, o UserDetails
             String username = null;
             Object principal = auth.getPrincipal();
             if (principal instanceof String) {
                 username = (String) principal;
             } else {
                 try {
-                    // intentamos llamar getUsername() reflectivamente para cubrir varios UserDetails
                     var pd = (org.springframework.security.core.userdetails.UserDetails) principal;
                     username = pd.getUsername();
                 } catch (ClassCastException ignored) { }
             }
 
             if (username == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponse<>(null, "No autenticado", false));
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(null, "No autenticado", false));
             }
 
             Usuario u = usuarioService.findByEmail(username);
             if (u == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse<>(null, "Usuario no encontrado", false));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiResponse<>(null, "Usuario no encontrado", false));
             }
 
             UsuarioDTO dto = usuarioService.getUsuario(u.getId());
@@ -142,19 +150,8 @@ public class AuthenticationController {
             return ResponseEntity.ok(new ApiResponse<>(dto, "Usuario actual", true));
         } catch (Exception ex) {
             log.error("Error en /api/auth/me", ex);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(null, "Error interno", false));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error interno", false));
         }
     }
-
-    /**
-     * Helper rápido: endpoint que permite autenticar con form-urlencoded y devolver JSON.
-     * Si ya tenés formLogin en SecurityConfig que usa /api/auth/login, no es necesario.
-     * Lo dejo comentado por si querés activarlo reemplazando formLogin o para debugging.
-     */
-    // @PostMapping(path = "/login-form", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE, produces = "application/json")
-    // public ResponseEntity<ApiResponse<UsuarioDTO>> loginForm(@RequestParam Map<String,String> form, HttpServletRequest request) {
-    //     String username = form.get("username");
-    //     String password = form.get("password");
-    //     return loginJson(new LoginRequest(username, password), request);
-    // }
 }
