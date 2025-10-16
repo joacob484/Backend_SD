@@ -28,42 +28,37 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/usuarios")
 @RequiredArgsConstructor
 @Slf4j
 public class UsuarioController {
+
     private final UsuarioService usuarioService;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
 
+    // ================================
     // Registro con auto-login y JWT
+    // ================================
     @PostMapping(consumes = "application/json", produces = "application/json")
     public ResponseEntity<ApiResponse<Map<String, Object>>> createUsuario(
             @RequestBody UsuarioDTO dto,
             HttpServletRequest request,
             HttpServletResponse response) {
         try {
-            // IMPORTANTE: Eliminar foto_perfil si viene en el DTO
-            dto.setFotoPerfil(null);
-            
+            dto.setFotoPerfil(null); // eliminar foto si viene en DTO
             UsuarioDTO u = usuarioService.createUsuario(dto);
 
-            // Auto-login y generación de token JWT
             String token = null;
             try {
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(dto.getEmail(), dto.getPassword());
                 Authentication auth = authenticationManager.authenticate(authToken);
                 SecurityContextHolder.getContext().setAuthentication(auth);
-                
-                // Generar token JWT
+
                 Usuario usuario = usuarioService.findByEmail(dto.getEmail());
                 if (usuario != null) {
                     token = jwtUtil.generateToken(usuario.getId(), usuario.getEmail());
@@ -73,17 +68,14 @@ public class UsuarioController {
                 log.warn("Auto-login falló para {}: {}", dto.getEmail(), authEx.getMessage());
             }
 
-            u.setPassword(null); // No devolver password
-            
-            // Respuesta con token y usuario
+            u.setPassword(null);
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("user", u);
-            if (token != null) {
-                responseData.put("token", token);
-            }
-            
+            if (token != null) responseData.put("token", token);
+
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponse<>(responseData, "Usuario creado", true));
+
         } catch (IllegalArgumentException e) {
             log.error("Error creando usuario: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -95,7 +87,9 @@ public class UsuarioController {
         }
     }
 
-    // Obtener el usuario actual autenticado
+    // ================================
+    // Endpoints de usuario actual
+    // ================================
     @GetMapping(path = "/me", produces = "application/json")
     public ResponseEntity<ApiResponse<UsuarioDTO>> getMe() {
         try {
@@ -113,7 +107,6 @@ public class UsuarioController {
         }
     }
 
-    // Actualizar perfil del usuario autenticado
     @PutMapping(path = "/me", consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> actualizarPerfil(
             @RequestBody PerfilDTO perfilDTO,
@@ -136,7 +129,9 @@ public class UsuarioController {
         }
     }
 
-    // Subir foto del usuario autenticado
+    // ================================
+    // Foto del usuario
+    // ================================
     @PostMapping(value = "/me/foto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "application/json")
     public ResponseEntity<?> subirFotoMe(@RequestParam("file") MultipartFile file) {
         try {
@@ -159,13 +154,24 @@ public class UsuarioController {
         }
     }
 
-    // Verificar cédula del usuario autenticado
+    @GetMapping(path = "/{id}/foto", produces = { MediaType.IMAGE_JPEG_VALUE, MediaType.APPLICATION_OCTET_STREAM_VALUE })
+    public ResponseEntity<byte[]> getFoto(@PathVariable("id") UUID id) {
+        Usuario u = usuarioService.findUsuarioEntityById(id);
+        if (u == null || u.getFotoPerfil() == null) return ResponseEntity.notFound().build();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.IMAGE_JPEG);
+        return new ResponseEntity<>(u.getFotoPerfil(), headers, HttpStatus.OK);
+    }
+
+    // ================================
+    // Verificación cédula
+    // ================================
     @PostMapping(path = "/me/verify-cedula", consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> verificarCedulaMe(
             @RequestBody Map<String, String> body,
-            @RequestHeader(value = "X-USER-ID", required = false) String usuarioIdHeader,
-            HttpServletRequest request) {
-        
+            @RequestHeader(value = "X-USER-ID", required = false) String usuarioIdHeader) {
+
         String cedula = body.get("cedula");
         if (cedula == null || cedula.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -182,7 +188,6 @@ public class UsuarioController {
             ));
         }
 
-        // Validar cédula
         boolean valida = usuarioService.verificarCedula(cedula);
         if (!valida) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -192,13 +197,10 @@ public class UsuarioController {
             ));
         }
 
-        // Guardar cédula en usuario
         Usuario updated = usuarioService.marcarCedula(usuarioId, cedula);
-        
-        // Generar nuevo token con info actualizada
         String newToken = jwtUtil.generateToken(updated.getId(), updated.getEmail());
 
-        // Actualizar autenticación en contexto
+        // Actualizar Authentication
         try {
             CustomUserDetailsService.UserPrincipal userPrincipal =
                     new CustomUserDetailsService.UserPrincipal(
@@ -221,34 +223,22 @@ public class UsuarioController {
                 "success", true,
                 "message", "Cédula verificada y guardada",
                 "data", Map.of(
-                    "verified", true, 
-                    "user", dto,
-                    "token", newToken
+                        "verified", true,
+                        "user", dto,
+                        "token", newToken
                 )
         ));
     }
 
-    // Obtener foto de un usuario
-    @GetMapping(path = "/{id}/foto", produces = { MediaType.IMAGE_JPEG_VALUE, MediaType.APPLICATION_OCTET_STREAM_VALUE })
-    public ResponseEntity<byte[]> getFoto(@PathVariable("id") UUID id) {
-        Usuario u = usuarioService.findUsuarioEntityById(id);
-        if (u == null || u.getFotoPerfil() == null) {
-            return ResponseEntity.notFound().build();
-        }
-        byte[] data = u.getFotoPerfil();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.IMAGE_JPEG);
-        return new ResponseEntity<>(data, headers, HttpStatus.OK);
-    }
-
-    // Listar todos los usuarios
+    // ================================
+    // Usuarios CRUD
+    // ================================
     @GetMapping(produces = "application/json")
     public ResponseEntity<ApiResponse<List<UsuarioDTO>>> getAllUsuarios() {
         List<UsuarioDTO> all = usuarioService.getAllUsuarios();
         return ResponseEntity.ok(new ApiResponse<>(all, "Lista de usuarios", true));
     }
 
-    // Obtener un usuario por ID
     @GetMapping(path = "/{id}", produces = "application/json")
     public ResponseEntity<ApiResponse<UsuarioDTO>> getUsuario(@PathVariable UUID id) {
         try {
@@ -261,39 +251,15 @@ public class UsuarioController {
         }
     }
 
-    // Obtener pending reviews del usuario autenticado
-    @GetMapping(path = "/{id}/pending-reviews", produces = "application/json")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPendingReviews(@PathVariable UUID id) {
-        try {
-            List<Map<String, Object>> pendingReviews = usuarioService.obtenerPendingReviews(id)
-                    .stream()
-                    .map(pr -> {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("partido_id", pr.getPartido_id());
-                        map.put("tipo_partido", pr.getTipo_partido());
-                        map.put("fecha", pr.getFecha());
-                        map.put("nombre_ubicacion", pr.getNombre_ubicacion());
-                        map.put("jugadores_pendientes", pr.getJugadores_pendientes());
-                        return map;
-                    })
-                    .collect(Collectors.toList());
-            
-            return ResponseEntity.ok(new ApiResponse<>(pendingReviews, "Pending reviews", true));
-        } catch (Exception e) {
-            log.error("Error obteniendo pending reviews", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
-        }
-    }
-
-    // Eliminar un usuario
     @DeleteMapping(path = "/{id}", produces = "application/json")
     public ResponseEntity<ApiResponse<Void>> deleteUsuario(@PathVariable UUID id) {
         usuarioService.deleteUsuario(id);
         return ResponseEntity.ok(new ApiResponse<>(null, "Usuario eliminado", true));
     }
 
-    // Helper: resolver ID del usuario desde header o authentication
+    // ================================
+    // Helpers
+    // ================================
     private UUID resolveUserIdFromHeaderOrAuth(String headerUserId) {
         if (headerUserId != null && !headerUserId.isBlank()) {
             try {
@@ -305,36 +271,27 @@ public class UsuarioController {
         return resolveCurrentUserId();
     }
 
-    // Helper: resolver ID del usuario autenticado
     private UUID resolveCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) return null;
-        
+
         Object principal = auth.getPrincipal();
 
         try {
-            // Si usas el UserPrincipal personalizado
             if (principal instanceof CustomUserDetailsService.UserPrincipal) {
                 return ((CustomUserDetailsService.UserPrincipal) principal).getId();
             }
-            
-            // Si es UserDetails estándar: usar username (email) para buscar
             if (principal instanceof UserDetails) {
                 String username = ((UserDetails) principal).getUsername();
-                UUID userId = usuarioService.findUserIdByEmail(username);
-                if (userId != null) return userId;
+                return usuarioService.findUserIdByEmail(username);
             }
-            
-            // Si principal es String (username/email)
             if (principal instanceof String) {
-                String username = (String) principal;
-                UUID userId = usuarioService.findUserIdByEmail(username);
-                if (userId != null) return userId;
+                return usuarioService.findUserIdByEmail((String) principal);
             }
         } catch (Exception e) {
             log.warn("No se pudo resolver usuario desde principal: {}", e.getMessage());
         }
-        
+
         return null;
     }
 }

@@ -120,9 +120,15 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public UsuarioDTO getUsuario(UUID id) {
-        return usuarioRepository.findById(id)
+        UsuarioDTO dto = usuarioRepository.findById(id)
                 .map(usuarioMapper::toDTO)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        
+        // Asegurar que los campos calculados están correctos
+        dto.setPerfilCompleto(dto.getPerfilCompleto());
+        dto.setCedulaVerificada(dto.getCedulaVerificada());
+        
+        return dto;
     }
 
     @Transactional

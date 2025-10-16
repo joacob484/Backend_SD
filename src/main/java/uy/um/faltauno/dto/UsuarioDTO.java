@@ -29,28 +29,36 @@ public class UsuarioDTO {
     
     private String password; // solo para recepción; se nulificará antes de devolver
 
-    /**
+     /**
      * Calcula si el perfil está completo basándose en los campos requeridos.
      */
     public Boolean getPerfilCompleto() {
-        if (perfilCompleto != null) {
-            return perfilCompleto;
-        }
         // Perfil completo si tiene: nombre, apellido, celular, fechaNacimiento
-        return nombre != null && !nombre.isEmpty()
+        boolean completo = nombre != null && !nombre.isEmpty()
                 && apellido != null && !apellido.isEmpty()
                 && celular != null && !celular.isEmpty()
                 && fechaNacimiento != null && !fechaNacimiento.isEmpty();
+        
+        // Si perfilCompleto está seteado explícitamente, respetarlo
+        if (perfilCompleto != null) {
+            return perfilCompleto;
+        }
+        
+        return completo;
     }
 
     /**
      * Calcula si la cédula está verificada.
      */
     public Boolean getCedulaVerificada() {
+        // Cédula verificada si existe y no está vacía
+        boolean verificada = cedula != null && !cedula.isEmpty();
+        
+        // Si cedulaVerificada está seteado explícitamente, respetarlo
         if (cedulaVerificada != null) {
             return cedulaVerificada;
         }
-        // Cédula verificada si existe y no está vacía
-        return cedula != null && !cedula.isEmpty();
+        
+        return verificada;
     }
 }
