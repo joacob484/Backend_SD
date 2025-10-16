@@ -11,7 +11,7 @@ import uy.um.faltauno.entity.Usuario;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-10-16T10:04:02-0300",
+    date = "2025-10-16T11:18:55-0300",
     comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.44.0.v20251001-1143, environment: Java 21.0.8 (Eclipse Adoptium)"
 )
 @Component
@@ -27,18 +27,16 @@ public class PartidoMapperImpl implements PartidoMapper {
 
         partidoDTO.setOrganizadorId( partidoOrganizadorId( partido ) );
         partidoDTO.setOrganizadorNombre( partidoOrganizadorNombre( partido ) );
+        partidoDTO.setCantidadJugadores( partido.getCantidadJugadores() );
         partidoDTO.setDescripcion( partido.getDescripcion() );
         partidoDTO.setDireccionUbicacion( partido.getDireccionUbicacion() );
         partidoDTO.setDuracionMinutos( partido.getDuracionMinutos() );
-        partidoDTO.setEstado( partido.getEstado() );
         partidoDTO.setFecha( partido.getFecha() );
         partidoDTO.setGenero( partido.getGenero() );
         partidoDTO.setHora( partido.getHora() );
         partidoDTO.setId( partido.getId() );
-        partidoDTO.setJugadoresActuales( partido.getJugadoresActuales() );
         partidoDTO.setLatitud( partido.getLatitud() );
         partidoDTO.setLongitud( partido.getLongitud() );
-        partidoDTO.setMaxJugadores( partido.getMaxJugadores() );
         partidoDTO.setNombreUbicacion( partido.getNombreUbicacion() );
         partidoDTO.setPrecioTotal( partido.getPrecioTotal() );
         partidoDTO.setTipoPartido( partido.getTipoPartido() );
@@ -66,26 +64,26 @@ public class PartidoMapperImpl implements PartidoMapper {
             return null;
         }
 
-        Partido.PartidoBuilder partido = Partido.builder();
+        Partido partido = new Partido();
 
-        partido.organizador( partidoDTOToUsuario( dto ) );
-        partido.descripcion( dto.getDescripcion() );
-        partido.direccionUbicacion( dto.getDireccionUbicacion() );
-        partido.duracionMinutos( dto.getDuracionMinutos() );
-        partido.estado( dto.getEstado() );
-        partido.fecha( dto.getFecha() );
-        partido.genero( dto.getGenero() );
-        partido.hora( dto.getHora() );
-        partido.id( dto.getId() );
-        partido.jugadoresActuales( dto.getJugadoresActuales() );
-        partido.latitud( dto.getLatitud() );
-        partido.longitud( dto.getLongitud() );
-        partido.maxJugadores( dto.getMaxJugadores() );
-        partido.nombreUbicacion( dto.getNombreUbicacion() );
-        partido.precioTotal( dto.getPrecioTotal() );
-        partido.tipoPartido( dto.getTipoPartido() );
+        partido.setOrganizador( dtoToUsuario( dto ) );
+        partido.setCantidadJugadores( dto.getCantidadJugadores() );
+        partido.setDescripcion( dto.getDescripcion() );
+        partido.setDireccionUbicacion( dto.getDireccionUbicacion() );
+        partido.setDuracionMinutos( dto.getDuracionMinutos() );
+        partido.setFecha( dto.getFecha() );
+        partido.setGenero( dto.getGenero() );
+        partido.setHora( dto.getHora() );
+        partido.setId( dto.getId() );
+        partido.setLatitud( dto.getLatitud() );
+        partido.setLongitud( dto.getLongitud() );
+        partido.setNombreUbicacion( dto.getNombreUbicacion() );
+        partido.setPrecioTotal( dto.getPrecioTotal() );
+        partido.setTipoPartido( dto.getTipoPartido() );
 
-        return partido.build();
+        afterUpdate( partido, dto );
+
+        return partido;
     }
 
     @Override
@@ -100,6 +98,55 @@ public class PartidoMapperImpl implements PartidoMapper {
         }
 
         return list;
+    }
+
+    @Override
+    public void updateEntityFromDto(PartidoDTO dto, Partido entity) {
+        if ( dto == null ) {
+            return;
+        }
+
+        if ( dto.getCantidadJugadores() != null ) {
+            entity.setCantidadJugadores( dto.getCantidadJugadores() );
+        }
+        if ( dto.getDescripcion() != null ) {
+            entity.setDescripcion( dto.getDescripcion() );
+        }
+        if ( dto.getDireccionUbicacion() != null ) {
+            entity.setDireccionUbicacion( dto.getDireccionUbicacion() );
+        }
+        if ( dto.getDuracionMinutos() != null ) {
+            entity.setDuracionMinutos( dto.getDuracionMinutos() );
+        }
+        if ( dto.getFecha() != null ) {
+            entity.setFecha( dto.getFecha() );
+        }
+        if ( dto.getGenero() != null ) {
+            entity.setGenero( dto.getGenero() );
+        }
+        if ( dto.getHora() != null ) {
+            entity.setHora( dto.getHora() );
+        }
+        if ( dto.getId() != null ) {
+            entity.setId( dto.getId() );
+        }
+        if ( dto.getLatitud() != null ) {
+            entity.setLatitud( dto.getLatitud() );
+        }
+        if ( dto.getLongitud() != null ) {
+            entity.setLongitud( dto.getLongitud() );
+        }
+        if ( dto.getNombreUbicacion() != null ) {
+            entity.setNombreUbicacion( dto.getNombreUbicacion() );
+        }
+        if ( dto.getPrecioTotal() != null ) {
+            entity.setPrecioTotal( dto.getPrecioTotal() );
+        }
+        if ( dto.getTipoPartido() != null ) {
+            entity.setTipoPartido( dto.getTipoPartido() );
+        }
+
+        afterUpdate( entity, dto );
     }
 
     private UUID partidoOrganizadorId(Partido partido) {
@@ -130,18 +177,5 @@ public class PartidoMapperImpl implements PartidoMapper {
             return null;
         }
         return nombre;
-    }
-
-    protected Usuario partidoDTOToUsuario(PartidoDTO partidoDTO) {
-        if ( partidoDTO == null ) {
-            return null;
-        }
-
-        Usuario.UsuarioBuilder usuario = Usuario.builder();
-
-        usuario.id( partidoDTO.getOrganizadorId() );
-        usuario.nombre( partidoDTO.getOrganizadorNombre() );
-
-        return usuario.build();
     }
 }

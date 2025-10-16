@@ -1,33 +1,33 @@
 package uy.um.faltauno.controller;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import uy.um.faltauno.dto.PartidoDTO;
+import uy.um.faltauno.dto.PartidoDTO;
+import uy.um.faltauno.entity.Partido;
 import uy.um.faltauno.service.PartidoService;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/partidos")
-@RequiredArgsConstructor
+@CrossOrigin(origins = "${FRONTEND_URL:http://localhost:3000}")
 public class PartidoController {
 
-    private final PartidoService partidoService;
+    private final PartidoService service;
 
-    @GetMapping
-    public ResponseEntity<List<PartidoDTO>> listar() {
-        return ResponseEntity.ok(partidoService.listarPartidos());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<PartidoDTO> obtener(@PathVariable UUID id) {
-        return ResponseEntity.ok(partidoService.obtenerPorId(id));
+    public PartidoController(PartidoService service) {
+        this.service = service;
     }
 
     @PostMapping
-    public ResponseEntity<PartidoDTO> crear(@RequestBody PartidoDTO dto) {
-        return ResponseEntity.ok(partidoService.crearPartido(dto));
+    @ResponseStatus(HttpStatus.CREATED)
+    public Partido crear(@RequestBody PartidoDTO req) {
+        return service.crear(req);
+    }
+
+    @GetMapping("/{id}")
+    public Partido get(@PathVariable("id") UUID id) {
+        return service.obtenerPorId(id);
     }
 }

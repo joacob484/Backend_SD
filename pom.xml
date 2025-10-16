@@ -31,6 +31,7 @@
   </dependencyManagement>
 
   <dependencies>
+    <!-- JWT -->
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt-api</artifactId>
@@ -48,23 +49,28 @@
       <version>0.11.5</version>
       <scope>runtime</scope>
     </dependency>
+
+    <!-- Servlet API (compila, el servidor embebido lo provee en runtime) -->
     <dependency>
       <groupId>javax.servlet</groupId>
       <artifactId>javax.servlet-api</artifactId>
       <version>4.0.1</version>
       <scope>provided</scope>
-  </dependency>
+    </dependency>
+
     <!-- Web REST -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
 
+    <!-- OAuth2 Client -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-oauth2-client</artifactId>
     </dependency>
 
+    <!-- Security -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
@@ -134,7 +140,7 @@
       <version>${mapstruct.version}</version>
     </dependency>
 
-    <!-- MapStruct processor: como dependency provided (útil para IDEs) -->
+    <!-- MapStruct processor (para generar el mapper) -->
     <dependency>
       <groupId>org.mapstruct</groupId>
       <artifactId>mapstruct-processor</artifactId>
@@ -150,7 +156,7 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- Lombok <-> MapStruct binding (ayuda en el orden de procesadores) -->
+    <!-- Binding Lombok <-> MapStruct (ordena procesadores) -->
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok-mapstruct-binding</artifactId>
@@ -188,30 +194,23 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.11.0</version>
         <configuration>
-          <!-- Usamos release para Java 21 -->
+          <!-- Java 21 -->
           <release>${java.version}</release>
-
-          <!-- Prevent incremental compile problems: forzar encoding -->
           <encoding>${project.build.sourceEncoding}</encoding>
 
-          <!-- Annotation processors en el orden correcto:
-               Lombok -> lombok-mapstruct-binding -> MapStruct processor -->
+          <!-- Procesadores de anotaciones en orden:
+               Lombok -> binding -> MapStruct -->
           <annotationProcessorPaths>
-            <!-- Lombok -->
             <path>
               <groupId>org.projectlombok</groupId>
               <artifactId>lombok</artifactId>
               <version>${lombok.version}</version>
             </path>
-
-            <!-- lombok-mapstruct-binding -->
             <path>
               <groupId>org.projectlombok</groupId>
               <artifactId>lombok-mapstruct-binding</artifactId>
               <version>0.2.0</version>
             </path>
-
-            <!-- MapStruct Processor -->
             <path>
               <groupId>org.mapstruct</groupId>
               <artifactId>mapstruct-processor</artifactId>
@@ -220,7 +219,7 @@
           </annotationProcessorPaths>
 
           <compilerArgs>
-            <!-- Verbose para MapStruct (útil para debug) -->
+            <!-- log útil si algo falla -->
             <arg>-Amapstruct.verbose=true</arg>
           </compilerArgs>
         </configuration>

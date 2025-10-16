@@ -1,42 +1,52 @@
 package uy.um.faltauno.service;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import uy.um.faltauno.dto.PartidoDTO;
-import uy.um.faltauno.util.PartidoMapper;
 import uy.um.faltauno.entity.Partido;
+import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.repository.PartidoRepository;
 import uy.um.faltauno.repository.UsuarioRepository;
 
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class PartidoService {
 
     private final PartidoRepository partidoRepository;
     private final UsuarioRepository usuarioRepository;
-    private final PartidoMapper partidoMapper;
 
-    public List<PartidoDTO> listarPartidos() {
-        return partidoRepository.findAll()
-                .stream()
-                .map(partidoMapper::toDto)
-                .collect(Collectors.toList());
+    public PartidoService(PartidoRepository partidoRepository, UsuarioRepository usuarioRepository) {
+        this.partidoRepository = partidoRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
-    public PartidoDTO crearPartido(PartidoDTO dto) {
-        Partido partido = partidoMapper.toEntity(dto);
-        partido.setOrganizador(usuarioRepository.findById(dto.getOrganizadorId())
-                .orElseThrow(() -> new RuntimeException("Organizador no encontrado")));
-        return partidoMapper.toDto(partidoRepository.save(partido));
+    @Transactional
+    public Partido crear(PartidoDTO req) {
+        Usuario organizador = usuarioRepository.findById(req.getOrganizadorId())
+                .orElseThrow(() -> new IllegalArgumentException("Organizador no existe: " + req.getOrganizadorId()));
+
+        Partido p = new Partido();
+        p.setTipoPartido(req.getTipoPartido());
+        p.setGenero(req.getGenero());
+        p.setFecha(req.getFecha());
+        p.setHora(req.getHora());
+        p.setDuracionMinutos(req.getDuracionMinutos());
+        p.setNombreUbicacion(req.getNombreUbicacion());
+        p.setDireccionUbicacion(req.getDireccionUbicacion());
+        p.setLatitud(req.getLatitud());
+        p.setLongitud(req.getLongitud());
+        p.setCantidadJugadores(req.getCantidadJugadores());
+        p.setPrecioTotal(req.getPrecioTotal());
+        p.setDescripcion(req.getDescripcion());
+        p.setOrganizador(organizador);
+
+        return partidoRepository.save(p);
     }
 
-    public PartidoDTO obtenerPorId(UUID id) {
+    @Transactional(readOnly = true)
+    public Partido obtenerPorId(UUID id) {
         return partidoRepository.findById(id)
-                .map(partidoMapper::toDto)
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado: " + id));
     }
 }
