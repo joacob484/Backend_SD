@@ -11,7 +11,7 @@ import uy.um.faltauno.entity.Usuario;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-10-16T11:18:55-0300",
+    date = "2025-10-16T16:16:56-0300",
     comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.44.0.v20251001-1143, environment: Java 21.0.8 (Eclipse Adoptium)"
 )
 @Component
@@ -27,19 +27,19 @@ public class PartidoMapperImpl implements PartidoMapper {
 
         partidoDTO.setOrganizadorId( partidoOrganizadorId( partido ) );
         partidoDTO.setOrganizadorNombre( partidoOrganizadorNombre( partido ) );
-        partidoDTO.setCantidadJugadores( partido.getCantidadJugadores() );
-        partidoDTO.setDescripcion( partido.getDescripcion() );
-        partidoDTO.setDireccionUbicacion( partido.getDireccionUbicacion() );
-        partidoDTO.setDuracionMinutos( partido.getDuracionMinutos() );
-        partidoDTO.setFecha( partido.getFecha() );
-        partidoDTO.setGenero( partido.getGenero() );
-        partidoDTO.setHora( partido.getHora() );
         partidoDTO.setId( partido.getId() );
+        partidoDTO.setTipoPartido( partido.getTipoPartido() );
+        partidoDTO.setGenero( partido.getGenero() );
+        partidoDTO.setFecha( partido.getFecha() );
+        partidoDTO.setHora( partido.getHora() );
+        partidoDTO.setDuracionMinutos( partido.getDuracionMinutos() );
+        partidoDTO.setNombreUbicacion( partido.getNombreUbicacion() );
+        partidoDTO.setDireccionUbicacion( partido.getDireccionUbicacion() );
         partidoDTO.setLatitud( partido.getLatitud() );
         partidoDTO.setLongitud( partido.getLongitud() );
-        partidoDTO.setNombreUbicacion( partido.getNombreUbicacion() );
+        partidoDTO.setCantidadJugadores( partido.getCantidadJugadores() );
         partidoDTO.setPrecioTotal( partido.getPrecioTotal() );
-        partidoDTO.setTipoPartido( partido.getTipoPartido() );
+        partidoDTO.setDescripcion( partido.getDescripcion() );
 
         return partidoDTO;
     }
