@@ -32,9 +32,6 @@ public class AuthenticationController {
 
     public static record LoginRequest(String email, String password) {}
 
-    /**
-     * Login vía JSON con generación de token JWT.
-     */
     @PostMapping(path = "/login-json", consumes = "application/json", produces = "application/json")
     public ResponseEntity<ApiResponse<Map<String, Object>>> loginJson(@RequestBody LoginRequest req, HttpServletRequest request) {
         if (req == null || req.email() == null || req.password() == null) {
@@ -46,13 +43,10 @@ public class AuthenticationController {
                     new UsernamePasswordAuthenticationToken(req.email(), req.password());
 
             Authentication auth = authenticationManager.authenticate(authToken);
-
-            // set security context + ensure session exists
             SecurityContextHolder.getContext().setAuthentication(auth);
             HttpSession session = request.getSession(true);
             log.info("Login JSON exitoso para {}, session={}", req.email(), session != null ? session.getId() : "null");
 
-            // obtener usuario y transformar a DTO
             Usuario u = usuarioService.findByEmail(req.email());
             if (u == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -60,12 +54,10 @@ public class AuthenticationController {
             }
 
             UsuarioDTO dto = usuarioService.getUsuario(u.getId());
-            dto.setPassword(null); // No devolver password
+            dto.setPassword(null);
 
-            // Generar token JWT
             String token = jwtUtil.generateToken(u.getId(), u.getEmail());
 
-            // Respuesta con token y usuario
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("token", token);
             responseData.put("user", dto);
@@ -92,16 +84,11 @@ public class AuthenticationController {
         }
     }
 
-    /**
-     * Logout: invalida la sesión HTTP y limpia SecurityContext.
-     */
     @PostMapping(path = "/logout", produces = "application/json")
     public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
         try {
             HttpSession session = request.getSession(false);
-            if (session != null) {
-                session.invalidate();
-            }
+            if (session != null) session.invalidate();
             SecurityContextHolder.clearContext();
             return ResponseEntity.ok(new ApiResponse<>(null, "Desconectado", true));
         } catch (Exception ex) {
@@ -111,9 +98,6 @@ public class AuthenticationController {
         }
     }
 
-    /**
-     * Devuelve el usuario autenticado (si hay).
-     */
     @GetMapping(path = "/me", produces = "application/json")
     public ResponseEntity<ApiResponse<UsuarioDTO>> me() {
         try {
@@ -125,9 +109,8 @@ public class AuthenticationController {
 
             String username = null;
             Object principal = auth.getPrincipal();
-            if (principal instanceof String) {
-                username = (String) principal;
-            } else {
+            if (principal instanceof String) username = (String) principal;
+            else {
                 try {
                     var pd = (org.springframework.security.core.userdetails.UserDetails) principal;
                     username = pd.getUsername();

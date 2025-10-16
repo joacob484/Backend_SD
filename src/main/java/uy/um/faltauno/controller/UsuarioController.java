@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -256,6 +257,31 @@ public class UsuarioController {
             return ResponseEntity.ok(new ApiResponse<>(dto, "Usuario encontrado", true));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        }
+    }
+
+    // Obtener pending reviews del usuario autenticado
+    @GetMapping(path = "/{id}/pending-reviews", produces = "application/json")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPendingReviews(@PathVariable UUID id) {
+        try {
+            List<Map<String, Object>> pendingReviews = usuarioService.obtenerPendingReviews(id)
+                    .stream()
+                    .map(pr -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("partido_id", pr.getPartido_id());
+                        map.put("tipo_partido", pr.getTipo_partido());
+                        map.put("fecha", pr.getFecha());
+                        map.put("nombre_ubicacion", pr.getNombre_ubicacion());
+                        map.put("jugadores_pendientes", pr.getJugadores_pendientes());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(new ApiResponse<>(pendingReviews, "Pending reviews", true));
+        } catch (Exception e) {
+            log.error("Error obteniendo pending reviews", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         }
     }
