@@ -1,58 +1,282 @@
 package uy.um.faltauno.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import uy.um.faltauno.config.CustomUserDetailsService;
 import uy.um.faltauno.dto.ReviewDTO;
-import uy.um.faltauno.util.ReviewMapper;
+import uy.um.faltauno.dto.UsuarioMinDTO;
+import uy.um.faltauno.entity.Inscripcion;
 import uy.um.faltauno.entity.Partido;
 import uy.um.faltauno.entity.Review;
 import uy.um.faltauno.entity.Usuario;
+import uy.um.faltauno.repository.InscripcionRepository;
 import uy.um.faltauno.repository.PartidoRepository;
 import uy.um.faltauno.repository.ReviewRepository;
 import uy.um.faltauno.repository.UsuarioRepository;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ReviewService {
 
     private final ReviewRepository reviewRepository;
-    private final ReviewMapper reviewMapper;
-    private final UsuarioRepository usuarioRepository;
     private final PartidoRepository partidoRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final InscripcionRepository inscripcionRepository;
 
-    public ReviewDTO crearReview(ReviewDTO dto) {
-        Usuario usuarioQueCalifica = usuarioRepository.findById(dto.getUsuarioQueCalificaId())
-                .orElseThrow(() -> new RuntimeException("Usuario que califica no encontrado"));
-        Usuario usuarioCalificado = usuarioRepository.findById(dto.getUsuarioCalificadoId())
-                .orElseThrow(() -> new RuntimeException("Usuario calificado no encontrado"));
+    /**
+     * Crear una review
+     */
+    @Transactional
+    public ReviewDTO crearReview(ReviewDTO dto, Authentication auth) {
+        UUID userId = getUserIdFromAuth(auth);
+
+        // Validaciones
         Partido partido = partidoRepository.findById(dto.getPartidoId())
                 .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
 
-        Review review = reviewMapper.toEntity(dto);
-        review.setUsuarioQueCalifica(usuarioQueCalifica);
-        review.setUsuarioCalificado(usuarioCalificado);
-        review.setPartido(partido);
-        review.setCreatedAt(LocalDateTime.now());
+        Usuario calificador = usuarioRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        return reviewMapper.toDTO(reviewRepository.save(review));
+        Usuario calificado = usuarioRepository.findById(dto.getUsuarioCalificadoId())
+                .orElseThrow(() -> new RuntimeException("Usuario calificado no encontrado"));
+
+        // Validar que el partido ya haya pasado
+        LocalDateTime fechaPartido = LocalDateTime.of(partido.getFecha(), partido.getHora());
+        if (fechaPartido.isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException("No puedes calificar un partido que aún no ha sucedido");
+        }
+
+        // Validar que ambos participaron en el partido
+        List<Inscripcion> inscripciones = inscripcionRepository.findByPartido_IdAndEstado(
+                dto.getPartidoId(), "ACEPTADO");
+
+        boolean calificadorParticipo = inscripciones.stream()
+                .anyMatch(i -> i.getUsuario().getId().equals(userId));
+        boolean calificadoParticipo = inscripciones.stream()
+                .anyMatch(i -> i.getUsuario().getId().equals(dto.getUsuarioCalificadoId()));
+
+        if (!calificadorParticipo) {
+            throw new SecurityException("No participaste en este partido");
+        }
+        if (!calificadoParticipo) {
+            throw new IllegalStateException("El usuario calificado no participó en este partido");
+        }
+
+        // Validar que no se califique a sí mismo
+        if (userId.equals(dto.getUsuarioCalificadoId())) {
+            throw new IllegalStateException("No puedes calificarte a ti mismo");
+        }
+
+        // Verificar que no exista ya una review
+        boolean yaExiste = reviewRepository.existsByPartido_IdAndUsuarioQueCalifica_IdAndUsuarioCalificado_Id(
+                dto.getPartidoId(), userId, dto.getUsuarioCalificadoId());
+
+        if (yaExiste) {
+            throw new IllegalStateException("Ya calificaste a este usuario en este partido");
+        }
+
+        // Crear review (createdAt se setea automáticamente por @Builder.Default)
+        Review review = Review.builder()
+                .partido(partido)
+                .usuarioQueCalifica(calificador)
+                .usuarioCalificado(calificado)
+                .nivel(dto.getNivel())
+                .deportividad(dto.getDeportividad())
+                .companerismo(dto.getCompanerismo())
+                .comentario(dto.getComentario())
+                .build();
+
+        Review guardada = reviewRepository.save(review);
+        log.info("Review creada: partidoId={}, calificadorId={}, calificadoId={}", 
+                dto.getPartidoId(), userId, dto.getUsuarioCalificadoId());
+
+        return convertirADTO(guardada);
     }
 
-    public List<ReviewDTO> listarReviewsUsuario(UUID usuarioId) {
-        return reviewRepository.findByUsuarioCalificado_Id(usuarioId)
-                .stream()
-                .map(reviewMapper::toDTO)
+    /**
+     * Obtener reviews recibidas por un usuario
+     */
+    @Transactional(readOnly = true)
+    public List<ReviewDTO> obtenerReviewsDeUsuario(UUID usuarioId) {
+        List<Review> reviews = reviewRepository.findByUsuarioCalificado_Id(usuarioId);
+        return reviews.stream()
+                .map(this::convertirADTO)
                 .collect(Collectors.toList());
     }
 
-    public List<ReviewDTO> listarReviewsPartido(UUID partidoId) {
-        return reviewRepository.findByPartido_Id(partidoId)
-                .stream()
-                .map(reviewMapper::toDTO)
-                .collect(Collectors.toList());
+    /**
+     * Obtener estadísticas de un usuario
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> obtenerEstadisticas(UUID usuarioId) {
+        List<Review> reviews = reviewRepository.findByUsuarioCalificado_Id(usuarioId);
+
+        if (reviews.isEmpty()) {
+            return Map.of(
+                "total_reviews", 0,
+                "promedio_nivel", 0.0,
+                "promedio_deportividad", 0.0,
+                "promedio_companerismo", 0.0,
+                "promedio_general", 0.0
+            );
+        }
+
+        double promedioNivel = reviews.stream()
+                .mapToInt(Review::getNivel)
+                .average()
+                .orElse(0.0);
+
+        double promedioDeportividad = reviews.stream()
+                .mapToInt(Review::getDeportividad)
+                .average()
+                .orElse(0.0);
+
+        double promedioCompanerismo = reviews.stream()
+                .mapToInt(Review::getCompanerismo)
+                .average()
+                .orElse(0.0);
+
+        double promedioGeneral = (promedioNivel + promedioDeportividad + promedioCompanerismo) / 3.0;
+
+        return Map.of(
+            "total_reviews", reviews.size(),
+            "promedio_nivel", Math.round(promedioNivel * 10.0) / 10.0,
+            "promedio_deportividad", Math.round(promedioDeportividad * 10.0) / 10.0,
+            "promedio_companerismo", Math.round(promedioCompanerismo * 10.0) / 10.0,
+            "promedio_general", Math.round(promedioGeneral * 10.0) / 10.0
+        );
+    }
+
+    /**
+     * Obtener reviews pendientes (jugadores que debe calificar)
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> obtenerReviewsPendientes(Authentication auth) {
+        UUID userId = getUserIdFromAuth(auth);
+
+        // Obtener partidos donde participó
+        List<Inscripcion> misInscripciones = inscripcionRepository
+                .findByUsuario_IdAndEstado(userId, "ACEPTADO");
+
+        List<Map<String, Object>> pendientes = new ArrayList<>();
+
+        for (Inscripcion miInsc : misInscripciones) {
+            Partido partido = miInsc.getPartido();
+
+            // Solo partidos pasados
+            LocalDateTime fechaPartido = LocalDateTime.of(partido.getFecha(), partido.getHora());
+            if (fechaPartido.isAfter(LocalDateTime.now())) {
+                continue;
+            }
+
+            // Obtener otros jugadores del partido
+            List<Inscripcion> otrosJugadores = inscripcionRepository
+                    .findByPartido_IdAndEstado(partido.getId(), "ACEPTADO")
+                    .stream()
+                    .filter(i -> !i.getUsuario().getId().equals(userId))
+                    .collect(Collectors.toList());
+
+            // Verificar cuáles no ha calificado
+            for (Inscripcion otraInsc : otrosJugadores) {
+                UUID otroUsuarioId = otraInsc.getUsuario().getId();
+                
+                boolean yaCalificado = reviewRepository
+                        .existsByPartido_IdAndUsuarioQueCalifica_IdAndUsuarioCalificado_Id(
+                                partido.getId(), userId, otroUsuarioId);
+
+                if (!yaCalificado) {
+                    Usuario otroUsuario = otraInsc.getUsuario();
+                    Map<String, Object> pendiente = new HashMap<>();
+                    pendiente.put("partido_id", partido.getId());
+                    pendiente.put("tipo_partido", partido.getTipoPartido());
+                    pendiente.put("fecha", partido.getFecha().toString());
+                    pendiente.put("usuario", new UsuarioMinDTO(
+                            otroUsuario.getId(),
+                            otroUsuario.getNombre(),
+                            otroUsuario.getApellido(),
+                            otroUsuario.getFotoPerfil()
+                    ));
+                    pendientes.add(pendiente);
+                }
+            }
+        }
+
+        return pendientes;
+    }
+
+    /**
+     * Verificar si ya existe una review
+     */
+    @Transactional(readOnly = true)
+    public boolean verificarReviewExistente(UUID partidoId, UUID usuarioCalificadoId, Authentication auth) {
+        UUID userId = getUserIdFromAuth(auth);
+        return reviewRepository.existsByPartido_IdAndUsuarioQueCalifica_IdAndUsuarioCalificado_Id(
+                partidoId, userId, usuarioCalificadoId);
+    }
+
+    /**
+     * Eliminar una review (solo el autor)
+     */
+    @Transactional
+    public void eliminarReview(UUID reviewId, Authentication auth) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new RuntimeException("Review no encontrada"));
+
+        UUID userId = getUserIdFromAuth(auth);
+
+        if (!review.getUsuarioQueCalifica().getId().equals(userId)) {
+            throw new SecurityException("Solo puedes eliminar tus propias reviews");
+        }
+
+        reviewRepository.delete(review);
+        log.info("Review eliminada: id={}", reviewId);
+    }
+
+    // ===== MÉTODOS AUXILIARES =====
+
+    private ReviewDTO convertirADTO(Review review) {
+        // Crear UsuarioMinDTO para el usuario calificado
+        Usuario calificado = review.getUsuarioCalificado();
+        UsuarioMinDTO usuarioCalificadoDTO = new UsuarioMinDTO(
+                calificado.getId(),
+                calificado.getNombre(),
+                calificado.getApellido(),
+                calificado.getFotoPerfil()
+        );
+
+        // Usar el builder para crear el DTO
+        return ReviewDTO.builder()
+                .id(review.getId())
+                .partidoId(review.getPartido().getId())
+                .usuarioQueCalificaId(review.getUsuarioQueCalifica().getId())
+                .usuarioCalificadoId(review.getUsuarioCalificado().getId())
+                .nivel(review.getNivel())
+                .deportividad(review.getDeportividad())
+                .companerismo(review.getCompanerismo())
+                .comentario(review.getComentario())
+                .createdAt(review.getCreatedAt())
+                .usuarioCalificado(usuarioCalificadoDTO)
+                .build();
+    }
+
+    private UUID getUserIdFromAuth(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new SecurityException("Usuario no autenticado");
+        }
+        
+        Object principal = auth.getPrincipal();
+        if (principal instanceof CustomUserDetailsService.UserPrincipal) {
+            return ((CustomUserDetailsService.UserPrincipal) principal).getId();
+        }
+        
+        throw new SecurityException("No se pudo obtener el ID del usuario");
     }
 }
