@@ -2,46 +2,50 @@ package uy.um.faltauno.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
+
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
+@Table(name = "review", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"partido_id", "usuario_que_califica_id", "usuario_calificado_id"})
+})
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "review")
 public class Review {
 
     @Id
     @GeneratedValue
     private UUID id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "partido_id", nullable = false)
     private Partido partido;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_que_califica_id", nullable = false)
     private Usuario usuarioQueCalifica;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_calificado_id", nullable = false)
     private Usuario usuarioCalificado;
 
     @Column(nullable = false)
-    private Integer nivel; // 1 a 5
+    private Integer nivel; // 1-5
 
     @Column(nullable = false)
-    private Integer deportividad; // 1 a 5
+    private Integer deportividad; // 1-5
 
     @Column(nullable = false)
-    private Integer companerismo; // 1 a 5
+    private Integer companerismo; // 1-5
 
     @Column(length = 300)
     private String comentario;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    @Builder.Default
+    private Instant createdAt = Instant.now();
 }
