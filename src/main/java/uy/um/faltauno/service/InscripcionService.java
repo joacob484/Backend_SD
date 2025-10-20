@@ -28,7 +28,6 @@ public class InscripcionService {
     private final UsuarioRepository usuarioRepository;
     private final PartidoRepository partidoRepository;
     private final InscripcionMapper inscripcionMapper;
-    // private final NotificationService notificationService; // TODO: Implementar cuando esté listo
 
     /**
      * Crear solicitud de inscripción
@@ -62,30 +61,24 @@ public class InscripcionService {
 
         // Verificar si ya existe una inscripción
         Optional<Inscripcion> existente = inscripcionRepository
-                .findByPartidoId(partidoId)
-                .stream()
-                .filter(i -> i.getUsuario().getId().equals(usuarioId))
-                .findFirst();
+                .findByPartidoIdAndUsuarioId(partidoId, usuarioId);
 
         if (existente.isPresent()) {
             Inscripcion insc = existente.get();
-            String estadoActual = insc.getEstado();
+            Inscripcion.EstadoInscripcion estadoActual = insc.getEstado();
             
             log.info("[InscripcionService] Ya existe inscripción con estado: {}", estadoActual);
             
-            if ("ACEPTADO".equals(estadoActual)) {
+            if (estadoActual == Inscripcion.EstadoInscripcion.ACEPTADO) {
                 throw new IllegalStateException("Ya estás inscrito en este partido");
-            } else if ("PENDIENTE".equals(estadoActual)) {
+            } else if (estadoActual == Inscripcion.EstadoInscripcion.PENDIENTE) {
                 throw new IllegalStateException("Ya tienes una solicitud pendiente para este partido");
-            } else if ("RECHAZADO".equals(estadoActual)) {
+            } else if (estadoActual == Inscripcion.EstadoInscripcion.RECHAZADO) {
                 // Permitir reintentar si fue rechazado
                 log.info("[InscripcionService] Reactivando solicitud rechazada");
-                insc.setEstado("PENDIENTE");
+                insc.setEstado(Inscripcion.EstadoInscripcion.PENDIENTE);
                 insc.setCreatedAt(java.time.Instant.now());
                 Inscripcion reactivada = inscripcionRepository.save(insc);
-                
-                // TODO: Notificar al organizador
-                // notificationService.notificarNuevaSolicitud(partido, usuario);
                 
                 return inscripcionMapper.toDTO(reactivada);
             }
@@ -95,15 +88,12 @@ public class InscripcionService {
         Inscripcion inscripcion = Inscripcion.builder()
                 .partido(partido)
                 .usuario(usuario)
-                .estado("PENDIENTE")
+                .estado(Inscripcion.EstadoInscripcion.PENDIENTE)
                 .build();
 
         Inscripcion guardada = inscripcionRepository.save(inscripcion);
         log.info("[InscripcionService] ✅ Inscripción creada exitosamente: id={}, estado=PENDIENTE", 
                 guardada.getId());
-
-        // TODO: Notificar al organizador
-        // notificationService.notificarNuevaSolicitud(partido, usuario);
 
         return inscripcionMapper.toDTO(guardada);
     }
@@ -118,7 +108,8 @@ public class InscripcionService {
         List<Inscripcion> inscripciones;
         
         if (estado != null && !estado.isBlank()) {
-            inscripciones = inscripcionRepository.findByUsuario_IdAndEstado(usuarioId, estado.toUpperCase());
+            Inscripcion.EstadoInscripcion estadoEnum = parseEstado(estado);
+            inscripciones = inscripcionRepository.findByUsuarioIdAndEstado(usuarioId, estadoEnum);
         } else {
             inscripciones = inscripcionRepository.findByUsuarioId(usuarioId);
         }
@@ -141,7 +132,8 @@ public class InscripcionService {
         List<Inscripcion> inscripciones;
         
         if (estado != null && !estado.isBlank()) {
-            inscripciones = inscripcionRepository.findByPartido_IdAndEstado(partidoId, estado.toUpperCase());
+            Inscripcion.EstadoInscripcion estadoEnum = parseEstado(estado);
+            inscripciones = inscripcionRepository.findByPartidoIdAndEstado(partidoId, estadoEnum);
         } else {
             inscripciones = inscripcionRepository.findByPartidoId(partidoId);
         }
@@ -175,7 +167,7 @@ public class InscripcionService {
         }
 
         List<Inscripcion> pendientes = inscripcionRepository
-                .findByPartido_IdAndEstado(partidoId, "PENDIENTE");
+                .findSolicitudesPendientesByPartidoId(partidoId);
 
         log.info("[InscripcionService] ✅ Encontradas {} solicitudes pendientes", pendientes.size());
 
@@ -207,7 +199,7 @@ public class InscripcionService {
         }
 
         // Verificar que esté pendiente
-        if (!"PENDIENTE".equals(inscripcion.getEstado())) {
+        if (inscripcion.getEstado() != Inscripcion.EstadoInscripcion.PENDIENTE) {
             log.warn("[InscripcionService] Estado inválido: {}", inscripcion.getEstado());
             throw new IllegalStateException("La solicitud no está pendiente");
         }
@@ -225,15 +217,12 @@ public class InscripcionService {
             throw new IllegalStateException("El partido está completo");
         }
 
-        // Aceptar
-        inscripcion.setEstado("ACEPTADO");
+        // Aceptar usando método del entity
+        inscripcion.aceptar();
         Inscripcion aceptada = inscripcionRepository.save(inscripcion);
         
         log.info("[InscripcionService] ✅ Inscripción aceptada: id={}, partidoId={}, usuarioId={}", 
                 inscripcionId, partido.getId(), inscripcion.getUsuario().getId());
-
-        // TODO: Notificar al usuario aceptado
-        // notificationService.notificarInscripcionAceptada(inscripcion);
 
         // Verificar si el partido se llenó y cambiar estado
         long nuevosJugadores = jugadoresAceptados + 1;
@@ -241,7 +230,6 @@ public class InscripcionService {
             log.info("[InscripcionService] Partido completo, cambiando estado a CONFIRMADO");
             partido.setEstado("CONFIRMADO");
             partidoRepository.save(partido);
-            // TODO: Notificar a todos los participantes
         }
 
         return inscripcionMapper.toDTO(aceptada);
@@ -270,20 +258,16 @@ public class InscripcionService {
         }
 
         // Verificar que esté pendiente
-        if (!"PENDIENTE".equals(inscripcion.getEstado())) {
+        if (inscripcion.getEstado() != Inscripcion.EstadoInscripcion.PENDIENTE) {
             log.warn("[InscripcionService] Estado inválido: {}", inscripcion.getEstado());
             throw new IllegalStateException("La solicitud no está pendiente");
         }
 
-        // Marcar como rechazado (o eliminar directamente según preferencia)
-        inscripcion.setEstado("RECHAZADO");
+        // Rechazar usando método del entity
+        inscripcion.rechazar(motivo);
         inscripcionRepository.save(inscripcion);
-        // O: inscripcionRepository.delete(inscripcion);
         
         log.info("[InscripcionService] ✅ Inscripción rechazada: id={}", inscripcionId);
-
-        // TODO: Notificar al usuario rechazado
-        // notificationService.notificarInscripcionRechazada(inscripcion, motivo);
     }
 
     /**
@@ -330,11 +314,6 @@ public class InscripcionService {
         
         log.info("[InscripcionService] ✅ Usuario canceló inscripción: inscripcionId={}, usuarioId={}", 
                 inscripcionId, userId);
-
-        // TODO: Notificar al organizador
-        // notificationService.notificarCancelacionInscripcion(partido, inscripcion.getUsuario());
-        
-        // TODO: Si había lista de espera, ofrecer el cupo
     }
 
     /**
@@ -348,15 +327,12 @@ public class InscripcionService {
         Map<String, Object> resultado = new HashMap<>();
         
         Optional<Inscripcion> inscripcion = inscripcionRepository
-                .findByPartidoId(partidoId)
-                .stream()
-                .filter(i -> i.getUsuario().getId().equals(usuarioId))
-                .findFirst();
+                .findByPartidoIdAndUsuarioId(partidoId, usuarioId);
 
         if (inscripcion.isPresent()) {
             Inscripcion insc = inscripcion.get();
             resultado.put("inscrito", true);
-            resultado.put("estado", insc.getEstado());
+            resultado.put("estado", insc.getEstado().name());
             resultado.put("inscripcionId", insc.getId());
             
             log.debug("[InscripcionService] Usuario inscrito con estado: {}", insc.getEstado());
@@ -400,7 +376,7 @@ public class InscripcionService {
             throw new IllegalStateException("El partido está completo");
         }
 
-        // 5. Validar perfil del usuario (opcional - puede implementarse después)
+        // 5. Validar perfil del usuario (opcional)
         if (usuario.getNombre() == null || usuario.getApellido() == null) {
             log.warn("[InscripcionService] Perfil incompleto: usuarioId={}", usuario.getId());
             throw new IllegalStateException(
@@ -426,5 +402,17 @@ public class InscripcionService {
         
         log.error("[InscripcionService] No se pudo obtener ID del usuario del principal");
         throw new SecurityException("No se pudo obtener el ID del usuario");
+    }
+
+    /**
+     * Helper para parsear estado de String a Enum
+     */
+    private Inscripcion.EstadoInscripcion parseEstado(String estado) {
+        try {
+            return Inscripcion.EstadoInscripcion.valueOf(estado.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("[InscripcionService] Estado inválido: {}, usando PENDIENTE", estado);
+            return Inscripcion.EstadoInscripcion.PENDIENTE;
+        }
     }
 }

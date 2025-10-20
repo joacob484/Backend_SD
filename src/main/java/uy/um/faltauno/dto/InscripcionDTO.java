@@ -27,4 +27,20 @@ public class InscripcionDTO {
     // Timestamp de creación
     @JsonProperty("created_at")
     private Instant createdAt;
+
+    // Representación mínima de Partido usada en InscripcionDTO
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PartidoMinDTO {
+        private java.util.UUID id;
+        private String tipoPartido;
+        private String genero;
+        private String fecha;
+        private String hora;
+        private String nombreUbicacion;
+        private String estado;
+        private String organizadorNombre;
+    }
 }

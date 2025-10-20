@@ -4,26 +4,50 @@ import org.mapstruct.*;
 import uy.um.faltauno.dto.InscripcionDTO;
 import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.entity.Inscripcion;
+import uy.um.faltauno.entity.Partido;
 import uy.um.faltauno.entity.Usuario;
 
+import java.time.Duration;
+import java.time.Instant;
+
+/**
+ * Mapper para conversión entre Inscripcion (Entity) e InscripcionDTO
+ */
 @Mapper(componentModel = "spring")
 public interface InscripcionMapper {
     
     /**
-     * Convertir Entity a DTO
+     * Convertir Entity a DTO completo
+     * Mapea las relaciones (partido, usuario) a sus IDs y objetos mínimos
      */
     @Mapping(source = "partido.id", target = "partidoId")
     @Mapping(source = "usuario.id", target = "usuarioId")
+    @Mapping(source = "estado", target = "estado", qualifiedByName = "estadoToString")
     @Mapping(source = "usuario", target = "usuario", qualifiedByName = "toUsuarioMinDTO")
+    @Mapping(source = "partido", target = "partido", qualifiedByName = "toPartidoMinDTO")
     @Mapping(source = "createdAt", target = "createdAt")
+    @Mapping(source = "updatedAt", target = "updatedAt")
+    @Mapping(source = "fechaAceptacion", target = "fechaAceptacion")
+    @Mapping(source = "fechaRechazo", target = "fechaRechazo")
+    @Mapping(source = "fechaCancelacion", target = "fechaCancelacion")
+    @Mapping(target = "tiempoTranscurrido", expression = "java(calcularTiempoTranscurrido(inscripcion.getCreatedAt()))")
+    @Mapping(target = "puedeCancelar", expression = "java(inscripcion.isActiva())")
+    @Mapping(target = "puedeAceptar", expression = "java(inscripcion.isPendiente())")
+    @Mapping(target = "puedeRechazar", expression = "java(inscripcion.isPendiente())")
     InscripcionDTO toDTO(Inscripcion inscripcion);
 
     /**
-     * Convertir DTO a Entity (sin relaciones)
+     * Convertir DTO a Entity (sin relaciones - deben setearse manualmente)
      */
     @Mapping(target = "partido", ignore = true)
     @Mapping(target = "usuario", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "fechaAceptacion", ignore = true)
+    @Mapping(target = "fechaRechazo", ignore = true)
+    @Mapping(target = "fechaCancelacion", ignore = true)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(source = "estado", target = "estado", qualifiedByName = "stringToEstado")
     Inscripcion toEntity(InscripcionDTO dto);
     
     /**
@@ -40,5 +64,96 @@ public interface InscripcionMapper {
             usuario.getApellido(),
             usuario.getFotoPerfil()
         );
+    }
+    
+    /**
+     * Convertir Partido a PartidoMinDTO
+     */
+    @Named("toPartidoMinDTO")
+    default InscripcionDTO.PartidoMinDTO toPartidoMinDTO(Partido partido) {
+        if (partido == null) {
+            return null;
+        }
+        
+        String organizadorNombre = null;
+        if (partido.getOrganizador() != null) {
+            organizadorNombre = partido.getOrganizador().getNombre() + " " + 
+                              partido.getOrganizador().getApellido();
+        }
+        
+        return InscripcionDTO.PartidoMinDTO.builder()
+                .id(partido.getId())
+                .tipoPartido(partido.getTipoPartido())
+                .genero(partido.getGenero())
+                .fecha(partido.getFecha() != null ? partido.getFecha().toString() : null)
+                .hora(partido.getHora() != null ? partido.getHora().toString() : null)
+                .nombreUbicacion(partido.getNombreUbicacion())
+                .estado(partido.getEstado())
+                .organizadorNombre(organizadorNombre)
+                .build();
+    }
+    
+    /**
+     * Convierte el enum EstadoInscripcion a String
+     */
+    @Named("estadoToString")
+    default String estadoToString(Inscripcion.EstadoInscripcion estado) {
+        return estado != null ? estado.name() : null;
+    }
+    
+    /**
+     * Convierte String a enum EstadoInscripcion
+     */
+    @Named("stringToEstado")
+    default Inscripcion.EstadoInscripcion stringToEstado(String estado) {
+        if (estado == null || estado.isBlank()) {
+            return Inscripcion.EstadoInscripcion.PENDIENTE;
+        }
+        try {
+            return Inscripcion.EstadoInscripcion.valueOf(estado.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return Inscripcion.EstadoInscripcion.PENDIENTE;
+        }
+    }
+    
+    /**
+     * Calcula el tiempo transcurrido desde la creación en formato legible
+     */
+    default String calcularTiempoTranscurrido(Instant createdAt) {
+        if (createdAt == null) {
+            return null;
+        }
+        
+        Instant ahora = Instant.now();
+        Duration duracion = Duration.between(createdAt, ahora);
+        
+        long segundos = duracion.getSeconds();
+        
+        if (segundos < 60) {
+            return "Hace " + segundos + " segundo" + (segundos != 1 ? "s" : "");
+        }
+        
+        long minutos = segundos / 60;
+        if (minutos < 60) {
+            return "Hace " + minutos + " minuto" + (minutos != 1 ? "s" : "");
+        }
+        
+        long horas = minutos / 60;
+        if (horas < 24) {
+            return "Hace " + horas + " hora" + (horas != 1 ? "s" : "");
+        }
+        
+        long dias = horas / 24;
+        if (dias < 30) {
+            return "Hace " + dias + " día" + (dias != 1 ? "s" : "");
+        }
+        
+        long meses = dias / 30;
+        if (meses < 12) {
+            return "Hace " + meses + " mes" + (meses != 1 ? "es" : "");
+        }
+        
+        long años = meses / 12;
+        return "Hace " + años + " año" + (años != 1 ? "s" : "");
     }
 }
