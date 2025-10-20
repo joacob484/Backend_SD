@@ -21,7 +21,9 @@ public class PartidoDTO {
     private Integer cantidadJugadores;
     private BigDecimal precioTotal;
     private String descripcion;
-
+    private String estado;
+    private String nivel;
+    private Integer jugadoresActuales; // se calcula en service
     private UUID organizadorId;        // FK
     private String organizadorNombre;  // para mostrar en el front
 

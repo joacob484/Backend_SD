@@ -47,5 +47,5 @@ public class Review {
 
     @Column(name = "created_at", nullable = false)
     @Builder.Default
-    private Instant createdAt = Instant.now();
+    private Instant createdAt = Instant.now();  // ← Esto inicializa automáticamente
 }

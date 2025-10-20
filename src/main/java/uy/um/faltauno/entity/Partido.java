@@ -59,7 +59,12 @@ public class Partido {
             foreignKey = @ForeignKey(name = "partido_organizador_fk"))
     private Usuario organizador;
 
-    // created_at existe en la DB y lo maneja DEFAULT now()
+    @Column(name = "estado", nullable = false)
+    private String estado = "PENDIENTE";
+
+    @Column(name = "nivel")
+    private String nivel = "INTERMEDIO";
+        // created_at existe en la DB y lo maneja DEFAULT now()
 
     public Partido() { }
 
