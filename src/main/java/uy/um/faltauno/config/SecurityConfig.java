@@ -1,90 +1,92 @@
 package uy.um.faltauno.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import uy.um.faltauno.service.UsuarioService;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import jakarta.servlet.http.HttpServletResponse;
+// IMPORTA tu implementación concreta si la tenés en otro paquete
+// import uy.um.faltauno.config.FrontendRedirectAuthenticationEntryPoint;
+import uy.um.faltauno.config.JwtAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private final UsuarioService usuarioService;
-    private final CustomUserDetailsService userDetailsService;
-    private final JwtUtil jwtUtil;
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+    // Filtro JWT propio
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
-        return authConfig.getAuthenticationManager();
-    }
+    // Handler de éxito de OAuth2 DEFINIDO COMO @Component (Opción A)
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+
+    // Tu UserDetailsService (p.ej. CustomUserDetailsService) ya definido como @Service
+    private final UserDetailsService userDetailsService;
+
+    // PasswordEncoder (puede venir de donde lo tengas definido @Bean; si lo definís acá, también sirve)
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
+    // Si ya tenés tu propio entry point, inyectalo aquí; de lo contrario se usa uno simple JSON
+    private final FrontendRedirectAuthenticationEntryPoint frontendEntryPoint;
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
+        DaoAuthenticationProvider p = new DaoAuthenticationProvider();
+        p.setUserDetailsService(userDetailsService);
+        p.setPasswordEncoder(passwordEncoder);
+        return p;
     }
 
     @Bean
-    public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter(jwtUtil);
+    public AuthenticationManager authenticationManager(DaoAuthenticationProvider provider) {
+        return new ProviderManager(provider);
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        http.authenticationProvider(authenticationProvider());
-
         http
-            .cors().and()
-            .csrf().disable()
+            .cors(cors -> {}) // CORS lo maneja tu WebConfig, acá solo se habilita
+            .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(authenticationEntryPoint())
+            )
+
             .authorizeHttpRequests(auth -> auth
-                // Endpoints públicos existentes
+                // Rutas públicas propias
                 .requestMatchers(
                     "/api/auth/**",
-                    "/api/usuarios",
                     "/public/**",
                     "/actuator/health",
-                    "/h2-console/**",
-                    "/error"
+                    "/error",
+                    "/h2-console/**"
                 ).permitAll()
-                // >>> IMPORTANTE: permitir OAuth2 <<<
+
+                // IMPORTANTE: permitir todo el flujo OAuth2
                 .requestMatchers(
                     "/oauth2/**",
                     "/login/oauth2/**"
                 ).permitAll()
+
                 .anyRequest().authenticated()
             )
 
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((request, response, authException) -> {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.setContentType("application/json");
-                    response.getWriter().write(
-                        "{\"success\":false,\"message\":\"Unauthorized\",\"data\":null}"
-                    );
-                })
+            // Login OAuth2 con handler externo (Opción A)
+            .oauth2Login(oauth -> oauth
+                .loginPage("/oauth2/authorization/google")
+                .successHandler(oAuth2SuccessHandler)
             )
 
             .logout(logout -> logout
@@ -92,44 +94,36 @@ public class SecurityConfig {
                 .logoutSuccessHandler((request, response, authentication) -> {
                     response.setStatus(HttpServletResponse.SC_OK);
                     response.setContentType("application/json");
-                    response.getWriter().write(
-                        "{\"success\":true,\"message\":\"Logout exitoso\",\"data\":null}"
-                    );
+                    response.getWriter().write("{\"success\":true,\"message\":\"Logout exitoso\",\"data\":null}");
                 })
             )
 
-            // >>> IMPORTANTE: habilitar oauth2Login y success handler <<<
-            .oauth2Login(oauth -> oauth
-                .loginPage("/oauth2/authorization/google")
-                .successHandler(oauth2SuccessHandler())
-            );
+            // Provider para auth por credenciales locales (si aplica en tu flujo)
+            .authenticationProvider(authenticationProvider());
 
         // Filtro JWT antes del UsernamePasswordAuthenticationFilter
-        http.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
-        http.headers().frameOptions().disable();
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // Consola H2 si la usás en dev
+        http.headers(headers -> headers.frameOptions(frame -> frame.disable()));
+
         return http.build();
     }
 
+    /**
+     * Entry point por defecto si no inyectaste uno custom.
+     * Si ya usás FrontendRedirectAuthenticationEntryPoint, podés retornar ese acá.
+     */
     @Bean
-    public org.springframework.security.web.authentication.AuthenticationSuccessHandler oauth2SuccessHandler() {
-        return (request, response, authentication) -> {
-            // Usuario de Google
-            var principal = (org.springframework.security.oauth2.core.user.DefaultOAuth2User) authentication.getPrincipal();
-            String email = principal.getAttribute("email");
-            String name  = principal.getAttribute("name");
+    public AuthenticationEntryPoint authenticationEntryPoint() {
+        // Si tenés un entrypoint custom, descomenta la siguiente línea y borra el lambda:
+        // return frontendEntryPoint;
 
-            // Upsert de usuario (crea si no existe, actualiza si existe)
-            var usuario = usuarioService.upsertGoogleUser(email, name, principal.getAttributes());
-
-            // Generar JWT (usa tu JwtUtil actual)
-            String jwt = jwtUtil.generateToken(email, usuario.getId().toString());
-
-            // Redirigir al front con el token
-            String frontend = System.getenv("FRONTEND_URL"); // ej: http://localhost:3000
-            if (frontend == null || frontend.isBlank()) frontend = "http://localhost:3000";
-            String target = frontend + "/oauth/success?token=" + java.net.URLEncoder.encode(jwt, java.nio.charset.StandardCharsets.UTF_8);
-            response.sendRedirect(target);
+        // Fallback simple JSON
+        return (request, response, authException) -> {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"success\":false,\"message\":\"Unauthorized\",\"data\":null}");
         };
     }
-
 }
