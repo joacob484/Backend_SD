@@ -113,6 +113,17 @@ public class ReviewService {
     }
 
     /**
+     * Obtener reviews de un partido específico
+     */
+    @Transactional(readOnly = true)
+    public List<ReviewDTO> obtenerReviewsDePartido(UUID partidoId) {
+        List<Review> reviews = reviewRepository.findByPartido_Id(partidoId);
+        return reviews.stream()
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Obtener estadísticas de un usuario
      */
     @Transactional(readOnly = true)
