@@ -191,7 +191,7 @@
           <encoding>${project.build.sourceEncoding}</encoding>
 
           <!-- Annotation processors en el orden correcto:
-               Lombok -> lombok-mapstruct-binding -> MapStruct processor -->
+              Lombok -> lombok-mapstruct-binding -> MapStruct processor -->
           <annotationProcessorPaths>
             <!-- Lombok -->
             <path>
@@ -216,6 +216,10 @@
           </annotationProcessorPaths>
 
           <compilerArgs>
+            <!-- Habilitar nombres de parámetros en los .class para que Spring pueda resolver
+                argumentos sin necesidad de anotar explícitamente @PathVariable("...") -->
+            <arg>-parameters</arg>
+
             <!-- Verbose para MapStruct (útil para debug) -->
             <arg>-Amapstruct.verbose=true</arg>
           </compilerArgs>

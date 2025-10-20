@@ -63,7 +63,7 @@ public class PartidoController {
      * Obtener un partido por ID con toda su información
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PartidoDTO>> obtenerPorId(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<PartidoDTO>> obtenerPorId(@PathVariable("id") UUID id) {
         try {
             PartidoDTO partido = partidoService.obtenerPartidoCompleto(id);
             return ResponseEntity.ok(new ApiResponse<>(partido, "Partido encontrado", true));
@@ -111,7 +111,7 @@ public class PartidoController {
      */
     @GetMapping("/usuario/{usuarioId}")
     public ResponseEntity<ApiResponse<List<PartidoDTO>>> listarPorUsuario(
-            @PathVariable UUID usuarioId) {
+            @PathVariable("usuarioId") UUID usuarioId) {
         try {
             List<PartidoDTO> partidos = partidoService.listarPartidosPorUsuario(usuarioId);
             return ResponseEntity.ok(new ApiResponse<>(partidos, "Partidos del usuario", true));
@@ -124,7 +124,7 @@ public class PartidoController {
 
     @GetMapping("/{partidoId}/solicitudes")
     public ResponseEntity<ApiResponse<List<InscripcionDTO>>> obtenerSolicitudes(
-            @PathVariable UUID partidoId,
+            @PathVariable("partidoId") UUID partidoId,
             Authentication auth) {
         try {
             log.info("Obteniendo solicitudes pendientes para partido: {}", partidoId);
@@ -146,7 +146,7 @@ public class PartidoController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<PartidoDTO>> actualizar(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody PartidoDTO dto,
             Authentication auth) {
         try {
@@ -166,7 +166,7 @@ public class PartidoController {
      */
     @PostMapping("/{id}/cancelar")
     public ResponseEntity<ApiResponse<Void>> cancelar(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestBody(required = false) String motivo,
             Authentication auth) {
         try {
@@ -186,7 +186,7 @@ public class PartidoController {
      */
     @PostMapping("/{id}/completar")
     public ResponseEntity<ApiResponse<Void>> completar(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             Authentication auth) {
         try {
             partidoService.completarPartido(id, auth);
@@ -205,7 +205,7 @@ public class PartidoController {
      */
     @GetMapping("/{id}/jugadores")
     public ResponseEntity<ApiResponse<List<UsuarioMinDTO>>> obtenerJugadores(
-            @PathVariable UUID id) {
+            @PathVariable("id") UUID id) {
         try {
             List<UsuarioMinDTO> jugadores = partidoService.obtenerJugadores(id);
             return ResponseEntity.ok(new ApiResponse<>(jugadores, "Jugadores del partido", true));
@@ -220,8 +220,8 @@ public class PartidoController {
      */
     @DeleteMapping("/{partidoId}/jugadores/{jugadorId}")
     public ResponseEntity<ApiResponse<Void>> removerJugador(
-            @PathVariable UUID partidoId,
-            @PathVariable UUID jugadorId,
+            @PathVariable("partidoId") UUID partidoId,
+            @PathVariable("jugadorId") UUID jugadorId,
             Authentication auth) {
         try {
             partidoService.removerJugador(partidoId, jugadorId, auth);
@@ -243,7 +243,7 @@ public class PartidoController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> eliminar(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             Authentication auth) {
         try {
             partidoService.eliminarPartido(id, auth);
