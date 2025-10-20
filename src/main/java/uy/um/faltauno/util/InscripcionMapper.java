@@ -10,16 +10,9 @@ import uy.um.faltauno.entity.Usuario;
 import java.time.Duration;
 import java.time.Instant;
 
-/**
- * Mapper para conversión entre Inscripcion (Entity) e InscripcionDTO
- */
 @Mapper(componentModel = "spring")
 public interface InscripcionMapper {
     
-    /**
-     * Convertir Entity a DTO completo
-     * Mapea las relaciones (partido, usuario) a sus IDs y objetos mínimos
-     */
     @Mapping(source = "partido.id", target = "partidoId")
     @Mapping(source = "usuario.id", target = "usuarioId")
     @Mapping(source = "estado", target = "estado", qualifiedByName = "estadoToString")
@@ -36,9 +29,6 @@ public interface InscripcionMapper {
     @Mapping(target = "puedeRechazar", expression = "java(inscripcion.isPendiente())")
     InscripcionDTO toDTO(Inscripcion inscripcion);
 
-    /**
-     * Convertir DTO a Entity (sin relaciones - deben setearse manualmente)
-     */
     @Mapping(target = "partido", ignore = true)
     @Mapping(target = "usuario", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
@@ -50,9 +40,6 @@ public interface InscripcionMapper {
     @Mapping(source = "estado", target = "estado", qualifiedByName = "stringToEstado")
     Inscripcion toEntity(InscripcionDTO dto);
     
-    /**
-     * Convertir Usuario a UsuarioMinDTO
-     */
     @Named("toUsuarioMinDTO")
     default UsuarioMinDTO toUsuarioMinDTO(Usuario usuario) {
         if (usuario == null) {
@@ -66,9 +53,6 @@ public interface InscripcionMapper {
         );
     }
     
-    /**
-     * Convertir Partido a PartidoMinDTO
-     */
     @Named("toPartidoMinDTO")
     default InscripcionDTO.PartidoMinDTO toPartidoMinDTO(Partido partido) {
         if (partido == null) {
@@ -93,17 +77,11 @@ public interface InscripcionMapper {
                 .build();
     }
     
-    /**
-     * Convierte el enum EstadoInscripcion a String
-     */
     @Named("estadoToString")
     default String estadoToString(Inscripcion.EstadoInscripcion estado) {
         return estado != null ? estado.name() : null;
     }
     
-    /**
-     * Convierte String a enum EstadoInscripcion
-     */
     @Named("stringToEstado")
     default Inscripcion.EstadoInscripcion stringToEstado(String estado) {
         if (estado == null || estado.isBlank()) {
@@ -116,9 +94,6 @@ public interface InscripcionMapper {
         }
     }
     
-    /**
-     * Calcula el tiempo transcurrido desde la creación en formato legible
-     */
     default String calcularTiempoTranscurrido(Instant createdAt) {
         if (createdAt == null) {
             return null;

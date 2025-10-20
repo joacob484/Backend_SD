@@ -21,10 +21,50 @@ public class InscripcionDTO {
     
     private String estado;
     
-    // Información del usuario (para mostrar en listas)
     private UsuarioMinDTO usuario;
     
-    // Timestamp de creación
+    private PartidoMinDTO partido;
+    
     @JsonProperty("created_at")
     private Instant createdAt;
+    
+    @JsonProperty("updated_at")
+    private Instant updatedAt;
+    
+    @JsonProperty("fecha_aceptacion")
+    private Instant fechaAceptacion;
+    
+    @JsonProperty("fecha_rechazo")
+    private Instant fechaRechazo;
+    
+    @JsonProperty("fecha_cancelacion")
+    private Instant fechaCancelacion;
+    
+    private String tiempoTranscurrido;
+    private Boolean puedeCancelar;
+    private Boolean puedeAceptar;
+    private Boolean puedeRechazar;
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PartidoMinDTO {
+        private UUID id;
+        
+        @JsonProperty("tipo_partido")
+        private String tipoPartido;
+        
+        private String genero;
+        private String fecha;
+        private String hora;
+        
+        @JsonProperty("nombre_ubicacion")
+        private String nombreUbicacion;
+        
+        private String estado;
+        
+        @JsonProperty("organizador_nombre")
+        private String organizadorNombre;
+    }
 }
