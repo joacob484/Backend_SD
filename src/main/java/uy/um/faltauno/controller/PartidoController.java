@@ -1,33 +1,38 @@
 package uy.um.faltauno.controller;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
 import uy.um.faltauno.dto.ApiResponse;
+import uy.um.faltauno.dto.InscripcionDTO;
 import uy.um.faltauno.dto.PartidoDTO;
 import uy.um.faltauno.dto.UsuarioMinDTO;
-import uy.um.faltauno.entity.Partido;
 import uy.um.faltauno.service.PartidoService;
+import uy.um.faltauno.service.InscripcionService;
 
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/partidos")
 @CrossOrigin(origins = "${FRONTEND_URL:http://localhost:3000}")
-@RequiredArgsConstructor
-@Slf4j
 public class PartidoController {
 
     private final PartidoService partidoService;
+    private final InscripcionService inscripcionService;
+
+    public PartidoController(PartidoService partidoService, InscripcionService inscripcionService) {
+        this.partidoService = partidoService;
+        this.inscripcionService = inscripcionService;
+    }
 
     /**
      * Crear un nuevo partido
@@ -116,7 +121,7 @@ public class PartidoController {
                     .body(new ApiResponse<>(null, "Error al obtener partidos", false));
         }
     }
-
+    
     /**
      * Actualizar un partido (solo organizador)
      */

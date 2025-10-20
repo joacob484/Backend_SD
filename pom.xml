@@ -31,46 +31,17 @@
   </dependencyManagement>
 
   <dependencies>
-    <!-- JWT -->
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-api</artifactId>
-      <version>0.11.5</version>
-    </dependency>
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-impl</artifactId>
-      <version>0.11.5</version>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt-jackson</artifactId>
-      <version>0.11.5</version>
-      <scope>runtime</scope>
-    </dependency>
-
-    <!-- Servlet API (compila, el servidor embebido lo provee en runtime) -->
-    <dependency>
-      <groupId>javax.servlet</groupId>
-      <artifactId>javax.servlet-api</artifactId>
-      <version>4.0.1</version>
-      <scope>provided</scope>
-    </dependency>
-
     <!-- Web REST -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
 
-    <!-- OAuth2 Client -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-oauth2-client</artifactId>
     </dependency>
 
-    <!-- Security -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
@@ -140,7 +111,7 @@
       <version>${mapstruct.version}</version>
     </dependency>
 
-    <!-- MapStruct processor (para generar el mapper) -->
+    <!-- MapStruct processor: como dependency provided (útil para IDEs) -->
     <dependency>
       <groupId>org.mapstruct</groupId>
       <artifactId>mapstruct-processor</artifactId>
@@ -156,7 +127,7 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- Binding Lombok <-> MapStruct (ordena procesadores) -->
+    <!-- Lombok <-> MapStruct binding (ayuda en el orden de procesadores) -->
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok-mapstruct-binding</artifactId>
@@ -194,23 +165,30 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.11.0</version>
         <configuration>
-          <!-- Java 21 -->
+          <!-- Usamos release para Java 21 -->
           <release>${java.version}</release>
+
+          <!-- Prevent incremental compile problems: forzar encoding -->
           <encoding>${project.build.sourceEncoding}</encoding>
 
-          <!-- Procesadores de anotaciones en orden:
-               Lombok -> binding -> MapStruct -->
+          <!-- Annotation processors en el orden correcto:
+               Lombok -> lombok-mapstruct-binding -> MapStruct processor -->
           <annotationProcessorPaths>
+            <!-- Lombok -->
             <path>
               <groupId>org.projectlombok</groupId>
               <artifactId>lombok</artifactId>
               <version>${lombok.version}</version>
             </path>
+
+            <!-- lombok-mapstruct-binding -->
             <path>
               <groupId>org.projectlombok</groupId>
               <artifactId>lombok-mapstruct-binding</artifactId>
               <version>0.2.0</version>
             </path>
+
+            <!-- MapStruct Processor -->
             <path>
               <groupId>org.mapstruct</groupId>
               <artifactId>mapstruct-processor</artifactId>
@@ -219,7 +197,7 @@
           </annotationProcessorPaths>
 
           <compilerArgs>
-            <!-- log útil si algo falla -->
+            <!-- Verbose para MapStruct (útil para debug) -->
             <arg>-Amapstruct.verbose=true</arg>
           </compilerArgs>
         </configuration>

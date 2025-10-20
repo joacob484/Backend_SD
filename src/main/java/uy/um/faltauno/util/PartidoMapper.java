@@ -2,9 +2,13 @@ package uy.um.faltauno.util;
 
 import org.mapstruct.*;
 import uy.um.faltauno.dto.PartidoDTO;
+import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.entity.Partido;
 import uy.um.faltauno.entity.Usuario;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,11 +19,17 @@ import java.util.UUID;
 )
 public interface PartidoMapper {
 
+    DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+
     // =========================
     // Entity -> DTO
     // =========================
-    @Mapping(source = "organizador.id",     target = "organizadorId")
-    @Mapping(source = "organizador.nombre", target = "organizadorNombre")
+    @Mapping(source = "organizador.id", target = "organizadorId")
+    @Mapping(source = "organizador", target = "organizador", qualifiedByName = "usuarioToMin")
+    @Mapping(target = "precioPorJugador", expression = "java(calcularPrecioPorJugador(partido))")
+    @Mapping(target = "jugadoresActuales", ignore = true) // Se setea manualmente en el servicio
+    @Mapping(target = "jugadores", ignore = true) // Se setea manualmente en el servicio
+    @Mapping(target = "solicitudesPendientes", ignore = true) // Se setea manualmente en el servicio
     PartidoDTO toDto(Partido partido);
 
     List<PartidoDTO> toDtoList(List<Partido> partidos);
@@ -27,8 +37,7 @@ public interface PartidoMapper {
     // =========================
     // DTO -> Entity
     // =========================
-    // Creamos/inyectamos el Usuario organizador a partir del DTO completo
-    @Mapping(target = "organizador", source = "dto", qualifiedByName = "dtoToUsuario")
+    @Mapping(target = "organizador", source = "organizadorId", qualifiedByName = "idToUsuario")
     Partido toEntity(PartidoDTO dto);
 
     List<Partido> toEntityList(List<PartidoDTO> dtos);
@@ -37,42 +46,56 @@ public interface PartidoMapper {
     // UPDATE parcial (PATCH)
     // =========================
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "organizador", ignore = true) // No permitir cambiar organizador
     void updateEntityFromDto(PartidoDTO dto, @MappingTarget Partido entity);
 
-    // Después del update parcial, acomodamos el organizador en base a los campos del DTO (si vinieron)
-    @AfterMapping
-    default void afterUpdate(@MappingTarget Partido entity, PartidoDTO dto) {
-        if (dto == null) return;
-
-        // Si se envía organizadorId, seteamos/creamos el Usuario;
-        // si explícitamente viene null, lo dejamos como está (regla de "ignore nulls").
-        if (dto.getOrganizadorId() != null) {
-            if (entity.getOrganizador() == null) {
-                entity.setOrganizador(new Usuario());
-            }
-            entity.getOrganizador().setId(dto.getOrganizadorId());
-            // Si viene nombre, lo seteamos; si no viene, no tocamos el existente.
-            if (dto.getOrganizadorNombre() != null) {
-                entity.getOrganizador().setNombre(dto.getOrganizadorNombre());
-            }
+    // =========================
+    // Métodos auxiliares
+    // =========================
+    
+    /**
+     * Convierte Usuario a UsuarioMinDTO
+     */
+    @Named("usuarioToMin")
+    default UsuarioMinDTO usuarioToMin(Usuario usuario) {
+        if (usuario == null) {
+            return null;
         }
+        return new UsuarioMinDTO(
+            usuario.getId(),
+            usuario.getNombre(),
+            usuario.getApellido(),
+            usuario.getFotoPerfil()
+        );
     }
-
-    // =========================
-    // Helpers
-    // =========================
-    @Named("dtoToUsuario")
-    default Usuario dtoToUsuario(PartidoDTO dto) {
-        if (dto == null) return null;
-        UUID id = dto.getOrganizadorId();
-        String nombre = dto.getOrganizadorNombre();
-        if (id == null) return null;
-
-        Usuario u = new Usuario();
-        u.setId(id);
-        if (nombre != null) {
-            u.setNombre(nombre);
+    
+    /**
+     * Convierte UUID a Usuario (solo con ID)
+     */
+    @Named("idToUsuario")
+    default Usuario idToUsuario(UUID id) {
+        if (id == null) {
+            return null;
         }
-        return u;
+        Usuario usuario = new Usuario();
+        usuario.setId(id);
+        return usuario;
+    }
+    
+    /**
+     * Calcula el precio por jugador
+     */
+    default BigDecimal calcularPrecioPorJugador(Partido partido) {
+        if (partido == null || partido.getPrecioTotal() == null || 
+            partido.getCantidadJugadores() == null || partido.getCantidadJugadores() == 0) {
+            return BigDecimal.ZERO;
+        }
+        
+        return partido.getPrecioTotal().divide(
+            BigDecimal.valueOf(partido.getCantidadJugadores()),
+            2,
+            java.math.RoundingMode.HALF_UP
+        );
     }
 }

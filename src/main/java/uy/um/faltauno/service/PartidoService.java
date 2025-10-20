@@ -51,6 +51,7 @@ public class PartidoService {
         Partido partido = new Partido();
         partido.setTipoPartido(dto.getTipoPartido());
         partido.setGenero(dto.getGenero());
+        partido.setNivel(dto.getNivel() != null ? dto.getNivel() : "INTERMEDIO");
         partido.setFecha(dto.getFecha());
         partido.setHora(dto.getHora());
         partido.setDuracionMinutos(dto.getDuracionMinutos() != null ? dto.getDuracionMinutos() : 90);
@@ -62,13 +63,13 @@ public class PartidoService {
         partido.setPrecioTotal(dto.getPrecioTotal());
         partido.setDescripcion(dto.getDescripcion());
         partido.setOrganizador(organizador);
-        // Estado inicial: PENDIENTE
-        // El partido pasa a CONFIRMADO cuando se llena, o se CANCELA si no se llena a tiempo
+        partido.setEstado("PENDIENTE");
 
         Partido guardado = partidoRepository.save(partido);
-        log.info("Partido creado: id={}", guardado.getId());
+        log.info("Partido creado: id={}, tipo={}, fecha={}", 
+                guardado.getId(), guardado.getTipoPartido(), guardado.getFecha());
 
-        return partidoMapper.toDto(guardado);
+        return entityToDtoCompleto(guardado);
     }
 
     /**
@@ -79,17 +80,25 @@ public class PartidoService {
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
 
-        PartidoDTO dto = partidoMapper.toDto(partido);
+        PartidoDTO dto = entityToDtoCompleto(partido);
 
         // Obtener jugadores aceptados
         List<Inscripcion> inscripciones = inscripcionRepository
                 .findByPartido_IdAndEstado(id, "ACEPTADO");
         
-        dto.setOrganizadorNombre(partido.getOrganizador().getNombre() + " " + 
-                                partido.getOrganizador().getApellido());
+        List<UsuarioMinDTO> jugadores = inscripciones.stream()
+                .map(i -> {
+                    Usuario u = i.getUsuario();
+                    return new UsuarioMinDTO(
+                        u.getId(),
+                        u.getNombre(),
+                        u.getApellido(),
+                        u.getFotoPerfil()
+                    );
+                })
+                .collect(Collectors.toList());
         
-        // Mapear jugadores (sin incluir datos sensibles)
-        // TODO: Implementar lógica para obtener jugadores
+        dto.setJugadores(jugadores);
 
         return dto;
     }
@@ -118,9 +127,22 @@ public class PartidoService {
                 predicates.add(cb.equal(root.get("tipoPartido"), tipoPartido));
             }
 
+            // Filtro por nivel
+            if (nivel != null && !nivel.isBlank()) {
+                predicates.add(cb.equal(root.get("nivel"), nivel));
+            }
+
             // Filtro por género
             if (genero != null && !genero.isBlank()) {
                 predicates.add(cb.equal(root.get("genero"), genero));
+            }
+
+            // Filtro por estado
+            if (estado != null && !estado.isBlank()) {
+                predicates.add(cb.equal(root.get("estado"), estado));
+            } else {
+                // Por defecto, solo partidos activos
+                predicates.add(cb.equal(root.get("estado"), "PENDIENTE"));
             }
 
             // Filtro por fecha
@@ -139,15 +161,13 @@ public class PartidoService {
                 predicates.add(cb.or(nombreUbicacion, direccion));
             }
 
-            // TODO: Implementar filtro por cercanía geográfica usando latitud/longitud
-
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
         List<Partido> partidos = partidoRepository.findAll(spec);
         
         return partidos.stream()
-                .map(partidoMapper::toDto)
+                .map(this::entityToDtoCompleto)
                 .collect(Collectors.toList());
     }
 
@@ -160,7 +180,8 @@ public class PartidoService {
         List<Partido> creados = partidoRepository.findByOrganizador_Id(usuarioId);
 
         // Partidos inscritos (ACEPTADO)
-        List<Inscripcion> inscripciones = inscripcionRepository.findByUsuario_IdAndEstado(usuarioId, "ACEPTADO");
+        List<Inscripcion> inscripciones = inscripcionRepository
+                .findByUsuario_IdAndEstado(usuarioId, "ACEPTADO");
         List<Partido> inscritos = inscripciones.stream()
                 .map(Inscripcion::getPartido)
                 .collect(Collectors.toList());
@@ -171,7 +192,7 @@ public class PartidoService {
         todosPartidos.addAll(inscritos);
 
         return todosPartidos.stream()
-                .map(partidoMapper::toDto)
+                .map(this::entityToDtoCompleto)
                 .sorted((a, b) -> {
                     // Ordenar por fecha descendente
                     LocalDateTime dateA = LocalDateTime.of(a.getFecha(), a.getHora());
@@ -184,7 +205,7 @@ public class PartidoService {
     /**
      * Actualizar un partido (solo organizador)
      */
-    @Transactional
+   @Transactional
     public PartidoDTO actualizarPartido(UUID id, PartidoDTO dto, Authentication auth) {
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
@@ -202,7 +223,7 @@ public class PartidoService {
 
         // Actualizar campos permitidos
         if (dto.getFecha() != null) {
-            validarFechaFutura(dto.getFecha(), dto.getHora());
+            validarFechaFutura(dto.getFecha(), dto.getHora() != null ? dto.getHora() : partido.getHora());
             partido.setFecha(dto.getFecha());
         }
         if (dto.getHora() != null) {
@@ -243,7 +264,7 @@ public class PartidoService {
         Partido actualizado = partidoRepository.save(partido);
         log.info("Partido actualizado: id={}", id);
 
-        return partidoMapper.toDto(actualizado);
+        return entityToDtoCompleto(actualizado);
     }
 
     /**
@@ -442,5 +463,38 @@ public class PartidoService {
         }
         
         throw new SecurityException("No se pudo obtener el ID del usuario");
+    }
+
+    private PartidoDTO entityToDtoCompleto(Partido partido) {
+        PartidoDTO dto = partidoMapper.toDto(partido);
+        
+        // Calcular jugadores actuales
+        long jugadoresActuales = inscripcionRepository
+            .findByPartido_IdAndEstado(partido.getId(), "ACEPTADO")
+            .size();
+        dto.setJugadoresActuales((int) jugadoresActuales);
+        
+        // Setear información del organizador
+        if (partido.getOrganizador() != null) {
+            Usuario org = partido.getOrganizador();
+            UsuarioMinDTO orgMin = new UsuarioMinDTO(
+                org.getId(),
+                org.getNombre(),
+                org.getApellido(),
+                org.getFotoPerfil()
+            );
+            dto.setOrganizador(orgMin);
+        }
+        
+        // Calcular precio por jugador si no viene
+        if (dto.getPrecioPorJugador() == null) {
+            dto.setPrecioPorJugador(dto.getPrecioPorJugador()); // Usa el getter que calcula
+        }
+        
+        return dto;
+    }
+
+    public Partido findById(UUID id){
+        return partidoRepository.findById(id).orElse(null);
     }
 }

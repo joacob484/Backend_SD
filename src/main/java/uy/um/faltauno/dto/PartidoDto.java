@@ -1,76 +1,94 @@
 package uy.um.faltauno.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class PartidoDTO {
 
     private UUID id;
 
+    @JsonProperty("tipo_partido")
     private String tipoPartido;
+    
     private String genero;
+    
     private LocalDate fecha;
+    
     private LocalTime hora;
+    
+    @JsonProperty("duracion_minutos")
     private Integer duracionMinutos;
+    
+    @JsonProperty("nombre_ubicacion")
     private String nombreUbicacion;
+    
+    @JsonProperty("direccion_ubicacion")
     private String direccionUbicacion;
+    
     private Double latitud;
+    
     private Double longitud;
+    
+    @JsonProperty("cantidad_jugadores")
     private Integer cantidadJugadores;
+    
+    @JsonProperty("precio_total")
     private BigDecimal precioTotal;
+    
+    @JsonProperty("precio_por_jugador")
+    private BigDecimal precioPorJugador;
+    
     private String descripcion;
+    
     private String estado;
+    
     private String nivel;
-    private Integer jugadoresActuales; // se calcula en service
-    private UUID organizadorId;        // FK
-    private String organizadorNombre;  // para mostrar en el front
-
-    public PartidoDTO() {}
-
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-
-    public String getTipoPartido() { return tipoPartido; }
-    public void setTipoPartido(String tipoPartido) { this.tipoPartido = tipoPartido; }
-
-    public String getGenero() { return genero; }
-    public void setGenero(String genero) { this.genero = genero; }
-
-    public LocalDate getFecha() { return fecha; }
-    public void setFecha(LocalDate fecha) { this.fecha = fecha; }
-
-    public LocalTime getHora() { return hora; }
-    public void setHora(LocalTime hora) { this.hora = hora; }
-
-    public Integer getDuracionMinutos() { return duracionMinutos; }
-    public void setDuracionMinutos(Integer duracionMinutos) { this.duracionMinutos = duracionMinutos; }
-
-    public String getNombreUbicacion() { return nombreUbicacion; }
-    public void setNombreUbicacion(String nombreUbicacion) { this.nombreUbicacion = nombreUbicacion; }
-
-    public String getDireccionUbicacion() { return direccionUbicacion; }
-    public void setDireccionUbicacion(String direccionUbicacion) { this.direccionUbicacion = direccionUbicacion; }
-
-    public Double getLatitud() { return latitud; }
-    public void setLatitud(Double latitud) { this.latitud = latitud; }
-
-    public Double getLongitud() { return longitud; }
-    public void setLongitud(Double longitud) { this.longitud = longitud; }
-
-    public Integer getCantidadJugadores() { return cantidadJugadores; }
-    public void setCantidadJugadores(Integer cantidadJugadores) { this.cantidadJugadores = cantidadJugadores; }
-
-    public BigDecimal getPrecioTotal() { return precioTotal; }
-    public void setPrecioTotal(BigDecimal precioTotal) { this.precioTotal = precioTotal; }
-
-    public String getDescripcion() { return descripcion; }
-    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
-
-    public UUID getOrganizadorId() { return organizadorId; }
-    public void setOrganizadorId(UUID organizadorId) { this.organizadorId = organizadorId; }
-
-    public String getOrganizadorNombre() { return organizadorNombre; }
-    public void setOrganizadorNombre(String organizadorNombre) { this.organizadorNombre = organizadorNombre; }
+    
+    @JsonProperty("jugadores_actuales")
+    private Integer jugadoresActuales;
+    
+    @JsonProperty("organizador_id")
+    private UUID organizadorId;
+    
+    // Información del organizador (para mostrar en el frontend)
+    private UsuarioMinDTO organizador;
+    
+    // Lista de jugadores inscritos y aceptados
+    private List<UsuarioMinDTO> jugadores;
+    
+    // Solicitudes pendientes (solo para organizador)
+    @JsonProperty("solicitudes_pendientes")
+    private List<InscripcionDTO> solicitudesPendientes;
+    
+    @JsonProperty("created_at")
+    private String createdAt;
+    
+    /**
+     * Calcula el precio por jugador automáticamente
+     */
+    public BigDecimal getPrecioPorJugador() {
+        if (precioPorJugador != null) {
+            return precioPorJugador;
+        }
+        
+        if (precioTotal != null && cantidadJugadores != null && cantidadJugadores > 0) {
+            return precioTotal.divide(
+                BigDecimal.valueOf(cantidadJugadores), 
+                2, 
+                java.math.RoundingMode.HALF_UP
+            );
+        }
+        
+        return BigDecimal.ZERO;
+    }
 }
