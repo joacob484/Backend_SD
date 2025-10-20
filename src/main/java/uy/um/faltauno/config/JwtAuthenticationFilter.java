@@ -117,6 +117,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // No aplicar filtro SOLO a estos endpoints públicos específicos:
         // - Login
         if (path.startsWith("/api/auth/login")) return true;
+        if (path.startsWith("/oauth2/")) return true;
+        if (path.startsWith("/login/oauth2/")) return true;
         
         // - Registro (POST /api/usuarios pero NO /api/usuarios/me/*)
         if (path.equals("/api/usuarios") && "POST".equals(method)) return true;

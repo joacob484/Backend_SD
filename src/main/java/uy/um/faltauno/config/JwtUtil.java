@@ -11,6 +11,7 @@ import javax.crypto.SecretKey;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -148,5 +149,37 @@ public class JwtUtil {
      */
     public String extractEmail(String token) {
         return getUsernameFromToken(token);
+    }
+
+    /**
+     * Genera un token con claims adicionales personalizados.
+     * @param extraClaims Claims adicionales a incluir en el token
+     * @param email Email del usuario (usado como subject)
+     * @return Token JWT firmado
+     */
+    public String generateToken(Map<String, Object> extraClaims, String email) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + EXPIRATION_TIME);
+
+        return Jwts.builder()
+                .claims(extraClaims)
+                .subject(email)
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    /**
+     * Genera un token con userId como claim adicional.
+     * @param email Email del usuario (usado como subject)
+     * @param userId ID del usuario como string
+     * @return Token JWT firmado
+     */
+    public String generateToken(String email, String userId) {
+        Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("userId", userId);
+        claims.put("roles", List.of("ROLE_USER"));
+        return generateToken(claims, email);
     }
 }

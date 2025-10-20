@@ -316,4 +316,74 @@ public class UsuarioService {
     public void deleteUsuario(UUID id) {
         usuarioRepository.deleteById(id);
     }
+
+    @Transactional
+    public Usuario upsertGoogleUser(String email, String name, Map<String, Object> attrs) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email de Google inválido");
+        }
+
+        Optional<Usuario> existenteOpt = usuarioRepository.findByEmail(email);
+
+        Usuario u = existenteOpt.orElseGet(Usuario::new);
+        u.setEmail(email);
+
+        // name (si viene)
+        if (name != null && !name.isBlank()) {
+            u.setNombre(name);
+        }
+
+        // Campos opcionales: no fallar si no existen en la entidad
+        // (si tu entidad no tiene estos setters, simplemente quitá las líneas)
+        Object sub = attrs != null ? attrs.get("sub") : null;
+        if (sub != null) safeSet(u, "setProviderSub", sub.toString());
+
+        Object picture = attrs != null ? attrs.get("picture") : null;
+        if (picture != null) safeSet(u, "setFotoUrl", picture.toString());
+
+        // Podés marcar verificado si tu modelo lo contempla
+        safeSet(u, "setEmailVerificado", true);
+
+        // Si tenés un enum/provider, setealo (si no existe el método, no pasa nada)
+        safeSet(u, "setProveedor", enumValueOfSafely("GOOGLE", "uy.um.faltauno.model.AuthProvider"));
+
+        return usuarioRepository.save(u);
+    }
+
+    // ---- utilidades reflectivas seguras (evitan romper si el campo no existe en tu entidad) ----
+
+    private void safeSet(Object target, String setterName, Object value) {
+        try {
+            var m = target.getClass().getMethod(setterName, value.getClass());
+            m.invoke(target, value);
+        } catch (NoSuchMethodException e) {
+            // intentar con tipos más generales (Boolean/boolean, etc.)
+            try {
+                if (value instanceof Boolean) {
+                    var m = target.getClass().getMethod(setterName, boolean.class);
+                    m.invoke(target, (boolean) value);
+                    return;
+                }
+                if (value instanceof Integer) {
+                    var m = target.getClass().getMethod(setterName, int.class);
+                    m.invoke(target, (int) value);
+                    return;
+                }
+            } catch (Exception ignored) {}
+            // si no existe el setter, lo ignoramos
+        } catch (Exception ignored) {
+        }
+    }
+
+    private Object enumValueOfSafely(String name, String enumFqn) {
+        try {
+            Class<?> enumCls = Class.forName(enumFqn);
+            if (enumCls.isEnum()) {
+                @SuppressWarnings({"rawtypes","unchecked"})
+                Object val = Enum.valueOf((Class<? extends Enum>) enumCls, name);
+                return val;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
 }
