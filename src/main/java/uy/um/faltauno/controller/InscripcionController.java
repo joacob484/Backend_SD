@@ -25,15 +25,12 @@ public class InscripcionController {
 
     private final InscripcionService inscripcionService;
 
-    /**
-     * Crear solicitud de inscripción (el usuario se postula al partido)
-     */
     @PostMapping
     public ResponseEntity<ApiResponse<InscripcionDTO>> crear(
             @Valid @RequestBody SolicitudDTO dto,
             Authentication auth) {
         try {
-            log.info("Creando inscripción: partidoId={}, usuarioId={}", 
+            log.info("[InscripcionController] POST /api/inscripciones - partidoId={}, usuarioId={}", 
                     dto.getPartidoId(), dto.getUsuarioId());
             
             InscripcionDTO inscripcion = inscripcionService.crearInscripcion(
@@ -43,104 +40,92 @@ public class InscripcionController {
             
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponse<>(inscripcion, "Solicitud enviada correctamente", true));
+                    
         } catch (IllegalStateException e) {
-            log.warn("Error de estado creando inscripción: {}", e.getMessage());
+            log.warn("[InscripcionController] IllegalStateException: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (IllegalArgumentException e) {
-            log.error("Error de validación: {}", e.getMessage());
+            log.warn("[InscripcionController] IllegalArgumentException: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
+        } catch (SecurityException e) {
+            log.warn("[InscripcionController] SecurityException: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (Exception e) {
-            log.error("Error creando inscripción", e);
+            log.error("[InscripcionController] Error inesperado creando inscripción", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(null, "Error al crear inscripción", false));
         }
     }
 
-    /**
-     * Listar inscripciones de un usuario
-     */
     @GetMapping("/usuario/{usuarioId}")
     public ResponseEntity<ApiResponse<List<InscripcionDTO>>> listarPorUsuario(
             @PathVariable UUID usuarioId,
             @RequestParam(required = false) String estado) {
         try {
+            log.debug("[InscripcionController] GET /api/inscripciones/usuario/{} - estado={}", 
+                    usuarioId, estado);
+            
             List<InscripcionDTO> inscripciones = inscripcionService.listarPorUsuario(usuarioId, estado);
             return ResponseEntity.ok(new ApiResponse<>(inscripciones, "Inscripciones del usuario", true));
+            
         } catch (Exception e) {
-            log.error("Error listando inscripciones del usuario {}", usuarioId, e);
+            log.error("[InscripcionController] Error listando inscripciones del usuario {}", usuarioId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(null, "Error al listar inscripciones", false));
         }
     }
 
-    /**
-     * Listar inscripciones de un partido
-     */
     @GetMapping("/partido/{partidoId}")
     public ResponseEntity<ApiResponse<List<InscripcionDTO>>> listarPorPartido(
             @PathVariable UUID partidoId,
             @RequestParam(required = false) String estado) {
         try {
+            log.debug("[InscripcionController] GET /api/inscripciones/partido/{} - estado={}", 
+                    partidoId, estado);
+            
             List<InscripcionDTO> inscripciones = inscripcionService.listarPorPartido(partidoId, estado);
             return ResponseEntity.ok(new ApiResponse<>(inscripciones, "Inscripciones del partido", true));
+            
         } catch (Exception e) {
-            log.error("Error listando inscripciones del partido {}", partidoId, e);
+            log.error("[InscripcionController] Error listando inscripciones del partido {}", partidoId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(null, "Error al listar inscripciones", false));
         }
     }
 
-    /**
-     * Obtener solicitudes pendientes de un partido (solo organizador)
-     */
-    @GetMapping("/partido/{partidoId}/pendientes")
-    public ResponseEntity<ApiResponse<List<InscripcionDTO>>> obtenerSolicitudesPendientes(
-            @PathVariable UUID partidoId,
-            Authentication auth) {
-        try {
-            List<InscripcionDTO> solicitudes = inscripcionService.obtenerSolicitudesPendientes(partidoId, auth);
-            return ResponseEntity.ok(new ApiResponse<>(solicitudes, "Solicitudes pendientes", true));
-        } catch (SecurityException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (Exception e) {
-            log.error("Error obteniendo solicitudes pendientes", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(null, "Error al obtener solicitudes", false));
-        }
-    }
-
-    /**
-     * Aceptar una solicitud de inscripción (solo organizador)
-     */
     @PostMapping("/{inscripcionId}/aceptar")
     public ResponseEntity<ApiResponse<InscripcionDTO>> aceptar(
             @PathVariable UUID inscripcionId,
             Authentication auth) {
         try {
-            log.info("Aceptando inscripción {}", inscripcionId);
+            log.info("[InscripcionController] POST /api/inscripciones/{}/aceptar", inscripcionId);
+            
             InscripcionDTO aceptada = inscripcionService.aceptarInscripcion(inscripcionId, auth);
             return ResponseEntity.ok(new ApiResponse<>(aceptada, "Solicitud aceptada", true));
+            
         } catch (SecurityException e) {
-            log.warn("Acceso denegado al aceptar inscripción: {}", e.getMessage());
+            log.warn("[InscripcionController] Acceso denegado al aceptar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (IllegalStateException e) {
-            log.warn("Error de estado al aceptar: {}", e.getMessage());
+            log.warn("[InscripcionController] Error de estado al aceptar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (RuntimeException e) {
-            log.error("Error aceptando inscripción", e);
+            log.error("[InscripcionController] Error aceptando inscripción", e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         }
     }
 
-    /**
-     * Rechazar una solicitud de inscripción (solo organizador)
-     */
     @PostMapping("/{inscripcionId}/rechazar")
     public ResponseEntity<ApiResponse<Void>> rechazar(
             @PathVariable UUID inscripcionId,
@@ -148,53 +133,69 @@ public class InscripcionController {
             Authentication auth) {
         try {
             String motivo = body != null ? body.get("motivo") : null;
-            log.info("Rechazando inscripción {}", inscripcionId);
+            log.info("[InscripcionController] POST /api/inscripciones/{}/rechazar - motivo={}", 
+                    inscripcionId, motivo);
+            
             inscripcionService.rechazarInscripcion(inscripcionId, motivo, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Solicitud rechazada", true));
+            
         } catch (SecurityException e) {
+            log.warn("[InscripcionController] Acceso denegado al rechazar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
+        } catch (IllegalStateException e) {
+            log.warn("[InscripcionController] Error de estado al rechazar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (RuntimeException e) {
+            log.error("[InscripcionController] Error rechazando inscripción", e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         }
     }
 
-    /**
-     * Cancelar inscripción (el usuario se retira del partido)
-     */
     @DeleteMapping("/{inscripcionId}")
     public ResponseEntity<ApiResponse<Void>> cancelar(
             @PathVariable UUID inscripcionId,
             Authentication auth) {
         try {
-            log.info("Cancelando inscripción {}", inscripcionId);
+            log.info("[InscripcionController] DELETE /api/inscripciones/{}", inscripcionId);
+            
             inscripcionService.cancelarInscripcion(inscripcionId, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Te has retirado del partido", true));
+            
         } catch (SecurityException e) {
+            log.warn("[InscripcionController] Acceso denegado al cancelar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (IllegalStateException e) {
+            log.warn("[InscripcionController] Error de estado al cancelar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (RuntimeException e) {
+            log.error("[InscripcionController] Error cancelando inscripción", e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         }
     }
 
-    /**
-     * Obtener estado de inscripción de un usuario en un partido
-     */
     @GetMapping("/estado")
     public ResponseEntity<ApiResponse<Map<String, Object>>> obtenerEstado(
             @RequestParam UUID partidoId,
             @RequestParam UUID usuarioId) {
         try {
+            log.debug("[InscripcionController] GET /api/inscripciones/estado - partidoId={}, usuarioId={}", 
+                    partidoId, usuarioId);
+            
             Map<String, Object> estado = inscripcionService.obtenerEstadoInscripcion(partidoId, usuarioId);
             return ResponseEntity.ok(new ApiResponse<>(estado, "Estado de inscripción", true));
+            
         } catch (Exception e) {
-            log.error("Error obteniendo estado de inscripción", e);
+            log.error("[InscripcionController] Error obteniendo estado de inscripción", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(null, "Error al obtener estado", false));
         }
