@@ -2,9 +2,11 @@ package uy.um.faltauno.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
@@ -74,5 +76,7 @@ public class Partido {
     @Builder.Default
     private String nivel = "INTERMEDIO";
 
-    // created_at es manejado por DEFAULT now() en la DB
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
 }

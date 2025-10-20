@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -60,18 +61,19 @@ public class PartidoDTO {
     @JsonProperty("organizador_id")
     private UUID organizadorId;
     
-    // Información del organizador (para mostrar en el frontend)
+    // Información del organizador
     private UsuarioMinDTO organizador;
     
-    // Lista de jugadores inscritos y aceptados
+    // Lista de jugadores inscritos
     private List<UsuarioMinDTO> jugadores;
     
     // Solicitudes pendientes (solo para organizador)
     @JsonProperty("solicitudes_pendientes")
     private List<InscripcionDTO> solicitudesPendientes;
     
+    // Timestamp de creación
     @JsonProperty("created_at")
-    private String createdAt;
+    private Instant createdAt;
     
     /**
      * Calcula el precio por jugador automáticamente

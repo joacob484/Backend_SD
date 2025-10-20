@@ -6,15 +6,8 @@ import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.entity.Inscripcion;
 import uy.um.faltauno.entity.Usuario;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-
 @Mapper(componentModel = "spring")
 public interface InscripcionMapper {
-    
-    DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-            .withZone(ZoneId.systemDefault());
     
     /**
      * Convertir Entity a DTO
@@ -22,7 +15,7 @@ public interface InscripcionMapper {
     @Mapping(source = "partido.id", target = "partidoId")
     @Mapping(source = "usuario.id", target = "usuarioId")
     @Mapping(source = "usuario", target = "usuario", qualifiedByName = "toUsuarioMinDTO")
-    @Mapping(source = "createdAt", target = "fechaSolicitud", qualifiedByName = "instantToString")
+    @Mapping(source = "createdAt", target = "createdAt")
     InscripcionDTO toDTO(Inscripcion inscripcion);
 
     /**
@@ -47,16 +40,5 @@ public interface InscripcionMapper {
             usuario.getApellido(),
             usuario.getFotoPerfil()
         );
-    }
-    
-    /**
-     * Convertir Instant a String
-     */
-    @Named("instantToString")
-    default String instantToString(Instant instant) {
-        if (instant == null) {
-            return null;
-        }
-        return FORMATTER.format(instant);
     }
 }

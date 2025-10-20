@@ -121,7 +121,26 @@ public class PartidoController {
                     .body(new ApiResponse<>(null, "Error al obtener partidos", false));
         }
     }
-    
+
+    @GetMapping("/{partidoId}/solicitudes")
+    public ResponseEntity<ApiResponse<List<InscripcionDTO>>> obtenerSolicitudes(
+            @PathVariable UUID partidoId,
+            Authentication auth) {
+        try {
+            log.info("Obteniendo solicitudes pendientes para partido: {}", partidoId);
+            List<InscripcionDTO> solicitudes = inscripcionService.obtenerSolicitudesPendientes(partidoId, auth);
+            return ResponseEntity.ok(new ApiResponse<>(solicitudes, "Solicitudes pendientes", true));
+        } catch (SecurityException e) {
+            log.warn("Acceso denegado a solicitudes: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("Error obteniendo solicitudes del partido {}", partidoId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al obtener solicitudes", false));
+        }
+    }
+
     /**
      * Actualizar un partido (solo organizador)
      */

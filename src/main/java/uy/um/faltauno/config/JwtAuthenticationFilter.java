@@ -124,7 +124,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // - Endpoints públicos
         if (path.startsWith("/public/")) return true;
         if (path.startsWith("/actuator/health")) return true;
-        
+        if (path.startsWith("/api/auth/login")) return true;
+        if (path.equals("/api/usuarios") && "POST".equals(method)) return true;
+        if (path.startsWith("/public/")) return true;
+        if (path.startsWith("/actuator/health")) return true;
+        if (path.startsWith("/h2-console")) return true;
+        if (path.equals("/error")) return true;
         // Todos los demás requieren autenticación
         return false;
     }

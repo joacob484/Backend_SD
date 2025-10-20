@@ -7,8 +7,6 @@ import uy.um.faltauno.entity.Partido;
 import uy.um.faltauno.entity.Usuario;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,49 +17,36 @@ import java.util.UUID;
 )
 public interface PartidoMapper {
 
-    DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
-
-    // =========================
     // Entity -> DTO
-    // =========================
     @Mapping(source = "organizador.id", target = "organizadorId")
     @Mapping(source = "organizador", target = "organizador", qualifiedByName = "usuarioToMin")
     @Mapping(target = "precioPorJugador", expression = "java(calcularPrecioPorJugador(partido))")
-    @Mapping(target = "jugadoresActuales", ignore = true) // Se setea manualmente en el servicio
-    @Mapping(target = "jugadores", ignore = true) // Se setea manualmente en el servicio
-    @Mapping(target = "solicitudesPendientes", ignore = true) // Se setea manualmente en el servicio
+    @Mapping(source = "createdAt", target = "createdAt")
+    @Mapping(target = "jugadoresActuales", ignore = true)
+    @Mapping(target = "jugadores", ignore = true)
+    @Mapping(target = "solicitudesPendientes", ignore = true)
     PartidoDTO toDto(Partido partido);
 
     List<PartidoDTO> toDtoList(List<Partido> partidos);
 
-    // =========================
     // DTO -> Entity
-    // =========================
     @Mapping(target = "organizador", source = "organizadorId", qualifiedByName = "idToUsuario")
+    @Mapping(target = "createdAt", ignore = true)
     Partido toEntity(PartidoDTO dto);
 
     List<Partido> toEntityList(List<PartidoDTO> dtos);
 
-    // =========================
-    // UPDATE parcial (PATCH)
-    // =========================
+    // UPDATE parcial
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "organizador", ignore = true) // No permitir cambiar organizador
+    @Mapping(target = "organizador", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
     void updateEntityFromDto(PartidoDTO dto, @MappingTarget Partido entity);
 
-    // =========================
     // Métodos auxiliares
-    // =========================
-    
-    /**
-     * Convierte Usuario a UsuarioMinDTO
-     */
     @Named("usuarioToMin")
     default UsuarioMinDTO usuarioToMin(Usuario usuario) {
-        if (usuario == null) {
-            return null;
-        }
+        if (usuario == null) return null;
         return new UsuarioMinDTO(
             usuario.getId(),
             usuario.getNombre(),
@@ -70,22 +55,14 @@ public interface PartidoMapper {
         );
     }
     
-    /**
-     * Convierte UUID a Usuario (solo con ID)
-     */
     @Named("idToUsuario")
     default Usuario idToUsuario(UUID id) {
-        if (id == null) {
-            return null;
-        }
+        if (id == null) return null;
         Usuario usuario = new Usuario();
         usuario.setId(id);
         return usuario;
     }
     
-    /**
-     * Calcula el precio por jugador
-     */
     default BigDecimal calcularPrecioPorJugador(Partido partido) {
         if (partido == null || partido.getPrecioTotal() == null || 
             partido.getCantidadJugadores() == null || partido.getCantidadJugadores() == 0) {

@@ -2,6 +2,7 @@ package uy.um.faltauno.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
+import java.time.Instant;
 import java.util.UUID;
 
 @Data
@@ -23,7 +24,7 @@ public class InscripcionDTO {
     // Información del usuario (para mostrar en listas)
     private UsuarioMinDTO usuario;
     
-    // Fecha de solicitud formateada
-    @JsonProperty("fecha_solicitud")
-    private String fechaSolicitud;
+    // Timestamp de creación
+    @JsonProperty("created_at")
+    private Instant createdAt;
 }

@@ -21,9 +21,9 @@ public class WebConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
                         .allowedOrigins(frontendUrl) // origen principal
-                        .allowedOriginPatterns("http://localhost:3000", "http://host.docker.internal:*") // patterns para dev
+                        .allowedOriginPatterns("http://localhost:*", "http://host.docker.internal:*") // patterns para dev
                         .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                        .allowedHeaders("Content-Type","Authorization","X-USER-ID")
+                        .allowedHeaders("*")
                         .allowCredentials(true)
                         .maxAge(3600);
             }
