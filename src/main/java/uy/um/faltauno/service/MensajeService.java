@@ -83,11 +83,11 @@ public class MensajeService {
         UUID userId = getUserIdFromAuth(auth);
         validarAccesoChat(partido, userId);
 
-        Usuario usuario = usuarioRepository.findById(userId)
-                .orElseThrow(() -> {
-                    log.error("[MensajeService] Usuario no encontrado: {}", userId);
-                    return new RuntimeException("Usuario no encontrado");
-                });
+        // Validar que el usuario existe
+        if (!usuarioRepository.existsById(userId)) {
+            log.error("[MensajeService] Usuario no encontrado: {}", userId);
+            throw new RuntimeException("Usuario no encontrado");
+        }
 
         // Validar contenido
         if (mensajeDTO.getContenido() == null || mensajeDTO.getContenido().trim().isEmpty()) {

@@ -280,10 +280,14 @@ public class PartidoService {
             throw new SecurityException("Solo el organizador puede cancelar el partido");
         }
 
-        // TODO: Notificar a todos los jugadores inscritos
-        // TODO: Procesar reembolsos si corresponde
+        // Cambiar estado a CANCELADO
+        partido.setEstado("CANCELADO");
+        partidoRepository.save(partido);
 
         log.info("Partido cancelado: id={}, motivo={}", id, motivo);
+        
+        // TODO: Notificar a todos los jugadores inscritos
+        // TODO: Procesar reembolsos si corresponde
     }
 
     /**
@@ -299,9 +303,12 @@ public class PartidoService {
             throw new SecurityException("Solo el organizador puede completar el partido");
         }
 
+        // Cambiar estado a COMPLETADO
+        partido.setEstado("COMPLETADO");
+        partidoRepository.save(partido);
+
         log.info("Partido completado manualmente: id={}", id);
         
-        // TODO: Cambiar estado a COMPLETADO
         // TODO: Notificar jugadores para que califiquen
     }
 
@@ -381,6 +388,60 @@ public class PartidoService {
     }
 
     /**
+     * Invitar un jugador al partido (crea una inscripción automática pendiente)
+     */
+    @Transactional
+    public void invitarJugador(UUID partidoId, UUID usuarioId, Authentication auth) {
+        log.info("Invitando jugador al partido: partidoId={}, usuarioId={}", partidoId, usuarioId);
+        
+        Partido partido = partidoRepository.findById(partidoId)
+                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+
+        UUID organizadorId = getUserIdFromAuth(auth);
+        if (!partido.getOrganizador().getId().equals(organizadorId)) {
+            throw new SecurityException("Solo el organizador puede invitar jugadores");
+        }
+
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        // Verificar que el partido no esté completo
+        long jugadoresActuales = inscripcionRepository
+                .findByPartido_IdAndEstado(partidoId, "ACEPTADO").size();
+        
+        if (jugadoresActuales >= partido.getCantidadJugadores()) {
+            throw new IllegalStateException("El partido está completo");
+        }
+
+        // Verificar que no esté ya inscrito
+        Optional<Inscripcion> existente = inscripcionRepository
+                .findByPartidoIdAndUsuarioId(partidoId, usuarioId);
+        
+        if (existente.isPresent()) {
+            Inscripcion insc = existente.get();
+            if (insc.getEstado() == Inscripcion.EstadoInscripcion.ACEPTADO) {
+                throw new IllegalStateException("El usuario ya está inscrito en este partido");
+            } else if (insc.getEstado() == Inscripcion.EstadoInscripcion.PENDIENTE) {
+                throw new IllegalStateException("El usuario ya tiene una solicitud pendiente");
+            }
+            // Si está rechazado, se puede crear nueva invitación
+        }
+
+        // Crear inscripción pendiente (invitación)
+        Inscripcion invitacion = Inscripcion.builder()
+                .partido(partido)
+                .usuario(usuario)
+                .estado(Inscripcion.EstadoInscripcion.PENDIENTE)
+                .build();
+
+        inscripcionRepository.save(invitacion);
+        
+        log.info("Invitación creada exitosamente: partidoId={}, usuarioId={}", partidoId, usuarioId);
+        
+        // TODO: Enviar notificación al usuario invitado
+    }
+
+    /**
      * Proceso automático: cancelar partidos que no se llenaron
      * Este método debe ser llamado por un scheduler antes del inicio del partido
      */
@@ -393,7 +454,8 @@ public class PartidoService {
                 .filter(p -> {
                     LocalDateTime inicio = LocalDateTime.of(p.getFecha(), p.getHora());
                     return inicio.isAfter(ahora) && 
-                           inicio.isBefore(ahora.plusHours(2));
+                           inicio.isBefore(ahora.plusHours(2)) &&
+                           "PENDIENTE".equals(p.getEstado());
                 })
                 .collect(Collectors.toList());
 
@@ -406,8 +468,12 @@ public class PartidoService {
             if (jugadores < minimo) {
                 log.warn("Cancelando partido {} por falta de jugadores: {}/{}", 
                         partido.getId(), jugadores, minimo);
-                // TODO: Cambiar estado a CANCELADO
-                // TODO: Notificar jugadores
+                
+                // Cambiar estado a CANCELADO
+                partido.setEstado("CANCELADO");
+                partidoRepository.save(partido);
+                
+                // TODO: Notificar jugadores de la cancelación automática
             }
         }
     }

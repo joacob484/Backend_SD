@@ -259,4 +259,36 @@ public class PartidoController {
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         }
     }
+
+    /**
+     * Invitar un jugador al partido (solo organizador)
+     */
+    @PostMapping("/{partidoId}/invitar")
+    public ResponseEntity<ApiResponse<Void>> invitarJugador(
+            @PathVariable("partidoId") UUID partidoId,
+            @RequestBody java.util.Map<String, String> body,
+            Authentication auth) {
+        try {
+            String usuarioId = body.get("usuarioId");
+            if (usuarioId == null || usuarioId.isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiResponse<>(null, "usuarioId es requerido", false));
+            }
+
+            partidoService.invitarJugador(partidoId, UUID.fromString(usuarioId), auth);
+            return ResponseEntity.ok(new ApiResponse<>(null, "Invitación enviada exitosamente", true));
+        } catch (SecurityException e) {
+            log.warn("Acceso denegado al invitar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (IllegalArgumentException e) {
+            log.error("Error de validación al invitar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (RuntimeException e) {
+            log.error("Error invitando jugador", e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        }
+    }
 }

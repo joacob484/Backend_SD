@@ -107,6 +107,27 @@ public class UsuarioController {
         }
     }
 
+    @GetMapping(path = "/me/amigos", produces = "application/json")
+    public ResponseEntity<ApiResponse<List<UsuarioDTO>>> getAmigos() {
+        try {
+            UUID currentUserId = resolveCurrentUserId();
+            if (currentUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(null, "No autenticado", false));
+            }
+            
+            // TODO: Implementar relación de amistad en el futuro
+            // Por ahora, retornar lista vacía o usuarios sugeridos
+            List<UsuarioDTO> amigos = usuarioService.obtenerAmigosSugeridos(currentUserId);
+            
+            return ResponseEntity.ok(new ApiResponse<>(amigos, "Lista de amigos", true));
+        } catch (RuntimeException e) {
+            log.error("Error obteniendo amigos", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        }
+    }
+
     @PutMapping(path = "/me", consumes = "application/json", produces = "application/json")
     public ResponseEntity<?> actualizarPerfil(
             @RequestBody PerfilDTO perfilDTO,
@@ -118,9 +139,13 @@ public class UsuarioController {
                         .body(new ApiResponse<>(null, "No autenticado", false));
             }
 
-            Usuario updated = usuarioService.actualizarPerfil(usuarioId, perfilDTO);
+            // Actualizar perfil
+            usuarioService.actualizarPerfil(usuarioId, perfilDTO);
+            
+            // Obtener datos actualizados
             UsuarioDTO dto = usuarioService.getUsuario(usuarioId);
             dto.setPassword(null);
+            
             return ResponseEntity.ok(new ApiResponse<>(dto, "Perfil actualizado", true));
         } catch (RuntimeException e) {
             log.error("Error actualizando perfil", e);

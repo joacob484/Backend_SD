@@ -350,6 +350,31 @@ public class UsuarioService {
         return usuarioRepository.save(u);
     }
 
+    /**
+     * Obtiene amigos sugeridos para un usuario.
+     * Por ahora retorna otros usuarios activos que no sean el mismo.
+     * TODO: Implementar lógica de amistad real cuando exista la funcionalidad.
+     */
+    public List<UsuarioDTO> obtenerAmigosSugeridos(UUID usuarioId) {
+        // Validar que el usuario existe
+        if (!usuarioRepository.existsById(usuarioId)) {
+            throw new IllegalArgumentException("Usuario no encontrado");
+        }
+        
+        // Por ahora, sugerir usuarios que tengan datos completos
+        // Excluir al usuario actual
+        List<Usuario> sugeridos = usuarioRepository.findAll().stream()
+                .filter(u -> !u.getId().equals(usuarioId))
+                .filter(u -> u.getNombre() != null && u.getEmail() != null)
+                .limit(20) // Limitar a 20 sugerencias
+                .collect(Collectors.toList());
+        
+        return sugeridos.stream()
+                .map(usuarioMapper::toDTO)
+                .peek(dto -> dto.setPassword(null)) // Nunca exponer contraseñas
+                .collect(Collectors.toList());
+    }
+
     // ---- utilidades reflectivas seguras (evitan romper si el campo no existe en tu entidad) ----
 
     private void safeSet(Object target, String setterName, Object value) {

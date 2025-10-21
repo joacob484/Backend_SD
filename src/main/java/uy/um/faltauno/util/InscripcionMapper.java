@@ -69,6 +69,9 @@ public interface InscripcionMapper {
             organizadorNombre = (org.getNombre() != null ? org.getNombre() : "") + " " + 
                               (org.getApellido() != null ? org.getApellido() : "");
             organizadorNombre = organizadorNombre.trim();
+            if (organizadorNombre.isEmpty()) {
+                organizadorNombre = null;
+            }
         }
         
         return InscripcionDTO.PartidoMinDTO.builder()
@@ -79,7 +82,7 @@ public interface InscripcionMapper {
                 .hora(partido.getHora() != null ? partido.getHora().toString() : null)
                 .nombreUbicacion(partido.getNombreUbicacion())
                 .estado(partido.getEstado())
-                .organizadorNombre(organizadorNombre.isEmpty() ? null : organizadorNombre)
+                .organizadorNombre(organizadorNombre)
                 .build();
     }
     

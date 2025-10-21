@@ -18,7 +18,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString(exclude = {"remitente", "destinatario", "partido"})
+@ToString
 @EqualsAndHashCode(of = "id")
 public class Mensaje {
 
