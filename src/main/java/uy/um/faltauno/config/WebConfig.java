@@ -19,18 +19,23 @@ public class WebConfig {
 
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**")
-                        .allowedOrigins(frontendUrl) // origen principal
-                        .allowedOriginPatterns("http://localhost:*", "http://host.docker.internal:*") // patterns para dev
+                registry.addMapping("/**") // ✅ Aplicar a todas las rutas
+                        .allowedOriginPatterns(
+                            "http://localhost:*",
+                            "http://host.docker.internal:*",
+                            frontendUrl
+                        )
                         .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
+                        .exposedHeaders("Authorization", "Content-Type")
                         .allowCredentials(true)
                         .maxAge(3600);
             }
 
             @Override
             public void addResourceHandlers(ResourceHandlerRegistry registry) {
-                registry.addResourceHandler("/uploads/**").addResourceLocations("file:uploads/");
+                registry.addResourceHandler("/uploads/**")
+                        .addResourceLocations("file:uploads/");
             }
         };
     }

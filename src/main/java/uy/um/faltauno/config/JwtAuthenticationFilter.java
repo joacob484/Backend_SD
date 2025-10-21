@@ -19,10 +19,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Filtro de autenticación JWT - VERSIÓN CORREGIDA
- * Extrae y valida el token, luego establece el Authentication en el SecurityContext
- */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -87,76 +83,71 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Crear Authentication con el email como principal
             UsernamePasswordAuthenticationToken authentication = 
                     new UsernamePasswordAuthenticationToken(
-                            email,  // principal (username/email)
-                            null,   // credentials (no necesarias después de validar el token)
+                            email,
+                            null,
                             authorities
                     );
             
-            // Agregar detalles de la request (IP, session, etc.)
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-            // Establecer en el contexto de seguridad
             SecurityContextHolder.getContext().setAuthentication(authentication);
             
             log.info("✅ User authenticated via JWT: {} (userId: {}) for: {}", email, userId, path);
 
         } catch (Exception ex) {
-            // Limpiar el contexto si algo falla
             SecurityContextHolder.clearContext();
             log.error("💥 Error in JwtAuthenticationFilter for {}: {}", path, ex.getMessage());
-            // No lanzar excepción - dejar que continue sin autenticación
         }
 
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Determinar si el filtro debe ejecutarse para esta request
-     * @return true si NO debe aplicarse el filtro (endpoints públicos)
-     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
         String method = request.getMethod();
         
-        // ✅ Endpoints públicos que NO requieren JWT
+        // ✅ CRÍTICO: No filtrar OPTIONS (CORS preflight)
+        if ("OPTIONS".equals(method)) {
+            log.debug("⚪ Skipping JWT filter for OPTIONS request: {}", path);
+            return true;
+        }
         
-        // 1. OAuth2 / Login social
+        // ✅ OAuth2 / Login social
         if (path.startsWith("/oauth2/") || path.startsWith("/login/oauth2/")) {
             return true;
         }
         
-        // 2. Login tradicional
-        if (path.startsWith("/api/auth/login")) {
+        // ✅ Login tradicional
+        if (path.startsWith("/api/auth/")) {
             return true;
         }
         
-        // 3. Registro de nuevos usuarios (POST /api/usuarios)
+        // ✅ CRÍTICO: Registro de nuevos usuarios (POST /api/usuarios)
         if (path.equals("/api/usuarios") && "POST".equals(method)) {
+            log.debug("⚪ Skipping JWT filter for user registration: POST /api/usuarios");
             return true;
         }
         
-        // 4. Endpoints públicos
+        // ✅ Endpoints públicos
         if (path.startsWith("/public/")) {
             return true;
         }
         
-        // 5. Health check
+        // ✅ Health check
         if (path.startsWith("/actuator/health")) {
             return true;
         }
         
-        // 6. H2 Console (solo en desarrollo)
+        // ✅ H2 Console
         if (path.startsWith("/h2-console")) {
             return true;
         }
         
-        // 7. Error page
+        // ✅ Error page
         if (path.equals("/error")) {
             return true;
         }
         
-        // ✅ Todos los demás requieren autenticación
         return false;
     }
 }
