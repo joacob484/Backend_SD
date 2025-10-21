@@ -19,16 +19,19 @@ public class Mensaje {
     @GeneratedValue
     private UUID id;
 
-    @Column(name = "partido_id", nullable = false)
-    private UUID partidoId;
+    @ManyToOne(optional = true) // <- ahora opcional
+    @JoinColumn(name = "partido_id", nullable = true)
+    private Partido partido;
 
-    @Column(name = "remitente_id", nullable = false)
-    private UUID remitenteId;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "remitente_id", nullable = false)
+    private Usuario remitente;
 
-    @Column(name = "destinatario_id")
-    private UUID destinatarioId; // null para mensajes grupales
+    @ManyToOne(optional = true) // <- ahora opcional
+    @JoinColumn(name = "destinatario_id", nullable = true)
+    private Usuario destinatario;
 
-    @Column(name = "contenido", nullable = false, length = 500)
+    @Column(name = "contenido", length = 500, nullable = false)
     private String contenido;
 
     @Column(name = "leido", nullable = false)

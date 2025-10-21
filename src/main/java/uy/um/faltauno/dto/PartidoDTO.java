@@ -36,9 +36,9 @@ public class PartidoDTO {
     @JsonProperty("direccion_ubicacion")
     private String direccionUbicacion;
     
-    private Double latitud;
+    private BigDecimal latitud;
     
-    private Double longitud;
+    private BigDecimal longitud;
     
     @JsonProperty("cantidad_jugadores")
     private Integer cantidadJugadores;

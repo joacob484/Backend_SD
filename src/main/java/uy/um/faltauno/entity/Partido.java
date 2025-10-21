@@ -48,11 +48,11 @@ public class Partido {
     @Column(name = "direccion_ubicacion", length = 255)
     private String direccionUbicacion;
 
-    @Column(name = "latitud")
-    private Double latitud;
+    @Column(name = "latitud", precision = 18, scale = 10)
+    private BigDecimal latitud;
 
-    @Column(name = "longitud")
-    private Double longitud;
+    @Column(name = "longitud", precision = 18, scale = 10)
+    private BigDecimal longitud;
 
     @Column(name = "cantidad_jugadores", nullable = false)
     private Integer cantidadJugadores;

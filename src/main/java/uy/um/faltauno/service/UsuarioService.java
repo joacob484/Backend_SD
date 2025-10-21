@@ -256,7 +256,7 @@ public class UsuarioService {
         return mensajes.stream().map(m -> {
             Map<String,Object> mm = new HashMap<>();
             mm.put("id", m.getId());
-            mm.put("senderId", m.getRemitenteId());
+            mm.put("senderId", m.getRemitente().getId());
             mm.put("message", m.getContenido());
             mm.put("createdAt", m.getCreatedAt());
             return mm;
