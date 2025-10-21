@@ -7,6 +7,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 @Entity
 @Getter
 @Setter
@@ -29,9 +32,8 @@ public class Usuario {
     private Double peso;
     private String posicion;
 
-    @Lob
     @Basic(fetch = FetchType.LAZY)
-    @Column(name = "foto_perfil")
+    @Column(name = "foto_perfil", columnDefinition = "bytea")
     private byte[] fotoPerfil;
 
     private String cedula;
