@@ -2,23 +2,28 @@ package uy.um.faltauno.repository;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 import uy.um.faltauno.entity.Mensaje;
 
 import java.util.List;
 import java.util.UUID;
 
+@Repository
 public interface MensajeRepository extends JpaRepository<Mensaje, UUID> {
     
     /**
      * Buscar mensajes de un partido con paginación
      */
     @Query("SELECT m FROM Mensaje m WHERE m.partidoId = :partidoId ORDER BY m.createdAt DESC")
-    List<Mensaje> findByPartidoId(@Param("partidoId") UUID partidoId, Pageable pageable);
+    List<Mensaje> findByPartidoIdOrderByCreatedAtDesc(
+            @Param("partidoId") UUID partidoId, 
+            Pageable pageable);
     
     /**
-     * Buscar todos los mensajes de un partido
+     * Buscar todos los mensajes de un partido (sin paginación)
      */
     List<Mensaje> findByPartidoIdOrderByCreatedAtAsc(UUID partidoId);
     
@@ -47,7 +52,37 @@ public interface MensajeRepository extends JpaRepository<Mensaje, UUID> {
             @Param("destinatarioId") UUID destinatarioId);
     
     /**
+     * Marcar todos los mensajes de un partido como leídos para un usuario
+     */
+    @Modifying
+    @Query("UPDATE Mensaje m SET m.leido = true " +
+           "WHERE m.partidoId = :partidoId AND m.destinatarioId = :usuarioId AND m.leido = false")
+    int marcarMensajesComoLeidos(
+            @Param("partidoId") UUID partidoId,
+            @Param("usuarioId") UUID usuarioId);
+    
+    /**
      * Eliminar todos los mensajes de un partido
      */
-    void deleteByPartidoId(UUID partidoId);
+    @Modifying
+    @Query("DELETE FROM Mensaje m WHERE m.partidoId = :partidoId")
+    void deleteByPartidoId(@Param("partidoId") UUID partidoId);
+    
+    /**
+     * Buscar mensajes grupales de un partido (sin destinatario específico)
+     */
+    @Query("SELECT m FROM Mensaje m WHERE m.partidoId = :partidoId " +
+           "AND m.destinatarioId IS NULL ORDER BY m.createdAt ASC")
+    List<Mensaje> findMensajesGrupalesByPartidoId(@Param("partidoId") UUID partidoId);
+    
+    /**
+     * Buscar mensajes directos entre dos usuarios
+     */
+    @Query("SELECT m FROM Mensaje m WHERE " +
+           "((m.remitenteId = :usuario1 AND m.destinatarioId = :usuario2) OR " +
+           "(m.remitenteId = :usuario2 AND m.destinatarioId = :usuario1)) " +
+           "ORDER BY m.createdAt ASC")
+    List<Mensaje> findMensajesDirectosEntreUsuarios(
+            @Param("usuario1") UUID usuario1,
+            @Param("usuario2") UUID usuario2);
 }

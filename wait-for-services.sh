@@ -1,37 +1,71 @@
-#!/bin/sh
+#!/bin/bash
+# wait-for-services.sh - VERSIÓN CORREGIDA
+# Espera a que los servicios estén disponibles antes de iniciar la app
+
 set -e
 
-# Variables por defecto
+echo "🔍 Waiting for required services..."
+
+# Configuración
 POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
-POSTGRES_USER="${SPRING_DATASOURCE_USERNAME:-app}"
-POSTGRES_DB="${SPRING_DATASOURCE_DB:-faltauno_db}"
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+REDIS_HOST="${REDIS_HOST:-redis}"
+REDIS_PORT="${REDIS_PORT:-6379}"
+RABBITMQ_HOST="${RABBITMQ_HOST:-rabbitmq}"
+RABBITMQ_PORT="${RABBITMQ_PORT:-5672}"
 
-REDIS_HOST="${SPRING_REDIS_HOST:-redis}"
-REDIS_PORT="${SPRING_REDIS_PORT:-6379}"
+MAX_RETRIES=30
+RETRY_INTERVAL=2
 
-RABBITMQ_HOST="${SPRING_RABBITMQ_HOST:-rabbitmq}"
-RABBITMQ_PORT="${SPRING_RABBITMQ_PORT:-5672}"
+# Función para esperar un servicio
+wait_for_service() {
+    local host=$1
+    local port=$2
+    local service_name=$3
+    local retries=0
 
-# Espera Postgres
-echo "Esperando a Postgres en $POSTGRES_HOST..."
-until pg_isready -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do
-  echo "Esperando a Postgres..."
-  sleep 2
-done
+    echo "⏳ Waiting for $service_name ($host:$port)..."
+    
+    while ! nc -z "$host" "$port" > /dev/null 2>&1; do
+        retries=$((retries + 1))
+        
+        if [ $retries -ge $MAX_RETRIES ]; then
+            echo "❌ ERROR: $service_name not available after $MAX_RETRIES attempts"
+            exit 1
+        fi
+        
+        echo "   Attempt $retries/$MAX_RETRIES - waiting ${RETRY_INTERVAL}s..."
+        sleep $RETRY_INTERVAL
+    done
+    
+    echo "✅ $service_name is ready!"
+}
 
-# Espera Redis
-echo "Esperando a Redis en $REDIS_HOST:$REDIS_PORT..."
-until nc -z "$REDIS_HOST" "$REDIS_PORT"; do
-  echo "Esperando a Redis..."
-  sleep 2
-done
+# Esperar PostgreSQL
+wait_for_service "$POSTGRES_HOST" "$POSTGRES_PORT" "PostgreSQL"
 
-# Espera RabbitMQ
-echo "Esperando a RabbitMQ en $RABBITMQ_HOST:$RABBITMQ_PORT..."
-until nc -z "$RABBITMQ_HOST" "$RABBITMQ_PORT"; do
-  echo "Esperando a RabbitMQ..."
-  sleep 2
-done
+# Verificar que PostgreSQL acepta conexiones (no solo que el puerto esté abierto)
+echo "🔍 Verifying PostgreSQL accepts connections..."
+PGPASSWORD="${SPRING_DATASOURCE_PASSWORD:-pass}" \
+    pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "${SPRING_DATASOURCE_USERNAME:-app}" -d "${POSTGRES_DB:-faltauno_db}" -t 30
 
-echo "Todos los servicios están disponibles, iniciando backend..."
+if [ $? -eq 0 ]; then
+    echo "✅ PostgreSQL is accepting connections!"
+else
+    echo "❌ ERROR: PostgreSQL not accepting connections"
+    exit 1
+fi
+
+# Esperar Redis
+wait_for_service "$REDIS_HOST" "$REDIS_PORT" "Redis"
+
+# Esperar RabbitMQ
+wait_for_service "$RABBITMQ_HOST" "$RABBITMQ_PORT" "RabbitMQ"
+
+echo ""
+echo "🎉 All services are ready!"
+echo "🚀 Starting Spring Boot application..."
+echo ""
+
+# Ejecutar el comando que se pase como argumentos
 exec "$@"

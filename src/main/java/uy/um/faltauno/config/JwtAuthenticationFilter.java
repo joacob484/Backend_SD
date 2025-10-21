@@ -20,8 +20,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Filtro de autenticación por JWT.
- * Extrae y valida el token, luego establece el Authentication en el SecurityContext.
+ * Filtro de autenticación JWT - VERSIÓN CORREGIDA
+ * Extrae y valida el token, luego establece el Authentication en el SecurityContext
  */
 @Component
 @RequiredArgsConstructor
@@ -37,24 +37,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String path = request.getServletPath();
-        log.debug("JwtAuthenticationFilter processing: {} {}", request.getMethod(), path);
+        String method = request.getMethod();
+        
+        log.debug("🔍 JwtFilter processing: {} {}", method, path);
 
         try {
             String header = request.getHeader("Authorization");
             
             // Si no hay header Authorization, continuar sin autenticar
             if (header == null || !header.startsWith("Bearer ")) {
-                log.debug("No Bearer token found for path: {}", path);
+                log.debug("⚪ No Bearer token found for: {}", path);
                 filterChain.doFilter(request, response);
                 return;
             }
 
             String token = header.substring(7).trim();
-            log.debug("Token found, validating...");
+            log.debug("🔑 Token found, validating...");
             
             // Validar token
             if (!jwtUtil.validateToken(token)) {
-                log.warn("Token JWT inválido o expirado para path: {}", path);
+                log.warn("❌ Invalid or expired JWT token for: {}", path);
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -64,14 +66,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UUID userId = jwtUtil.extractUserId(token);
             
             if (email == null) {
-                log.warn("Token JWT sin email (subject) para path: {}", path);
+                log.warn("❌ JWT token without email (subject) for: {}", path);
                 filterChain.doFilter(request, response);
                 return;
             }
 
             // Si ya hay autenticación en el contexto, no sobrescribir
             if (SecurityContextHolder.getContext().getAuthentication() != null) {
-                log.debug("Authentication already exists in context");
+                log.debug("⚠️ Authentication already exists in context");
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -96,12 +98,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Establecer en el contexto de seguridad
             SecurityContextHolder.getContext().setAuthentication(authentication);
             
-            log.info("Usuario autenticado vía JWT: {} (userId: {}) para path: {}", email, userId, path);
+            log.info("✅ User authenticated via JWT: {} (userId: {}) for: {}", email, userId, path);
 
         } catch (Exception ex) {
             // Limpiar el contexto si algo falla
             SecurityContextHolder.clearContext();
-            log.error("Error en JwtAuthenticationFilter para path {}: {}", path, ex.getMessage(), ex);
+            log.error("💥 Error in JwtAuthenticationFilter for {}: {}", path, ex.getMessage());
             // No lanzar excepción - dejar que continue sin autenticación
         }
 
@@ -109,32 +111,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Opcional: ignorar ciertos paths (para optimización)
+     * Determinar si el filtro debe ejecutarse para esta request
+     * @return true si NO debe aplicarse el filtro (endpoints públicos)
      */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
         String method = request.getMethod();
         
-        // No aplicar filtro SOLO a estos endpoints públicos específicos:
-        // - Login
-        if (path.startsWith("/api/auth/login")) return true;
-        if (path.startsWith("/oauth2/")) return true;
-        if (path.startsWith("/login/oauth2/")) return true;
+        // ✅ Endpoints públicos que NO requieren JWT
         
-        // - Registro (POST /api/usuarios pero NO /api/usuarios/me/*)
-        if (path.equals("/api/usuarios") && "POST".equals(method)) return true;
+        // 1. OAuth2 / Login social
+        if (path.startsWith("/oauth2/") || path.startsWith("/login/oauth2/")) {
+            return true;
+        }
         
-        // - Endpoints públicos
-        if (path.startsWith("/public/")) return true;
-        if (path.startsWith("/actuator/health")) return true;
-        if (path.startsWith("/api/auth/login")) return true;
-        if (path.equals("/api/usuarios") && "POST".equals(method)) return true;
-        if (path.startsWith("/public/")) return true;
-        if (path.startsWith("/actuator/health")) return true;
-        if (path.startsWith("/h2-console")) return true;
-        if (path.equals("/error")) return true;
-        // Todos los demás requieren autenticación
+        // 2. Login tradicional
+        if (path.startsWith("/api/auth/login")) {
+            return true;
+        }
+        
+        // 3. Registro de nuevos usuarios (POST /api/usuarios)
+        if (path.equals("/api/usuarios") && "POST".equals(method)) {
+            return true;
+        }
+        
+        // 4. Endpoints públicos
+        if (path.startsWith("/public/")) {
+            return true;
+        }
+        
+        // 5. Health check
+        if (path.startsWith("/actuator/health")) {
+            return true;
+        }
+        
+        // 6. H2 Console (solo en desarrollo)
+        if (path.startsWith("/h2-console")) {
+            return true;
+        }
+        
+        // 7. Error page
+        if (path.equals("/error")) {
+            return true;
+        }
+        
+        // ✅ Todos los demás requieren autenticación
         return false;
     }
 }

@@ -10,12 +10,15 @@ import uy.um.faltauno.entity.Usuario;
 import java.time.Duration;
 import java.time.Instant;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+    componentModel = "spring",
+    unmappedTargetPolicy = ReportingPolicy.IGNORE
+)
 public interface InscripcionMapper {
     
     @Mapping(source = "partido.id", target = "partidoId")
     @Mapping(source = "usuario.id", target = "usuarioId")
-    @Mapping(source = "estado", target = "estado", qualifiedByName = "estadoToString")
+    @Mapping(source = "estado", target = "estado")  // ✅ MapStruct maneja el enum automáticamente
     @Mapping(source = "usuario", target = "usuario", qualifiedByName = "toUsuarioMinDTO")
     @Mapping(source = "partido", target = "partido", qualifiedByName = "toPartidoMinDTO")
     @Mapping(source = "createdAt", target = "createdAt")
@@ -37,7 +40,8 @@ public interface InscripcionMapper {
     @Mapping(target = "fechaRechazo", ignore = true)
     @Mapping(target = "fechaCancelacion", ignore = true)
     @Mapping(target = "id", ignore = true)
-    @Mapping(source = "estado", target = "estado", qualifiedByName = "stringToEstado")
+    @Mapping(target = "comentario", ignore = true)
+    @Mapping(target = "motivoRechazo", ignore = true)
     Inscripcion toEntity(InscripcionDTO dto);
     
     @Named("toUsuarioMinDTO")
@@ -61,8 +65,10 @@ public interface InscripcionMapper {
         
         String organizadorNombre = null;
         if (partido.getOrganizador() != null) {
-            organizadorNombre = partido.getOrganizador().getNombre() + " " + 
-                              partido.getOrganizador().getApellido();
+            Usuario org = partido.getOrganizador();
+            organizadorNombre = (org.getNombre() != null ? org.getNombre() : "") + " " + 
+                              (org.getApellido() != null ? org.getApellido() : "");
+            organizadorNombre = organizadorNombre.trim();
         }
         
         return InscripcionDTO.PartidoMinDTO.builder()
@@ -73,27 +79,13 @@ public interface InscripcionMapper {
                 .hora(partido.getHora() != null ? partido.getHora().toString() : null)
                 .nombreUbicacion(partido.getNombreUbicacion())
                 .estado(partido.getEstado())
-                .organizadorNombre(organizadorNombre)
+                .organizadorNombre(organizadorNombre.isEmpty() ? null : organizadorNombre)
                 .build();
     }
     
-    @Named("estadoToString")
-    default String estadoToString(Inscripcion.EstadoInscripcion estado) {
-        return estado != null ? estado.name() : null;
-    }
-    
-    @Named("stringToEstado")
-    default Inscripcion.EstadoInscripcion stringToEstado(String estado) {
-        if (estado == null || estado.isBlank()) {
-            return Inscripcion.EstadoInscripcion.PENDIENTE;
-        }
-        try {
-            return Inscripcion.EstadoInscripcion.valueOf(estado.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return Inscripcion.EstadoInscripcion.PENDIENTE;
-        }
-    }
-    
+    /**
+     * Calcular tiempo transcurrido desde la creación
+     */
     default String calcularTiempoTranscurrido(Instant createdAt) {
         if (createdAt == null) {
             return null;

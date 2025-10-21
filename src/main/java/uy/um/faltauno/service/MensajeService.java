@@ -20,6 +20,7 @@ import uy.um.faltauno.repository.PartidoRepository;
 import uy.um.faltauno.repository.UsuarioRepository;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -39,67 +40,82 @@ public class MensajeService {
      */
     @Transactional(readOnly = true)
     public List<MensajeDTO> obtenerMensajesPartido(UUID partidoId, int limit, Authentication auth) {
+        log.debug("[MensajeService] Obteniendo mensajes: partidoId={}, limit={}", partidoId, limit);
+        
         Partido partido = partidoRepository.findById(partidoId)
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> {
+                    log.error("[MensajeService] Partido no encontrado: {}", partidoId);
+                    return new RuntimeException("Partido no encontrado");
+                });
 
-        // Verificar que el usuario tenga acceso al chat
         UUID userId = getUserIdFromAuth(auth);
         validarAccesoChat(partido, userId);
 
-        // Obtener mensajes ordenados por fecha descendente, limitados
+        // Obtener mensajes con paginación
         PageRequest pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"));
-        List<Mensaje> mensajes = mensajeRepository.findByPartidoId(partidoId, pageable);
+        List<Mensaje> mensajes = mensajeRepository.findByPartidoIdOrderByCreatedAtDesc(partidoId, pageable);
 
-        // Convertir a DTO e invertir orden para mostrar más antiguos primero
+        log.debug("[MensajeService] ✅ Encontrados {} mensajes", mensajes.size());
+
+        // Convertir a DTO e invertir orden
         List<MensajeDTO> mensajesDTO = mensajes.stream()
                 .map(this::convertirADTO)
                 .collect(Collectors.toList());
         
-        // Revertir para que los más antiguos aparezcan primero
-        java.util.Collections.reverse(mensajesDTO);
+        Collections.reverse(mensajesDTO); // Más antiguos primero
         
         return mensajesDTO;
     }
 
     /**
-     * Enviar un mensaje al chat
+     * Enviar un mensaje al chat del partido
      */
     @Transactional
     public MensajeDTO enviarMensaje(UUID partidoId, MensajeDTO mensajeDTO, Authentication auth) {
+        log.info("[MensajeService] Enviando mensaje a partido: {}", partidoId);
+        
         Partido partido = partidoRepository.findById(partidoId)
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> {
+                    log.error("[MensajeService] Partido no encontrado: {}", partidoId);
+                    return new RuntimeException("Partido no encontrado");
+                });
 
         UUID userId = getUserIdFromAuth(auth);
-        
-        // Verificar que el usuario tenga acceso al chat
         validarAccesoChat(partido, userId);
 
         Usuario usuario = usuarioRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> {
+                    log.error("[MensajeService] Usuario no encontrado: {}", userId);
+                    return new RuntimeException("Usuario no encontrado");
+                });
 
         // Validar contenido
         if (mensajeDTO.getContenido() == null || mensajeDTO.getContenido().trim().isEmpty()) {
+            log.warn("[MensajeService] Intento de enviar mensaje vacío");
             throw new IllegalArgumentException("El mensaje no puede estar vacío");
         }
 
         if (mensajeDTO.getContenido().length() > 500) {
+            log.warn("[MensajeService] Mensaje excede límite de caracteres");
             throw new IllegalArgumentException("El mensaje no puede exceder 500 caracteres");
         }
 
-        // Crear mensaje
-        Mensaje mensaje = new Mensaje();
-        mensaje.setPartidoId(partidoId);
-        mensaje.setRemitenteId(userId);
-        mensaje.setDestinatarioId(null); // Es un mensaje grupal
-        mensaje.setContenido(mensajeDTO.getContenido().trim());
-        mensaje.setLeido(false);
-        mensaje.setCreatedAt(Instant.now());
+        // ✅ USAR Builder con UUID directamente
+        Mensaje mensaje = Mensaje.builder()
+                .partidoId(partidoId)
+                .remitenteId(userId)
+                .destinatarioId(null) // Mensaje grupal
+                .contenido(mensajeDTO.getContenido().trim())
+                .leido(false)
+                .createdAt(Instant.now())
+                .build();
 
         Mensaje guardado = mensajeRepository.save(mensaje);
         
-        log.info("Mensaje enviado: partidoId={}, usuarioId={}", partidoId, userId);
+        log.info("[MensajeService] ✅ Mensaje enviado: id={}, partidoId={}, usuarioId={}", 
+                guardado.getId(), partidoId, userId);
 
-        // TODO: Enviar notificación push a otros participantes
+        // TODO: Notificación push a otros participantes
         
         return convertirADTO(guardado);
     }
@@ -109,29 +125,30 @@ public class MensajeService {
      */
     @Transactional
     public void marcarMensajesComoLeidos(UUID partidoId, Authentication auth) {
+        log.debug("[MensajeService] Marcando mensajes como leídos: partidoId={}", partidoId);
+        
         UUID userId = getUserIdFromAuth(auth);
         
-        List<Mensaje> mensajesNoLeidos = mensajeRepository
-                .findByPartidoIdAndDestinatarioIdAndLeido(partidoId, userId, false);
-
-        mensajesNoLeidos.forEach(m -> m.setLeido(true));
-        mensajeRepository.saveAll(mensajesNoLeidos);
+        int actualizados = mensajeRepository.marcarMensajesComoLeidos(partidoId, userId);
         
-        log.info("Mensajes marcados como leídos: partidoId={}, usuarioId={}, cantidad={}", 
-                partidoId, userId, mensajesNoLeidos.size());
+        log.info("[MensajeService] ✅ Mensajes marcados como leídos: {}", actualizados);
     }
 
     /**
-     * Eliminar un mensaje
+     * Eliminar un mensaje (solo autor o organizador)
      */
     @Transactional
     public void eliminarMensaje(UUID mensajeId, Authentication auth) {
+        log.info("[MensajeService] Eliminando mensaje: id={}", mensajeId);
+        
         Mensaje mensaje = mensajeRepository.findById(mensajeId)
-                .orElseThrow(() -> new RuntimeException("Mensaje no encontrado"));
+                .orElseThrow(() -> {
+                    log.error("[MensajeService] Mensaje no encontrado: {}", mensajeId);
+                    return new RuntimeException("Mensaje no encontrado");
+                });
 
         UUID userId = getUserIdFromAuth(auth);
 
-        // Verificar que sea el autor o el organizador del partido
         Partido partido = partidoRepository.findById(mensaje.getPartidoId())
                 .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
 
@@ -139,42 +156,54 @@ public class MensajeService {
         boolean esOrganizador = partido.getOrganizador().getId().equals(userId);
 
         if (!esAutor && !esOrganizador) {
+            log.warn("[MensajeService] Acceso denegado: userId={}", userId);
             throw new SecurityException("No tienes permiso para eliminar este mensaje");
         }
 
         mensajeRepository.delete(mensaje);
-        log.info("Mensaje eliminado: id={}, partidoId={}", mensajeId, mensaje.getPartidoId());
+        log.info("[MensajeService] ✅ Mensaje eliminado: id={}", mensajeId);
     }
 
     // ===== MÉTODOS AUXILIARES =====
 
+    /**
+     * Validar que el usuario tenga acceso al chat del partido
+     */
     private void validarAccesoChat(Partido partido, UUID userId) {
-        // El organizador siempre tiene acceso
+        // Organizador siempre tiene acceso
         if (partido.getOrganizador().getId().equals(userId)) {
+            log.debug("[MensajeService] Acceso concedido: usuario es organizador");
             return;
         }
 
-        // Verificar que el usuario esté inscrito y aceptado
+        // Verificar inscripción aceptada
         List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(partido.getId());
         boolean estaInscrito = inscripciones.stream()
                 .anyMatch(i -> i.getUsuario().getId().equals(userId) && 
-                              "ACEPTADO".equals(i.getEstado()));
+                              i.getEstado() == Inscripcion.EstadoInscripcion.ACEPTADO);
 
         if (!estaInscrito) {
+            log.warn("[MensajeService] Acceso denegado: usuario no inscrito o no aceptado");
             throw new SecurityException("No tienes acceso al chat de este partido");
         }
+        
+        log.debug("[MensajeService] Acceso concedido: usuario inscrito y aceptado");
     }
 
+    /**
+     * Convertir Mensaje a MensajeDTO
+     */
     private MensajeDTO convertirADTO(Mensaje mensaje) {
-        MensajeDTO dto = new MensajeDTO();
-        dto.setId(mensaje.getId());
-        dto.setUsuarioId(mensaje.getRemitenteId());
-        dto.setPartidoId(mensaje.getPartidoId());
-        dto.setContenido(mensaje.getContenido());
-        dto.setCreatedAt(mensaje.getCreatedAt());
-        dto.setLeido(mensaje.getLeido());
+        MensajeDTO dto = MensajeDTO.builder()
+                .id(mensaje.getId())
+                .usuarioId(mensaje.getRemitenteId())
+                .partidoId(mensaje.getPartidoId())
+                .contenido(mensaje.getContenido())
+                .createdAt(mensaje.getCreatedAt())
+                .leido(mensaje.getLeido())
+                .build();
 
-        // Cargar información del usuario
+        // Cargar información del remitente
         try {
             Usuario usuario = usuarioRepository.findById(mensaje.getRemitenteId()).orElse(null);
             if (usuario != null) {
@@ -187,22 +216,29 @@ public class MensajeService {
                 dto.setUsuario(usuarioMin);
             }
         } catch (Exception e) {
-            log.warn("Error cargando usuario del mensaje: {}", e.getMessage());
+            log.warn("[MensajeService] Error cargando usuario del mensaje: {}", e.getMessage());
         }
 
         return dto;
     }
 
+    /**
+     * Obtener ID del usuario autenticado
+     */
     private UUID getUserIdFromAuth(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) {
+            log.error("[MensajeService] Usuario no autenticado");
             throw new SecurityException("Usuario no autenticado");
         }
         
         Object principal = auth.getPrincipal();
         if (principal instanceof CustomUserDetailsService.UserPrincipal) {
-            return ((CustomUserDetailsService.UserPrincipal) principal).getId();
+            UUID userId = ((CustomUserDetailsService.UserPrincipal) principal).getId();
+            log.debug("[MensajeService] Usuario autenticado: {}", userId);
+            return userId;
         }
         
+        log.error("[MensajeService] No se pudo obtener ID del usuario");
         throw new SecurityException("No se pudo obtener el ID del usuario");
     }
 }
