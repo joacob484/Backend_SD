@@ -71,9 +71,13 @@ CREATE INDEX IF NOT EXISTS idx_notificacion_usuario_leida
 CREATE INDEX IF NOT EXISTS idx_mensaje_partido_created 
     ON mensaje(partido_id, created_at DESC);
 
--- Índice para mensajes de un usuario
-CREATE INDEX IF NOT EXISTS idx_mensaje_usuario 
-    ON mensaje(usuario_id);
+-- Índice para mensajes enviados por un usuario (remitente)
+CREATE INDEX IF NOT EXISTS idx_mensaje_remitente 
+    ON mensaje(remitente_id);
+
+-- Índice para mensajes recibidos por un usuario (destinatario)
+CREATE INDEX IF NOT EXISTS idx_mensaje_destinatario 
+    ON mensaje(destinatario_id);
 
 -- ============================================
 -- TABLA: review
