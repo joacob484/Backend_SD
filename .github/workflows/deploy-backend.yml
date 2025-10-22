@@ -32,12 +32,14 @@ jobs:
           gcloud compute ssh ${{ env.GCP_VM_NAME }} \
             --zone=${{ env.GCP_ZONE }} \
             --command="
+              set -e
+              
               # Hacer backup de .env
-              if [ -f ~/Backend_SD/.env ]; then
-                cp ~/Backend_SD/.env ~/Backend_SD/.env.backup
+              if [ -f /home/augus/Backend_SD/.env ]; then
+                cp /home/augus/Backend_SD/.env /home/augus/Backend_SD/.env.backup
               fi
               
-              cd ~/Backend_SD
+              cd /home/augus/Backend_SD
               
               # Blue-Green Deployment
               echo '🔵🟢 Starting Blue-Green Deployment'
@@ -53,12 +55,12 @@ jobs:
               echo '⏳ Waiting for GREEN to be healthy...'
               SECONDS_WAITED=0
               until curl -f http://localhost:8081/actuator/health > /dev/null 2>&1; do
-                if [ \${SECONDS_WAITED} -ge 180 ]; then
+                if [ \$SECONDS_WAITED -ge 180 ]; then
                   echo '❌ GREEN failed to start, rolling back'
                   docker-compose -f docker-compose.bluegreen.yml stop backend-green
                   exit 1
                 fi
-                echo \"⏳ Waiting... (\${SECONDS_WAITED}s)\"
+                echo \"⏳ Waiting... (\$SECONDS_WAITED s)\"
                 sleep 5
                 SECONDS_WAITED=\$((SECONDS_WAITED + 5))
               done
