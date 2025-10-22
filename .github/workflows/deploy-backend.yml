@@ -29,17 +29,17 @@ jobs:
       
       - name: Deploy on VM (Blue-Green)
         run: |
-          gcloud compute ssh ${{ env.GCP_VM_NAME }} \
+          gcloud compute ssh augus@${{ env.GCP_VM_NAME }} \
             --zone=${{ env.GCP_ZONE }} \
             --command="
               set -e
               
               # Hacer backup de .env
-              if [ -f /home/augus/Backend_SD/.env ]; then
-                cp /home/augus/Backend_SD/.env /home/augus/Backend_SD/.env.backup
+              if [ -f ~/Backend_SD/.env ]; then
+                cp ~/Backend_SD/.env ~/Backend_SD/.env.backup
               fi
               
-              cd /home/augus/Backend_SD
+              cd ~/Backend_SD
               
               # Blue-Green Deployment
               echo '🔵🟢 Starting Blue-Green Deployment'
