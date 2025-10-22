@@ -10,6 +10,7 @@ public interface ReviewMapper {
     @Mapping(source = "partido.id", target = "partidoId")
     @Mapping(source = "usuarioQueCalifica.id", target = "usuarioQueCalificaId")
     @Mapping(source = "usuarioCalificado.id", target = "usuarioCalificadoId")
+    @Mapping(target = "promedio", ignore = true) // Se calcula en getPromedio()
     ReviewDTO toDTO(Review review);
 
     @Mapping(target = "partido", ignore = true)
