@@ -43,11 +43,11 @@ jobs:
             --zone=${{ env.GCP_ZONE }} \
             --command="
               # Hacer backup de .env
-              if [ -f ~/app/.env ]; then
-                cp ~/app/.env ~/app/.env.backup
+              if [ -f ~/Backend_SD/.env ]; then
+                cp ~/Backend_SD/.env ~/Backend_SD/.env.backup
               fi
               
-              cd ~/app
+              cd ~/Backend_SD
               
               # Blue-Green Deployment
               echo '🔵🟢 Starting Blue-Green Deployment'
