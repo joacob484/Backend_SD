@@ -102,7 +102,7 @@ public class PartidoService {
 
         // Obtener jugadores aceptados
         List<Inscripcion> inscripciones = inscripcionRepository
-                .findByPartido_IdAndEstado(id, "ACEPTADO");
+                .findByPartido_IdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO);
         
         List<UsuarioMinDTO> jugadores = inscripciones.stream()
                 .map(i -> {
@@ -199,7 +199,7 @@ public class PartidoService {
 
         // Partidos inscritos (ACEPTADO)
         List<Inscripcion> inscripciones = inscripcionRepository
-                .findByUsuario_IdAndEstado(usuarioId, "ACEPTADO");
+                .findByUsuario_IdAndEstado(usuarioId, Inscripcion.EstadoInscripcion.ACEPTADO);
         List<Partido> inscritos = inscripciones.stream()
                 .map(Inscripcion::getPartido)
                 .collect(Collectors.toList());
@@ -262,7 +262,7 @@ public class PartidoService {
         if (dto.getCantidadJugadores() != null) {
             // Solo permitir aumentar, no reducir por debajo de jugadores actuales
             long jugadoresActuales = inscripcionRepository
-                    .findByPartido_IdAndEstado(id, "ACEPTADO").size();
+                    .findByPartido_IdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO).size();
             if (dto.getCantidadJugadores() < jugadoresActuales) {
                 throw new IllegalStateException(
                     "No se puede reducir la cantidad de jugadores por debajo de " + jugadoresActuales);
@@ -347,7 +347,7 @@ public class PartidoService {
         log.info("Partido completado manualmente: id={}", id);
         
         // Notificar jugadores para que califiquen
-        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoIdAndEstado(id, "ACEPTADO");
+        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoIdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO);
         List<UUID> usuariosIds = inscripciones.stream()
                 .map(i -> i.getUsuario().getId())
                 .collect(Collectors.toList());
@@ -372,7 +372,7 @@ public class PartidoService {
     @Transactional(readOnly = true)
     public List<UsuarioMinDTO> obtenerJugadores(UUID partidoId) {
         List<Inscripcion> inscripciones = inscripcionRepository
-                .findByPartido_IdAndEstado(partidoId, "ACEPTADO");
+                .findByPartido_IdAndEstado(partidoId, Inscripcion.EstadoInscripcion.ACEPTADO);
 
         return inscripciones.stream()
                 .map(i -> {
@@ -463,7 +463,7 @@ public class PartidoService {
 
         // Verificar que el partido no esté completo
         long jugadoresActuales = inscripcionRepository
-                .findByPartido_IdAndEstado(partidoId, "ACEPTADO").size();
+                .findByPartido_IdAndEstado(partidoId, Inscripcion.EstadoInscripcion.ACEPTADO).size();
         
         if (jugadoresActuales >= partido.getCantidadJugadores()) {
             throw new IllegalStateException("El partido está completo");
@@ -521,7 +521,7 @@ public class PartidoService {
 
         for (Partido partido : partidosPorEmpezar) {
             long jugadores = inscripcionRepository
-                    .findByPartido_IdAndEstado(partido.getId(), "ACEPTADO").size();
+                    .findByPartido_IdAndEstado(partido.getId(), Inscripcion.EstadoInscripcion.ACEPTADO).size();
             
             // Si no alcanzó el mínimo, cancelar
             int minimo = calcularMinimoJugadores(partido.getCantidadJugadores());
@@ -619,7 +619,7 @@ public class PartidoService {
         
         // Calcular jugadores actuales
         long jugadoresActuales = inscripcionRepository
-            .findByPartido_IdAndEstado(partido.getId(), "ACEPTADO")
+            .findByPartido_IdAndEstado(partido.getId(), Inscripcion.EstadoInscripcion.ACEPTADO)
             .size();
         dto.setJugadoresActuales((int) jugadoresActuales);
         
@@ -647,3 +647,4 @@ public class PartidoService {
         return partidoRepository.findById(id).orElse(null);
     }
 }
+

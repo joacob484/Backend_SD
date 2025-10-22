@@ -56,7 +56,7 @@ public class ReviewService {
 
         // Validar que ambos participaron en el partido
         List<Inscripcion> inscripciones = inscripcionRepository.findByPartido_IdAndEstado(
-                dto.getPartidoId(), "ACEPTADO");
+                dto.getPartidoId(), Inscripcion.EstadoInscripcion.ACEPTADO);
 
         boolean calificadorParticipo = inscripciones.stream()
                 .anyMatch(i -> i.getUsuario().getId().equals(userId));
@@ -175,7 +175,7 @@ public class ReviewService {
 
         // Obtener partidos donde participó
         List<Inscripcion> misInscripciones = inscripcionRepository
-                .findByUsuario_IdAndEstado(userId, "ACEPTADO");
+                .findByUsuario_IdAndEstado(userId, Inscripcion.EstadoInscripcion.ACEPTADO);
 
         List<Map<String, Object>> pendientes = new ArrayList<>();
 
@@ -190,7 +190,7 @@ public class ReviewService {
 
             // Obtener otros jugadores del partido
             List<Inscripcion> otrosJugadores = inscripcionRepository
-                    .findByPartido_IdAndEstado(partido.getId(), "ACEPTADO")
+                    .findByPartido_IdAndEstado(partido.getId(), Inscripcion.EstadoInscripcion.ACEPTADO)
                     .stream()
                     .filter(i -> !i.getUsuario().getId().equals(userId))
                     .collect(Collectors.toList());

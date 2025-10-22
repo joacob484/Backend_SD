@@ -274,7 +274,7 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> obtenerInvitaciones(UUID userId) {
-        List<Inscripcion> pendientes = inscripcionRepository.findByUsuario_IdAndEstado(userId, "PENDIENTE");
+        List<Inscripcion> pendientes = inscripcionRepository.findByUsuario_IdAndEstado(userId, Inscripcion.EstadoInscripcion.PENDIENTE);
         return pendientes.stream().map(i -> {
             Map<String,Object> m = new HashMap<>();
             m.put("id", i.getId());

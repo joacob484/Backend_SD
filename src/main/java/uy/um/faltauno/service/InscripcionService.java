@@ -98,7 +98,9 @@ public class InscripcionService {
         List<Inscripcion> inscripciones;
         
         if (estado != null && !estado.isBlank()) {
-            inscripciones = inscripcionRepository.findByUsuarioIdAndEstado(usuarioId, estado.toUpperCase());
+            // Convertir string a enum
+            Inscripcion.EstadoInscripcion estadoEnum = Inscripcion.EstadoInscripcion.valueOf(estado.toUpperCase());
+            inscripciones = inscripcionRepository.findByUsuarioIdAndEstado(usuarioId, estadoEnum);
         } else {
             inscripciones = inscripcionRepository.findByUsuarioId(usuarioId);
         }
@@ -118,7 +120,9 @@ public class InscripcionService {
         List<Inscripcion> inscripciones;
         
         if (estado != null && !estado.isBlank()) {
-            inscripciones = inscripcionRepository.findByPartidoIdAndEstado(partidoId, estado.toUpperCase());
+            // Convertir string a enum
+            Inscripcion.EstadoInscripcion estadoEnum = Inscripcion.EstadoInscripcion.valueOf(estado.toUpperCase());
+            inscripciones = inscripcionRepository.findByPartidoIdAndEstado(partidoId, estadoEnum);
         } else {
             inscripciones = inscripcionRepository.findByPartidoId(partidoId);
         }
