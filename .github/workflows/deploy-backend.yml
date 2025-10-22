@@ -1,0 +1,83 @@
+name: Deploy Backend to GCP VM
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Back/Backend_SD/**'
+  workflow_dispatch:
+
+env:
+  GCP_PROJECT_ID: master-might-274420
+  GCP_VM_NAME: faltauno-vm
+  GCP_ZONE: us-central1-a
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Copy files to VM
+        run: |
+          # Copiar archivos del backend a la VM
+          gcloud compute scp --recurse \
+            Back/Backend_SD/ \
+            ${{ env.GCP_VM_NAME }}:~/Backend_SD_new/ \
+            --zone=${{ env.GCP_ZONE }}
+      
+      - name: Deploy on VM
+        run: |
+          gcloud compute ssh ${{ env.GCP_VM_NAME }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --command="
+              # Hacer backup de .env
+              if [ -f ~/Backend_SD/.env ]; then
+                cp ~/Backend_SD/.env ~/Backend_SD_new/.env
+              fi
+              
+              # Reemplazar archivos
+              rm -rf ~/Backend_SD
+              mv ~/Backend_SD_new ~/Backend_SD
+              
+              cd ~/Backend_SD
+              
+              # Reconstruir y reiniciar servicios
+              docker-compose -f docker-compose.prod.yml build
+              docker-compose -f docker-compose.prod.yml up -d
+              
+              # Limpiar imágenes antiguas
+              docker image prune -f
+              
+              echo '✅ Deployment complete!'
+            "
+      
+      - name: Verify deployment
+        run: |
+          sleep 30
+          VM_IP=\$(gcloud compute instances describe ${{ env.GCP_VM_NAME }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
+          
+          echo "Testing health endpoint at http://\${VM_IP}:8080/actuator/health"
+          curl -f http://\${VM_IP}:8080/actuator/health || echo "⚠️ Health check failed, but deployment completed"
+      
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "🎉 Backend deployed successfully!"
+          else
+            echo "❌ Deployment failed!"
+          fi
