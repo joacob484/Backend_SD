@@ -179,6 +179,7 @@ public class UsuarioService {
     }
 
     @Transactional
+    @CacheEvict(value = "usuarios", key = "#usuarioId")
     public Usuario marcarCedula(UUID usuarioId, String cedula) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
