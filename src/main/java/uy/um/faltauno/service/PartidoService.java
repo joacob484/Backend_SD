@@ -34,6 +34,7 @@ public class PartidoService {
     private final UsuarioRepository usuarioRepository;
     private final InscripcionRepository inscripcionRepository;
     private final PartidoMapper partidoMapper;
+    private final NotificacionService notificacionService;
 
     /**
      * Crear un nuevo partido
@@ -286,8 +287,17 @@ public class PartidoService {
 
         log.info("Partido cancelado: id={}, motivo={}", id, motivo);
         
-        // TODO: Notificar a todos los jugadores inscritos
-        // TODO: Procesar reembolsos si corresponde
+        // Notificar a todos los jugadores inscritos
+        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(id);
+        List<UUID> usuariosIds = inscripciones.stream()
+                .map(i -> i.getUsuario().getId())
+                .filter(uid -> !uid.equals(userId)) // No notificar al organizador
+                .collect(Collectors.toList());
+        
+        String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
+        notificacionService.notificarPartidoCancelado(usuariosIds, id, nombrePartido, motivo);
+        
+        log.info("Notificaciones enviadas a {} jugadores sobre cancelación", usuariosIds.size());
     }
 
     /**
@@ -309,7 +319,16 @@ public class PartidoService {
 
         log.info("Partido completado manualmente: id={}", id);
         
-        // TODO: Notificar jugadores para que califiquen
+        // Notificar jugadores para que califiquen
+        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoIdAndEstado(id, "ACEPTADO");
+        List<UUID> usuariosIds = inscripciones.stream()
+                .map(i -> i.getUsuario().getId())
+                .collect(Collectors.toList());
+        
+        String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
+        notificacionService.notificarPartidoCompletado(usuariosIds, id, nombrePartido);
+        
+        log.info("Notificaciones de review enviadas a {} jugadores", usuariosIds.size());
     }
 
     /**
@@ -361,7 +380,9 @@ public class PartidoService {
         inscripcionRepository.delete(inscripcion);
         log.info("Jugador removido del partido: partidoId={}, jugadorId={}", partidoId, jugadorId);
 
-        // TODO: Notificar al jugador
+        // Notificar al jugador
+        String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
+        notificacionService.notificarJugadorEliminado(jugadorId, partidoId, nombrePartido);
     }
 
     /**
@@ -438,7 +459,11 @@ public class PartidoService {
         
         log.info("Invitación creada exitosamente: partidoId={}, usuarioId={}", partidoId, usuarioId);
         
-        // TODO: Enviar notificación al usuario invitado
+        // Enviar notificación al usuario invitado
+        String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
+        Usuario organizador = partido.getOrganizador();
+        String nombreOrganizador = organizador.getNombre() + " " + organizador.getApellido();
+        notificacionService.notificarInvitacionPartido(usuarioId, partidoId, nombrePartido, nombreOrganizador);
     }
 
     /**
@@ -473,7 +498,17 @@ public class PartidoService {
                 partido.setEstado("CANCELADO");
                 partidoRepository.save(partido);
                 
-                // TODO: Notificar jugadores de la cancelación automática
+                // Notificar jugadores de la cancelación automática
+                List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(partido.getId());
+                List<UUID> usuariosIds = inscripciones.stream()
+                        .map(i -> i.getUsuario().getId())
+                        .collect(Collectors.toList());
+                
+                String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
+                String motivo = "No se alcanzó el mínimo de jugadores requerido";
+                notificacionService.notificarPartidoCancelado(usuariosIds, partido.getId(), nombrePartido, motivo);
+                
+                log.info("Notificaciones de cancelación automática enviadas a {} jugadores", usuariosIds.size());
             }
         }
     }

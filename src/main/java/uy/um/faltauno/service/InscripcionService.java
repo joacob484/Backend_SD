@@ -28,6 +28,7 @@ public class InscripcionService {
     private final UsuarioRepository usuarioRepository;
     private final PartidoRepository partidoRepository;
     private final InscripcionMapper inscripcionMapper;
+    private final NotificacionService notificacionService;
 
     @Transactional
     public InscripcionDTO crearInscripcion(UUID partidoId, UUID usuarioId, Authentication auth) {
@@ -197,6 +198,14 @@ public class InscripcionService {
         log.info("[InscripcionService] ✅ Inscripción aceptada: id={}, partidoId={}, usuarioId={}", 
                 inscripcionId, partido.getId(), inscripcion.getUsuario().getId());
 
+        // Notificar al jugador
+        String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
+        notificacionService.notificarInscripcionAceptada(
+                inscripcion.getUsuario().getId(), 
+                partido.getId(), 
+                nombrePartido
+        );
+
         long nuevosJugadores = jugadoresAceptados + 1;
         if (nuevosJugadores >= partido.getCantidadJugadores()) {
             log.info("[InscripcionService] Partido completo, cambiando estado a CONFIRMADO");
@@ -234,6 +243,15 @@ public class InscripcionService {
         inscripcionRepository.save(inscripcion);
         
         log.info("[InscripcionService] ✅ Inscripción rechazada: id={}", inscripcionId);
+        
+        // Notificar al jugador
+        String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
+        notificacionService.notificarInscripcionRechazada(
+                inscripcion.getUsuario().getId(), 
+                partido.getId(), 
+                nombrePartido,
+                motivo
+        );
     }
 
     @Transactional
