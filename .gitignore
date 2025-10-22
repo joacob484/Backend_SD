@@ -40,6 +40,14 @@ application-dev.yaml
 application-dev.yml
 
 # ==============================================
+# GCP & Cloud Credentials
+# ==============================================
+*-key.json
+*-credentials.json
+service-account*.json
+gcp-*.json
+
+# ==============================================
 # IDE - IntelliJ IDEA
 # ==============================================
 .idea/
