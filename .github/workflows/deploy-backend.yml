@@ -37,30 +37,61 @@ jobs:
             ${{ env.GCP_VM_NAME }}:~/Backend_SD_new/ \
             --zone=${{ env.GCP_ZONE }}
       
-      - name: Deploy on VM
+      - name: Deploy on VM (Blue-Green)
         run: |
           gcloud compute ssh ${{ env.GCP_VM_NAME }} \
             --zone=${{ env.GCP_ZONE }} \
             --command="
               # Hacer backup de .env
-              if [ -f ~/Backend_SD/.env ]; then
-                cp ~/Backend_SD/.env ~/Backend_SD_new/.env
+              if [ -f ~/app/.env ]; then
+                cp ~/app/.env ~/app/.env.backup
               fi
               
-              # Reemplazar archivos
-              rm -rf ~/Backend_SD
-              mv ~/Backend_SD_new ~/Backend_SD
+              cd ~/app
               
-              cd ~/Backend_SD
+              # Blue-Green Deployment
+              echo '🔵🟢 Starting Blue-Green Deployment'
               
-              # Reconstruir y reiniciar servicios
-              docker-compose -f docker-compose.prod.yml build
-              docker-compose -f docker-compose.prod.yml up -d
+              # Pull latest code
+              git pull origin main
               
-              # Limpiar imágenes antiguas
+              # Build and start GREEN (port 8081)
+              echo '📦 Starting GREEN deployment on port 8081'
+              docker-compose -f docker-compose.bluegreen.yml up -d --build backend-green
+              
+              # Wait for GREEN to be healthy
+              echo '⏳ Waiting for GREEN to be healthy...'
+              SECONDS_WAITED=0
+              until curl -f http://localhost:8081/actuator/health > /dev/null 2>&1; do
+                if [ \${SECONDS_WAITED} -ge 180 ]; then
+                  echo '❌ GREEN failed to start, rolling back'
+                  docker-compose -f docker-compose.bluegreen.yml stop backend-green
+                  exit 1
+                fi
+                echo \"⏳ Waiting... (\${SECONDS_WAITED}s)\"
+                sleep 5
+                SECONDS_WAITED=\$((SECONDS_WAITED + 5))
+              done
+              
+              echo '✅ GREEN is healthy!'
+              
+              # Stop BLUE (port 8080)
+              echo '🛑 Stopping BLUE deployment'
+              docker-compose -f docker-compose.cloudsql.yml stop backend || true
+              
+              # Switch: Restart GREEN on port 8080
+              echo '🔄 Switching GREEN to port 8080'
+              docker stop backend-green
+              docker rm backend-1 || true
+              
+              # Start with main compose (port 8080)
+              docker-compose -f docker-compose.cloudsql.yml up -d backend
+              
+              # Cleanup
+              docker-compose -f docker-compose.bluegreen.yml down || true
               docker image prune -f
               
-              echo '✅ Deployment complete!'
+              echo '✅ Blue-Green Deployment complete!'
             "
       
       - name: Verify deployment
