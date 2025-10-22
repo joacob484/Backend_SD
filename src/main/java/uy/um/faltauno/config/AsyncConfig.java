@@ -2,17 +2,19 @@ package uy.um.faltauno.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
 
 /**
- * Configuración para ejecución asíncrona de métodos
- * Usado principalmente para envío de emails
+ * Configuración para ejecución asíncrona de métodos y tareas programadas
+ * Usado principalmente para envío de emails y limpieza de rate limiting
  */
 @Configuration
 @EnableAsync
+@EnableScheduling
 public class AsyncConfig implements AsyncConfigurer {
 
     @Override

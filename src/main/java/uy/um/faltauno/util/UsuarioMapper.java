@@ -20,6 +20,8 @@ public interface UsuarioMapper {
     // ----------------------
     @Mapping(source = "fotoPerfil", target = "fotoPerfil", qualifiedByName = "bytesToBase64")
     @Mapping(source = "fechaNacimiento", target = "fechaNacimiento", qualifiedByName = "localDateToString")
+    @Mapping(target = "cedulaVerificada", ignore = true) // Calculated in DTO getter
+    @Mapping(target = "perfilCompleto", ignore = true) // Calculated in DTO getter
     UsuarioDTO toDTO(Usuario usuario);
 
     // ----------------------
@@ -27,6 +29,14 @@ public interface UsuarioMapper {
     // ----------------------
     @Mapping(source = "fotoPerfil", target = "fotoPerfil", qualifiedByName = "base64ToBytes")
     @Mapping(source = "fechaNacimiento", target = "fechaNacimiento", qualifiedByName = "stringToLocalDate")
+    @Mapping(target = "createdAt", ignore = true) // Gestionado por @CreationTimestamp
+    @Mapping(target = "provider", ignore = true) // No viene del DTO, se gestiona en el servicio
+    @Mapping(target = "notifEmailGenerales", ignore = true) // Valores por defecto en la entidad
+    @Mapping(target = "notifEmailSolicitudesAmistad", ignore = true)
+    @Mapping(target = "notifEmailInvitaciones", ignore = true)
+    @Mapping(target = "notifEmailActualizacionesPartido", ignore = true)
+    @Mapping(target = "notifEmailNuevosMensajes", ignore = true)
+    @Mapping(target = "notifEmailSolicitudesReview", ignore = true)
     Usuario toEntity(UsuarioDTO dto);
 
     // Conversores para LocalDate <-> String

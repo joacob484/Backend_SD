@@ -45,10 +45,12 @@ public class NotificationListener {
         
         log.info("✅ Partido creado: {} - Tipo: {}", partidoId, tipoPartido);
         
-        // TODO: Implementar acciones:
-        // - Enviar email de confirmación al organizador
-        // - Notificar a usuarios cercanos (según ubicación)
-        // - Registrar métrica en sistema de analytics
+        // FUTURO: Implementar acciones adicionales:
+        // - Enviar email de confirmación al organizador (ya manejado por EmailService)
+        // - Notificar a usuarios cercanos según ubicación (requiere servicio de geolocalización)
+        // - Registrar métrica en sistema de analytics externo (Google Analytics, Mixpanel, etc.)
+        
+        // Por ahora, el log es suficiente para auditoría
     }
 
     private void procesarPartidoCancelado(Map<String, Object> event) {
@@ -59,10 +61,12 @@ public class NotificationListener {
         log.warn("❌ Partido cancelado: {} - Motivo: {} - Jugadores afectados: {}", 
                  partidoId, motivo, jugadoresAfectados);
         
-        // TODO: Implementar acciones:
-        // - Enviar emails de cancelación masivos
-        // - Push notifications urgentes
-        // - Registrar en sistema de reembolsos (si aplica)
+        // FUTURO: Implementar acciones adicionales:
+        // - Enviar emails de cancelación masivos a participantes (ya manejado por EmailService)
+        // - Push notifications urgentes vía Firebase Cloud Messaging
+        // - Sistema de reembolsos automáticos (si se implementan pagos)
+        
+        // Por ahora, el log y las notificaciones in-app son suficientes
     }
 
     private void procesarPartidoCompletado(Map<String, Object> event) {
@@ -71,9 +75,11 @@ public class NotificationListener {
         
         log.info("🏁 Partido completado: {} - Participantes: {}", partidoId, jugadores);
         
-        // TODO: Implementar acciones:
-        // - Enviar recordatorio para calificar
-        // - Actualizar estadísticas de usuarios
-        // - Generar reportes de actividad
+        // FUTURO: Implementar acciones adicionales:
+        // - Enviar recordatorio para calificar jugadores (puede ser un job programado 24h después)
+        // - Actualizar estadísticas agregadas de usuarios (partidos jugados, ratio participación)
+        // - Generar reportes de actividad para dashboards administrativos
+        
+        // Por ahora, las calificaciones se solicitan in-app al finalizar el partido
     }
 }

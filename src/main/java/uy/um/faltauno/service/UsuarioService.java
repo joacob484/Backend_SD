@@ -436,7 +436,8 @@ public class UsuarioService {
         usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
         
-        // TODO: Usar datos del usuario para filtrado inteligente (nivel, ubicación, etc.)
+        // FUTURO: Implementar filtrado inteligente usando nivel, ubicación, historial de partidos, etc.
+        // Por ahora, recomendaciones básicas son suficientes para el MVP
 
         // Obtener todos los usuarios activos (excepto el actual)
         List<Usuario> candidatos = usuarioRepository.findAll().stream()

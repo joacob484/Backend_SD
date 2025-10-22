@@ -2,6 +2,7 @@ package uy.um.faltauno.config;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -29,6 +30,9 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final UserDetailsService userDetailsService;
+    
+    @Value("${FRONTEND_URL:http://localhost:3000}")
+    private String frontendUrl;
     
     @Bean
     @SuppressWarnings("deprecation") // API moderna no disponible en Spring Boot 3.5.0
@@ -97,17 +101,17 @@ public class SecurityConfig {
     }
 
     /**
-     * ✅ Configuración de CORS explícita
+     * ✅ Configuración de CORS explícita usando FRONTEND_URL
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // Orígenes permitidos
+        // Orígenes permitidos (desarrollo y producción)
         configuration.setAllowedOriginPatterns(Arrays.asList(
-            "http://localhost:3000",
             "http://localhost:*",
-            "http://host.docker.internal:*"
+            "http://host.docker.internal:*",
+            frontendUrl
         ));
         
         // Métodos HTTP permitidos
