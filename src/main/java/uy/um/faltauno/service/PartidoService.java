@@ -2,12 +2,16 @@ package uy.um.faltauno.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uy.um.faltauno.config.CustomUserDetailsService;
+import uy.um.faltauno.config.RabbitConfig;
 import uy.um.faltauno.dto.PartidoDTO;
 import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.entity.Inscripcion;
@@ -35,11 +39,13 @@ public class PartidoService {
     private final InscripcionRepository inscripcionRepository;
     private final PartidoMapper partidoMapper;
     private final NotificacionService notificacionService;
+    private final RabbitTemplate rabbitTemplate;
 
     /**
      * Crear un nuevo partido
      */
     @Transactional
+    @CacheEvict(value = "partidos-disponibles", allEntries = true)
     public PartidoDTO crearPartido(PartidoDTO dto) {
         // Validaciones
         validarDatosPartido(dto);
@@ -70,6 +76,16 @@ public class PartidoService {
         log.info("Partido creado: id={}, tipo={}, fecha={}", 
                 guardado.getId(), guardado.getTipoPartido(), guardado.getFecha());
 
+        // 🔥 Publicar evento asíncrono
+        publicarEvento("partidos.created", Map.of(
+            "event", "PARTIDO_CREADO",
+            "partidoId", guardado.getId().toString(),
+            "organizadorId", organizador.getId().toString(),
+            "tipoPartido", guardado.getTipoPartido(),
+            "fecha", guardado.getFecha().toString(),
+            "ubicacion", guardado.getNombreUbicacion()
+        ));
+
         return entityToDtoCompleto(guardado);
     }
 
@@ -77,6 +93,7 @@ public class PartidoService {
      * Obtener partido completo con jugadores
      */
     @Transactional(readOnly = true)
+    @Cacheable(value = "partidos", key = "#id")
     public PartidoDTO obtenerPartidoCompleto(UUID id) {
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
@@ -272,6 +289,7 @@ public class PartidoService {
      * Cancelar un partido
      */
     @Transactional
+    @CacheEvict(value = {"partidos", "partidos-disponibles"}, allEntries = true)
     public void cancelarPartido(UUID id, String motivo, Authentication auth) {
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
@@ -298,6 +316,15 @@ public class PartidoService {
         notificacionService.notificarPartidoCancelado(usuariosIds, id, nombrePartido, motivo);
         
         log.info("Notificaciones enviadas a {} jugadores sobre cancelación", usuariosIds.size());
+
+        // 🔥 Publicar evento asíncrono
+        publicarEvento("partidos.cancelado", Map.of(
+            "event", "PARTIDO_CANCELADO",
+            "partidoId", id.toString(),
+            "organizadorId", userId.toString(),
+            "motivo", motivo != null ? motivo : "Sin motivo especificado",
+            "jugadoresAfectados", usuariosIds.size()
+        ));
     }
 
     /**
@@ -329,6 +356,14 @@ public class PartidoService {
         notificacionService.notificarPartidoCompletado(usuariosIds, id, nombrePartido);
         
         log.info("Notificaciones de review enviadas a {} jugadores", usuariosIds.size());
+
+        // 🔥 Publicar evento asíncrono
+        publicarEvento("partidos.completado", Map.of(
+            "event", "PARTIDO_COMPLETADO",
+            "partidoId", id.toString(),
+            "organizadorId", userId.toString(),
+            "jugadoresParticipantes", usuariosIds.size()
+        ));
     }
 
     /**
@@ -514,6 +549,19 @@ public class PartidoService {
     }
 
     // ===== MÉTODOS AUXILIARES =====
+
+    /**
+     * Publicar evento en RabbitMQ
+     */
+    private void publicarEvento(String routingKey, Map<String, Object> payload) {
+        try {
+            rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE_PARTIDOS, routingKey, payload);
+            log.info("Evento publicado: {} -> {}", routingKey, payload.get("event"));
+        } catch (Exception e) {
+            log.error("Error publicando evento {}: {}", routingKey, e.getMessage());
+            // No fallar la operación principal si falla la publicación del evento
+        }
+    }
 
     private void validarDatosPartido(PartidoDTO dto) {
         if (dto.getTipoPartido() == null || dto.getTipoPartido().isBlank()) {

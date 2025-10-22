@@ -9,6 +9,8 @@ public class RabbitConfig {
     public static final String EXCHANGE_PARTIDOS = "exchange.partidos";
     public static final String QUEUE_NOTIFICATIONS = "notificaciones.queue";
     public static final String ROUTING_PARTIDO_CREATED = "partidos.created";
+    public static final String ROUTING_PARTIDO_CANCELADO = "partidos.cancelado";
+    public static final String ROUTING_PARTIDO_COMPLETADO = "partidos.completado";
 
     @Bean
     public TopicExchange partidosExchange() {
@@ -25,5 +27,23 @@ public class RabbitConfig {
     @Bean
     public Binding bindingPartidoCreated(Queue notificationsQueue, TopicExchange partidosExchange) {
         return BindingBuilder.bind(notificationsQueue).to(partidosExchange).with(ROUTING_PARTIDO_CREATED);
+    }
+
+    @Bean
+    public Binding bindingPartidoCancelado(Queue notificationsQueue, TopicExchange partidosExchange) {
+        return BindingBuilder.bind(notificationsQueue).to(partidosExchange).with(ROUTING_PARTIDO_CANCELADO);
+    }
+
+    @Bean
+    public Binding bindingPartidoCompletado(Queue notificationsQueue, TopicExchange partidosExchange) {
+        return BindingBuilder.bind(notificationsQueue).to(partidosExchange).with(ROUTING_PARTIDO_COMPLETADO);
+    }
+
+    /**
+     * Binding con wildcard para capturar todos los eventos de partidos
+     */
+    @Bean
+    public Binding bindingAllPartidos(Queue notificationsQueue, TopicExchange partidosExchange) {
+        return BindingBuilder.bind(notificationsQueue).to(partidosExchange).with("partidos.*");
     }
 }

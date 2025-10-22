@@ -2,6 +2,9 @@ package uy.um.faltauno.service;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -119,6 +122,7 @@ public class UsuarioService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "usuarios", key = "#id")
     public UsuarioDTO getUsuario(UUID id) {
         UsuarioDTO dto = usuarioRepository.findById(id)
                 .map(usuarioMapper::toDTO)
@@ -132,6 +136,10 @@ public class UsuarioService {
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "usuarios", key = "#usuarioId"),
+        @CacheEvict(value = "sugerencias", allEntries = true)
+    })
     public Usuario actualizarPerfil(UUID usuarioId, PerfilDTO perfilDTO) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -161,6 +169,7 @@ public class UsuarioService {
     }
 
     @Transactional
+    @CacheEvict(value = "usuarios", key = "#usuarioId")
     public void subirFoto(UUID usuarioId, MultipartFile file) throws IOException {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -385,14 +394,18 @@ public class UsuarioService {
     }
 
     /**
-     * Obtener sugerencias inteligentes de amistad basadas en:
+     * Sugerencias inteligentes de amistad basadas en:
      * - Partidos en común
      * - Nivel de habilidad similar
      * - Proximidad geográfica
      */
+    @Cacheable(value = "sugerencias", key = "#usuarioId")
     private List<UsuarioDTO> obtenerSugerenciasInteligentes(UUID usuarioId) {
-        Usuario usuario = usuarioRepository.findById(usuarioId)
+        // Validar que el usuario existe
+        usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        // TODO: Usar datos del usuario para filtrado inteligente (nivel, ubicación, etc.)
 
         // Obtener todos los usuarios activos (excepto el actual)
         List<Usuario> candidatos = usuarioRepository.findAll().stream()
