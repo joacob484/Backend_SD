@@ -1,16 +1,7 @@
-# Compiled class file
+# ==============================================
+# Java & Maven
+# ==============================================
 *.class
-
-# Log file
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
 *.nar
@@ -18,14 +9,133 @@
 *.zip
 *.tar.gz
 *.rar
+target/
+!.mvn/wrapper/maven-wrapper.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
 
-#env
+# ==============================================
+# Logs
+# ==============================================
+*.log
+logs/
+*.log.*
+
+# ==============================================
+# Environment & Configuration
+# ==============================================
 .env
+.env.local
+.env.*.local
+application-local.yaml
+application-local.yml
+application-dev.yaml
+application-dev.yml
 
+# ==============================================
+# IDE - IntelliJ IDEA
+# ==============================================
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# ==============================================
+# IDE - Eclipse
+# ==============================================
+.project
+.classpath
+.settings/
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+
+# ==============================================
+# IDE - VS Code
+# ==============================================
+.vscode/
+*.code-workspace
+
+# ==============================================
+# IDE - NetBeans
+# ==============================================
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# ==============================================
+# macOS
+# ==============================================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ==============================================
+# Windows
+# ==============================================
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ==============================================
+# Linux
+# ==============================================
+*~
+
+# ==============================================
+# Virtual Machine crash logs
+# ==============================================
 hs_err_pid*
 replay_pid*
 
+# ==============================================
+# BlueJ
+# ==============================================
+*.ctxt
 
-/target/
+# ==============================================
+# Mobile Tools for Java (J2ME)
+# ==============================================
+.mtj.tmp/
+
+# ==============================================
+# Uploads & Media
+# ==============================================
+uploads/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.pdf
+!src/main/resources/static/**
+
+# ==============================================
+# Database
+# ==============================================
+*.db
+*.sqlite
+*.h2.db
+
+# ==============================================
+# Docker
+# ==============================================
+.dockerignore
+docker-compose.override.yml
+
+# ==============================================
+# Spring Boot
+# ==============================================
+spring-boot-devtools.properties
