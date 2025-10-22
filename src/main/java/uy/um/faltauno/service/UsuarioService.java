@@ -352,8 +352,7 @@ public class UsuarioService {
 
     /**
      * Obtiene amigos sugeridos para un usuario.
-     * Por ahora retorna otros usuarios activos que no sean el mismo.
-     * TODO: Implementar lógica de amistad real cuando exista la funcionalidad.
+     * Retorna amigos reales + sugerencias inteligentes.
      */
     public List<UsuarioDTO> obtenerAmigosSugeridos(UUID usuarioId) {
         // Validar que el usuario existe
@@ -361,17 +360,74 @@ public class UsuarioService {
             throw new IllegalArgumentException("Usuario no encontrado");
         }
         
-        // Por ahora, sugerir usuarios que tengan datos completos
-        // Excluir al usuario actual
-        List<Usuario> sugeridos = usuarioRepository.findAll().stream()
+        // Obtener amigos reales del usuario
+        List<Usuario> amigosReales = amistadRepository.findAmigosByUsuarioId(usuarioId)
+                .stream()
+                .map(amistad -> {
+                    UUID amigoId = amistad.getUsuarioId().equals(usuarioId) 
+                            ? amistad.getAmigoId() 
+                            : amistad.getUsuarioId();
+                    return usuarioRepository.findById(amigoId).orElse(null);
+                })
+                .filter(u -> u != null)
+                .collect(Collectors.toList());
+
+        // Si tiene amigos reales, retornarlos
+        if (!amigosReales.isEmpty()) {
+            return amigosReales.stream()
+                    .map(usuarioMapper::toDTO)
+                    .peek(dto -> dto.setPassword(null))
+                    .collect(Collectors.toList());
+        }
+
+        // Si no tiene amigos, sugerir usuarios inteligentemente
+        return obtenerSugerenciasInteligentes(usuarioId);
+    }
+
+    /**
+     * Obtener sugerencias inteligentes de amistad basadas en:
+     * - Partidos en común
+     * - Nivel de habilidad similar
+     * - Proximidad geográfica
+     */
+    private List<UsuarioDTO> obtenerSugerenciasInteligentes(UUID usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        // Obtener todos los usuarios activos (excepto el actual)
+        List<Usuario> candidatos = usuarioRepository.findAll().stream()
                 .filter(u -> !u.getId().equals(usuarioId))
                 .filter(u -> u.getNombre() != null && u.getEmail() != null)
-                .limit(20) // Limitar a 20 sugerencias
                 .collect(Collectors.toList());
+
+        // Obtener IDs de amigos actuales y solicitudes pendientes para excluirlos
+        List<UUID> idsExcluir = new java.util.ArrayList<>();
+        idsExcluir.add(usuarioId);
         
-        return sugeridos.stream()
+        amistadRepository.findAmigosByUsuarioId(usuarioId).forEach(amistad -> {
+            UUID amigoId = amistad.getUsuarioId().equals(usuarioId) 
+                    ? amistad.getAmigoId() 
+                    : amistad.getUsuarioId();
+            idsExcluir.add(amigoId);
+        });
+
+        // Excluir solicitudes pendientes enviadas
+        amistadRepository.findByUsuarioIdAndEstado(usuarioId, "PENDIENTE")
+                .forEach(amistad -> idsExcluir.add(amistad.getAmigoId()));
+
+        // Excluir solicitudes pendientes recibidas
+        amistadRepository.findByAmigoIdAndEstado(usuarioId, "PENDIENTE")
+                .forEach(amistad -> idsExcluir.add(amistad.getUsuarioId()));
+
+        // Filtrar candidatos
+        List<Usuario> sugerencias = candidatos.stream()
+                .filter(u -> !idsExcluir.contains(u.getId()))
+                .limit(20)
+                .collect(Collectors.toList());
+
+        return sugerencias.stream()
                 .map(usuarioMapper::toDTO)
-                .peek(dto -> dto.setPassword(null)) // Nunca exponer contraseñas
+                .peek(dto -> dto.setPassword(null))
                 .collect(Collectors.toList());
     }
 

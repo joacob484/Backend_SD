@@ -34,6 +34,7 @@ public class MensajeService {
     private final PartidoRepository partidoRepository;
     private final UsuarioRepository usuarioRepository;
     private final InscripcionRepository inscripcionRepository;
+    private final NotificacionService notificacionService;
 
     /**
      * Obtener mensajes del chat de un partido
@@ -115,7 +116,8 @@ public class MensajeService {
         log.info("[MensajeService] ✅ Mensaje enviado: id={}, partidoId={}, usuarioId={}", 
                 guardado.getId(), partidoId, userId);
 
-        // TODO: Notificación push a otros participantes
+        // Notificar a los participantes del partido (excepto al remitente)
+        notificarParticipantes(partido, userId, guardado);
         
         return convertirADTO(guardado);
     }
@@ -165,6 +167,50 @@ public class MensajeService {
     }
 
     // ===== MÉTODOS AUXILIARES =====
+
+    /**
+     * Notificar a todos los participantes del partido (excepto al remitente)
+     */
+    private void notificarParticipantes(Partido partido, UUID remitenteId, Mensaje mensaje) {
+        try {
+            Usuario remitente = usuarioRepository.findById(remitenteId).orElse(null);
+            if (remitente == null) {
+                log.warn("[MensajeService] No se pudo cargar remitente para notificaciones");
+                return;
+            }
+
+            String nombreRemitente = remitente.getNombre() + " " + remitente.getApellido();
+            String nombrePartido = partido.getTipoPartido() + " en " + partido.getNombreUbicacion();
+
+            // Notificar al organizador (si no es el remitente)
+            if (!partido.getOrganizador().getId().equals(remitenteId)) {
+                notificacionService.notificarNuevoMensaje(
+                    partido.getOrganizador().getId(),
+                    partido.getId(),
+                    nombrePartido,
+                    nombreRemitente
+                );
+            }
+
+            // Notificar a todos los jugadores inscritos y aceptados (excepto remitente)
+            List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(partido.getId());
+            inscripciones.stream()
+                    .filter(i -> i.getEstado() == Inscripcion.EstadoInscripcion.ACEPTADO)
+                    .filter(i -> !i.getUsuario().getId().equals(remitenteId))
+                    .forEach(i -> {
+                        notificacionService.notificarNuevoMensaje(
+                            i.getUsuario().getId(),
+                            partido.getId(),
+                            nombrePartido,
+                            nombreRemitente
+                        );
+                    });
+
+            log.debug("[MensajeService] ✅ Notificaciones de mensaje enviadas");
+        } catch (Exception e) {
+            log.error("[MensajeService] Error enviando notificaciones de mensaje: {}", e.getMessage());
+        }
+    }
 
     /**
      * Validar que el usuario tenga acceso al chat del partido

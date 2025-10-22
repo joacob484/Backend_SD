@@ -25,6 +25,7 @@ public class AmistadService {
 
     private final AmistadRepository amistadRepository;
     private final UsuarioRepository usuarioRepository;
+    private final NotificacionService notificacionService;
 
     @Transactional
     public AmistadDTO enviarSolicitud(UUID amigoId, Authentication auth) {
@@ -62,6 +63,10 @@ public class AmistadService {
         Amistad guardada = amistadRepository.save(amistad);
         log.info("[AmistadService] ✅ Solicitud de amistad enviada: id={}", guardada.getId());
 
+        // Notificar al usuario que recibió la solicitud
+        String nombreCompleto = usuario.getNombre() + " " + usuario.getApellido();
+        notificacionService.notificarSolicitudAmistad(amigoId, usuarioId, nombreCompleto);
+
         return convertToDTO(guardada, usuario, amigo);
     }
 
@@ -94,6 +99,12 @@ public class AmistadService {
 
         Usuario usuario = usuarioRepository.findById(amistad.getUsuarioId()).orElse(null);
         Usuario amigo = usuarioRepository.findById(amistad.getAmigoId()).orElse(null);
+
+        // Notificar al usuario que envió la solicitud que fue aceptada
+        if (amigo != null) {
+            String nombreAceptante = amigo.getNombre() + " " + amigo.getApellido();
+            notificacionService.notificarAmistadAceptada(amistad.getUsuarioId(), usuarioId, nombreAceptante);
+        }
 
         return convertToDTO(actualizada, usuario, amigo);
     }
