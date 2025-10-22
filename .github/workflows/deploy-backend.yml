@@ -44,8 +44,11 @@ jobs:
               # Blue-Green Deployment
               echo '🔵🟢 Starting Blue-Green Deployment'
               
-              # Pull latest code
+              # Stash any local changes and pull latest code
+              git add -A
+              git stash
               git pull origin main
+              git stash pop || true
               
               # Build and start GREEN (port 8081)
               echo '📦 Starting GREEN deployment on port 8081'
