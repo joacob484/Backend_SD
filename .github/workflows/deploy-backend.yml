@@ -29,14 +29,6 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
       
-      - name: Copy files to VM
-        run: |
-          # Copiar archivos del backend a la VM
-          gcloud compute scp --recurse \
-            Back/Backend_SD/ \
-            ${{ env.GCP_VM_NAME }}:~/Backend_SD_new/ \
-            --zone=${{ env.GCP_ZONE }}
-      
       - name: Deploy on VM (Blue-Green)
         run: |
           gcloud compute ssh ${{ env.GCP_VM_NAME }} \
