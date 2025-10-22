@@ -327,6 +327,16 @@ public class UsuarioService {
     }
 
     @Transactional
+    /**
+     * Crea o actualiza un usuario desde Google OAuth.
+     * IMPORTANTE: Los usuarios de Google OAuth NO tienen contraseña (password = null).
+     * Solo pueden autenticarse mediante OAuth, no mediante email/password.
+     * 
+     * @param email Email del usuario desde Google
+     * @param name Nombre completo del usuario desde Google
+     * @param attrs Atributos adicionales de Google (sub, picture, etc.)
+     * @return Usuario creado o actualizado
+     */
     public Usuario upsertGoogleUser(String email, String name, Map<String, Object> attrs) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Email de Google inválido");
@@ -336,6 +346,12 @@ public class UsuarioService {
 
         Usuario u = existenteOpt.orElseGet(Usuario::new);
         u.setEmail(email);
+        
+        // IMPORTANTE: NO seteamos password - los usuarios OAuth no tienen contraseña
+        // Solo pueden autenticarse mediante el flujo OAuth
+        
+        // Marcar como usuario de Google OAuth
+        u.setProvider("GOOGLE");
 
         // name (si viene)
         if (name != null && !name.isBlank()) {
@@ -355,6 +371,11 @@ public class UsuarioService {
 
         // Si tenés un enum/provider, setealo (si no existe el método, no pasa nada)
         safeSet(u, "setProveedor", enumValueOfSafely("GOOGLE", "uy.um.faltauno.model.AuthProvider"));
+        
+        // Setear createdAt si es nuevo usuario
+        if (u.getCreatedAt() == null) {
+            u.setCreatedAt(LocalDateTime.now());
+        }
 
         return usuarioRepository.save(u);
     }

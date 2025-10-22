@@ -34,7 +34,19 @@ public class Usuario {
     private byte[] fotoPerfil;
 
     private String cedula;
+    
+    /**
+     * Proveedor de autenticación (LOCAL para email/password, GOOGLE para OAuth, etc.)
+     * - LOCAL: Usuario registrado con email y contraseña
+     * - GOOGLE: Usuario registrado con Google OAuth (password = null)
+     */
     private String provider;
+    
+    /**
+     * Contraseña encriptada del usuario.
+     * IMPORTANTE: Este campo es NULL para usuarios que se registran con OAuth (Google, Facebook, etc.)
+     * Solo los usuarios con provider = "LOCAL" tienen contraseña.
+     */
     private String password;
 
     @Column(name = "created_at", nullable = false)
