@@ -88,8 +88,8 @@ CREATE INDEX IF NOT EXISTS idx_review_usuario_calificado
     ON review(usuario_calificado_id);
 
 -- Índice para reviews escritas por un usuario
-CREATE INDEX IF NOT EXISTS idx_review_calificador 
-    ON review(calificador_id);
+CREATE INDEX IF NOT EXISTS idx_review_usuario_que_califica 
+    ON review(usuario_que_califica_id);
 
 -- Índice para reviews de un partido
 CREATE INDEX IF NOT EXISTS idx_review_partido 
