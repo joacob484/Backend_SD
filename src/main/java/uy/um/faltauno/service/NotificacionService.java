@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uy.um.faltauno.dto.NotificacionDTO;
 import uy.um.faltauno.entity.Notificacion;
+import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.repository.NotificacionRepository;
 import uy.um.faltauno.util.NotificacionMapper;
 
@@ -23,6 +24,8 @@ public class NotificacionService {
 
     private final NotificacionRepository notificacionRepository;
     private final NotificacionMapper notificacionMapper;
+    private final EmailService emailService;
+    private final UsuarioService usuarioService;
 
     /**
      * Crear una notificación genérica
@@ -54,6 +57,14 @@ public class NotificacionService {
 
         Notificacion guardada = notificacionRepository.save(notificacion);
         log.info("[NotificacionService] ✅ Notificación creada: id={}, tipo={}", guardada.getId(), tipo);
+
+        // Enviar email de forma asíncrona
+        try {
+            Usuario usuario = usuarioService.findUsuarioEntityById(usuarioId);
+            emailService.enviarNotificacionEmail(usuario, tipo, titulo, mensaje, urlAccion);
+        } catch (Exception e) {
+            log.warn("[NotificacionService] No se pudo enviar email para notificación: {}", e.getMessage());
+        }
 
         return notificacionMapper.toDTO(guardada);
     }

@@ -319,4 +319,55 @@ public class UsuarioController {
 
         return null;
     }
+
+    // ================================
+    // Preferencias de notificación
+    // ================================
+    
+    /**
+     * Obtener preferencias de notificación del usuario actual
+     */
+    @GetMapping(path = "/me/notification-preferences", produces = "application/json")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getNotificationPreferences() {
+        try {
+            UUID currentUserId = resolveCurrentUserId();
+            if (currentUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(null, "No autenticado", false));
+            }
+
+            Map<String, Object> preferences = usuarioService.getNotificationPreferences(currentUserId);
+            return ResponseEntity.ok(new ApiResponse<>(preferences, "Preferencias obtenidas", true));
+
+        } catch (Exception e) {
+            log.error("Error obteniendo preferencias de notificación", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error obteniendo preferencias", false));
+        }
+    }
+
+    /**
+     * Actualizar preferencias de notificación del usuario actual
+     */
+    @PutMapping(path = "/me/notification-preferences", 
+                consumes = "application/json", 
+                produces = "application/json")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateNotificationPreferences(
+            @RequestBody Map<String, Boolean> preferences) {
+        try {
+            UUID currentUserId = resolveCurrentUserId();
+            if (currentUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(null, "No autenticado", false));
+            }
+
+            Map<String, Object> updated = usuarioService.updateNotificationPreferences(currentUserId, preferences);
+            return ResponseEntity.ok(new ApiResponse<>(updated, "Preferencias actualizadas", true));
+
+        } catch (Exception e) {
+            log.error("Error actualizando preferencias de notificación", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error actualizando preferencias", false));
+        }
+    }
 }

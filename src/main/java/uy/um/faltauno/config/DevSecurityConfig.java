@@ -22,16 +22,20 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 
+/**
+ * Configuración de seguridad específica para desarrollo.
+ * Incluye H2 Console habilitada.
+ */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-@Profile("!dev") // Solo activo cuando NO es perfil dev
-public class SecurityConfig {
+@Profile("dev")
+public class DevSecurityConfig {
 
     private final UserDetailsService userDetailsService;
     
     @Bean
-    @SuppressWarnings("deprecation") // API moderna no disponible en Spring Boot 3.5.0
+    @SuppressWarnings("deprecation")
     public DaoAuthenticationProvider authenticationProvider(PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
@@ -45,30 +49,26 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                    DaoAuthenticationProvider provider,
-                                                    JwtAuthenticationFilter jwtFilter,
-                                                    RateLimitingFilter rateLimitingFilter,
-                                                    OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
+    public SecurityFilterChain devSecurityFilterChain(HttpSecurity http,
+                                                       DaoAuthenticationProvider provider,
+                                                       JwtAuthenticationFilter jwtFilter,
+                                                       RateLimitingFilter rateLimitingFilter,
+                                                       OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ Habilitar CORS
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // ✅ CRÍTICO: Permitir OPTIONS para CORS preflight
                 .requestMatchers("OPTIONS", "/**").permitAll()
-                
-                // ✅ Endpoints públicos de autenticación
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
-                
-                // ✅ CRÍTICO: Permitir POST a /api/usuarios (registro)
                 .requestMatchers("POST", "/api/usuarios").permitAll()
                 
-                // ✅ Endpoints públicos generales (sin H2 console en producción)
-                .requestMatchers("/public/**", "/actuator/health", "/error").permitAll()
+                // ⚠️ DEV ONLY: H2 Console y Actuator completo
+                .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
                 
-                // ✅ Todo lo demás requiere autenticación
+                .requestMatchers("/public/**", "/actuator/health", "/error").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth -> oauth
@@ -80,60 +80,37 @@ public class SecurityConfig {
                 .authenticationEntryPoint(authenticationEntryPoint())
             );
 
-        // ✅ Agregar filtro de rate limiting ANTES del filtro JWT
         http.addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class);
-        
-        // ✅ Agregar filtro JWT ANTES de UsernamePasswordAuthenticationFilter
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         
-        // ✅ Headers de seguridad para producción
-        http.headers(h -> h
-            .frameOptions(f -> f.deny()) // Denegar frames en producción
-            .xssProtection(xss -> xss.disable()) // Spring Security 6+ recomienda CSP
-            .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'"))
-        );
+        // ⚠️ DEV ONLY: Permitir frames para H2 console
+        http.headers(h -> h.frameOptions(f -> f.disable()));
         
         return http.build();
     }
 
-    /**
-     * ✅ Configuración de CORS explícita
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Orígenes permitidos
         configuration.setAllowedOriginPatterns(Arrays.asList(
             "http://localhost:3000",
             "http://localhost:*",
             "http://host.docker.internal:*"
         ));
-        
-        // Métodos HTTP permitidos
         configuration.setAllowedMethods(Arrays.asList(
             "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
-        
-        // Headers permitidos
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        
-        // Permitir credenciales
         configuration.setAllowCredentials(true);
-        
-        // Headers expuestos
         configuration.setExposedHeaders(Arrays.asList(
             "Authorization",
             "Content-Type",
             "X-Requested-With"
         ));
-        
-        // Max age para preflight cache
         configuration.setMaxAge(3600L);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-        
         return source;
     }
 

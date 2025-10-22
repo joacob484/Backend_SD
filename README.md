@@ -7,7 +7,11 @@ Backend REST API para la aplicación Falta Uno, desarrollado con Spring Boot 3.5
 - **Java 21**
 - **Spring Boot 3.5.0**
 - **Spring Security 6** (JWT + OAuth2)
-- **PostgreSQL** (Base de datos)
+- **PostgreSQL 15** (Base de datos)
+- **Redis** (Caché)
+- **RabbitMQ** (Mensajería)
+- **Spring Mail** (Notificaciones por email - opcional)
+- **Flyway** (Migraciones de BD)
 - **Maven** (Gestión de dependencias)
 - **MapStruct** (Mapeo de entidades/DTOs)
 - **Lombok** (Reducción de boilerplate)
@@ -44,7 +48,29 @@ FRONTEND_URL=http://localhost:3000
 # OAuth2 Google (opcional)
 GOOGLE_CLIENT_ID=tu_google_client_id
 GOOGLE_CLIENT_SECRET=tu_google_client_secret
+
+# Email SMTP (opcional - Ver EMAIL_SETUP_GUIDE.md)
+# Descomenta y configura para habilitar notificaciones por email
+# MAIL_HOST=smtp.gmail.com
+# MAIL_PORT=587
+# MAIL_USERNAME=tu-email@gmail.com
+# MAIL_PASSWORD=tu-app-password
 ```
+
+### 📧 Notificaciones por Email (Opcional)
+
+El sistema incluye notificaciones por email que están **desactivadas por defecto**. Para activarlas:
+
+1. Ver guía completa: [EMAIL_SETUP_GUIDE.md](./EMAIL_SETUP_GUIDE.md)
+2. Configurar variables `MAIL_*` en `.env`
+3. Reiniciar el backend
+
+**Características:**
+- ✅ Email de bienvenida al registrarse
+- ✅ Notificaciones personalizables por usuario
+- ✅ Templates HTML responsive
+- ✅ Envío asíncrono (no bloquea la app)
+- ✅ 6 tipos de notificaciones configurables
 
 ### Base de datos
 
@@ -179,6 +205,18 @@ Redirige a Google OAuth y luego al frontend con el token JWT.
 ### Mensajes
 - `GET /api/mensajes/partido/{partidoId}` - Chat del partido
 - `POST /api/mensajes` - Enviar mensaje
+
+### Notificaciones
+- `GET /api/notificaciones` - Listar notificaciones
+- `GET /api/notificaciones/no-leidas` - Notificaciones no leídas
+- `GET /api/notificaciones/count` - Contar no leídas
+- `PUT /api/notificaciones/{id}/leer` - Marcar como leída
+- `PUT /api/notificaciones/leer-todas` - Marcar todas como leídas
+- `DELETE /api/notificaciones/{id}` - Eliminar notificación
+
+### Preferencias de Notificación
+- `GET /api/usuarios/me/notification-preferences` - Obtener preferencias
+- `PUT /api/usuarios/me/notification-preferences` - Actualizar preferencias
 
 ## 🧪 Testing
 

@@ -46,6 +46,7 @@ public class UsuarioService {
     private final InscripcionRepository inscripcionRepository;
     private final PartidoRepository partidoRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     /**
      * Encuentra el ID de un usuario por email SIN cargar LOBs.
@@ -115,6 +116,14 @@ public class UsuarioService {
         usuario.setCreatedAt(LocalDateTime.now());
 
         usuario = usuarioRepository.save(usuario);
+
+        // Enviar email de bienvenida de forma asíncrona
+        try {
+            emailService.enviarEmailBienvenida(usuario);
+        } catch (Exception e) {
+            // No fallar el registro si el email falla
+            // El log se maneja en EmailService
+        }
 
         UsuarioDTO out = usuarioMapper.toDTO(usuario);
         out.setPassword(null);
@@ -501,5 +510,61 @@ public class UsuarioService {
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    // ================================
+    // Preferencias de notificación
+    // ================================
+
+    /**
+     * Obtener preferencias de notificación del usuario
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getNotificationPreferences(UUID usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        Map<String, Object> preferences = new HashMap<>();
+        preferences.put("matchInvitations", usuario.getNotifEmailInvitaciones() != null ? usuario.getNotifEmailInvitaciones() : true);
+        preferences.put("friendRequests", usuario.getNotifEmailSolicitudesAmistad() != null ? usuario.getNotifEmailSolicitudesAmistad() : true);
+        preferences.put("matchUpdates", usuario.getNotifEmailActualizacionesPartido() != null ? usuario.getNotifEmailActualizacionesPartido() : true);
+        preferences.put("reviewRequests", usuario.getNotifEmailSolicitudesReview() != null ? usuario.getNotifEmailSolicitudesReview() : true);
+        preferences.put("newMessages", usuario.getNotifEmailNuevosMensajes() != null ? usuario.getNotifEmailNuevosMensajes() : false);
+        preferences.put("generalUpdates", usuario.getNotifEmailGenerales() != null ? usuario.getNotifEmailGenerales() : false);
+
+        return preferences;
+    }
+
+    /**
+     * Actualizar preferencias de notificación del usuario
+     */
+    @Transactional
+    @CacheEvict(value = "usuarios", key = "#usuarioId")
+    public Map<String, Object> updateNotificationPreferences(UUID usuarioId, Map<String, Boolean> preferences) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        if (preferences.containsKey("matchInvitations")) {
+            usuario.setNotifEmailInvitaciones(preferences.get("matchInvitations"));
+        }
+        if (preferences.containsKey("friendRequests")) {
+            usuario.setNotifEmailSolicitudesAmistad(preferences.get("friendRequests"));
+        }
+        if (preferences.containsKey("matchUpdates")) {
+            usuario.setNotifEmailActualizacionesPartido(preferences.get("matchUpdates"));
+        }
+        if (preferences.containsKey("reviewRequests")) {
+            usuario.setNotifEmailSolicitudesReview(preferences.get("reviewRequests"));
+        }
+        if (preferences.containsKey("newMessages")) {
+            usuario.setNotifEmailNuevosMensajes(preferences.get("newMessages"));
+        }
+        if (preferences.containsKey("generalUpdates")) {
+            usuario.setNotifEmailGenerales(preferences.get("generalUpdates"));
+        }
+
+        usuarioRepository.save(usuario);
+
+        return getNotificationPreferences(usuarioId);
     }
 }

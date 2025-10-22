@@ -52,5 +52,30 @@ public class Usuario {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    // Preferencias de notificaciones por email
+    @Column(name = "notif_email_invitaciones")
+    @Builder.Default
+    private Boolean notifEmailInvitaciones = true;
+
+    @Column(name = "notif_email_solicitudes_amistad")
+    @Builder.Default
+    private Boolean notifEmailSolicitudesAmistad = true;
+
+    @Column(name = "notif_email_actualizaciones_partido")
+    @Builder.Default
+    private Boolean notifEmailActualizacionesPartido = true;
+
+    @Column(name = "notif_email_solicitudes_review")
+    @Builder.Default
+    private Boolean notifEmailSolicitudesReview = true;
+
+    @Column(name = "notif_email_nuevos_mensajes")
+    @Builder.Default
+    private Boolean notifEmailNuevosMensajes = false;
+
+    @Column(name = "notif_email_generales")
+    @Builder.Default
+    private Boolean notifEmailGenerales = false;
+
     // getters/setters generados por Lombok (@Getter/@Setter) seguirán funcionando
 }

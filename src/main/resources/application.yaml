@@ -96,6 +96,25 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+  # Email configuration (Opcional - Configurar cuando se necesite)
+  # Para habilitar: descomentar variables MAIL_* en .env
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    default-encoding: UTF-8
+
 server:
   port: ${SERVER_PORT:8080}
   compression:
@@ -114,7 +133,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health  # Solo health público, resto requiere autenticación
       base-path: /actuator
   endpoint:
     health:
@@ -133,8 +152,10 @@ management:
       enabled: true
 
 # JWT Configuration
+# ⚠️ CRÍTICO: JWT_SECRET debe ser configurada como variable de entorno
+# Generar con: openssl rand -base64 64
 jwt:
-  secret: ${JWT_SECRET:mi_clave_super_segura_que_debe_ser_al_menos_256_bits_para_hs256_seguridad_maxima_2024}
+  secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}  # 24 horas
 
 # Frontend URL for CORS (si lo usás en tu config de CORS)

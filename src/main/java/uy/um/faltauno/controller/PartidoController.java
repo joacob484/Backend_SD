@@ -275,7 +275,17 @@ public class PartidoController {
                         .body(new ApiResponse<>(null, "usuarioId es requerido", false));
             }
 
-            partidoService.invitarJugador(partidoId, UUID.fromString(usuarioId), auth);
+            // ✅ Validar UUID antes de parsear
+            UUID usuarioUuid;
+            try {
+                usuarioUuid = UUID.fromString(usuarioId);
+            } catch (IllegalArgumentException e) {
+                log.warn("UUID inválido recibido: {}", usuarioId);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiResponse<>(null, "UUID de usuario inválido", false));
+            }
+
+            partidoService.invitarJugador(partidoId, usuarioUuid, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Invitación enviada exitosamente", true));
         } catch (SecurityException e) {
             log.warn("Acceso denegado al invitar: {}", e.getMessage());
