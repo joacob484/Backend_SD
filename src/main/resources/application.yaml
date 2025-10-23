@@ -146,6 +146,8 @@ management:
         liveness:
           include: livenessState
   health:
+    mail:
+      enabled: false  # Desactivar health check de mail
     livenessstate:
       enabled: true
     readinessstate:
