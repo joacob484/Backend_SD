@@ -23,6 +23,9 @@ import uy.um.faltauno.repository.UsuarioRepository;
 import uy.um.faltauno.util.PartidoMapper;
 
 import jakarta.persistence.criteria.Predicate;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -95,31 +98,30 @@ public class PartidoService {
     @Transactional(readOnly = true)
     @Cacheable(value = "partidos", key = "#id")
     public PartidoDTO obtenerPartidoCompleto(UUID id) {
+        log.debug("Buscando partido en DB: {}", id);
+        boolean exists = partidoRepository.existsById(id);
+        log.debug("existsById({}) = {}", id, exists);
+
         Partido partido = partidoRepository.findByIdWithOrganizador(id)
-            .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+            .orElseThrow(() -> new NoSuchElementException("Partido no encontrado: " + id));
 
         PartidoDTO dto = entityToDtoCompleto(partido);
 
-        // Obtener jugadores aceptados
+        // jugadores aceptados
         List<Inscripcion> inscripciones = inscripcionRepository
-                .findByPartido_IdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO);
-        
-        List<UsuarioMinDTO> jugadores = inscripciones.stream()
-                .map(i -> {
-                    Usuario u = i.getUsuario();
-                    return new UsuarioMinDTO(
-                        u.getId(),
-                        u.getNombre(),
-                        u.getApellido(),
-                        u.getFotoPerfil()
-                    );
-                })
-                .collect(Collectors.toList());
-        
-        dto.setJugadores(jugadores);
+            .findByPartido_IdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO);
 
+        List<UsuarioMinDTO> jugadores = inscripciones.stream()
+            .map(i -> {
+                Usuario u = i.getUsuario();
+                return new UsuarioMinDTO(u.getId(), u.getNombre(), u.getApellido(), u.getFotoPerfil());
+            })
+            .toList();
+
+        dto.setJugadores(jugadores);
         return dto;
     }
+
 
     /**
      * Listar partidos con filtros
@@ -636,10 +638,12 @@ public class PartidoService {
         }
         
         // Calcular precio por jugador si no viene
-        if (dto.getPrecioPorJugador() == null) {
-            dto.setPrecioPorJugador(partidoMapper.calcularPrecioPorJugador(partido));
+        if (dto.getPrecioPorJugador() == null && partido.getPrecioTotal() != null && partido.getCantidadJugadores() != null && partido.getCantidadJugadores() > 0) {
+            dto.setPrecioPorJugador(
+                partido.getPrecioTotal().divide(BigDecimal.valueOf(partido.getCantidadJugadores()), 2, RoundingMode.HALF_UP)
+            );
         }
-        
+                
         return dto;
     }
 

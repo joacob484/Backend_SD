@@ -18,6 +18,7 @@ import uy.um.faltauno.service.InscripcionService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @Slf4j
@@ -67,10 +68,14 @@ public class PartidoController {
         try {
             PartidoDTO partido = partidoService.obtenerPartidoCompleto(id);
             return ResponseEntity.ok(new ApiResponse<>(partido, "Partido encontrado", true));
-        } catch (RuntimeException e) {
-            log.error("Partido no encontrado: {}", id);
+        } catch (NoSuchElementException e) { // o EntityNotFoundException si prefieres
+            log.warn("Partido no encontrado: {}", id);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, "Partido no encontrado", false));
+        } catch (Exception e) {
+            log.error("Error obteniendo partido {}", id, e); // <-- log con stacktrace
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al obtener el partido", false));
         }
     }
 
