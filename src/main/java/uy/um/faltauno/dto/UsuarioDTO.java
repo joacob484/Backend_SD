@@ -20,7 +20,7 @@ public class UsuarioDTO {
     private String posicion;
     private String fotoPerfil; // Base64 string
     private String cedula;
-    private String genero; // Masculino, Femenino, Otro
+    private String genero; // Masculino o Femenino
     
     @JsonProperty("cedulaVerificada")
     private Boolean cedulaVerificada;

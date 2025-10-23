@@ -36,7 +36,7 @@ public class Usuario {
     private String cedula;
     
     /**
-     * Género del usuario: Masculino, Femenino, Otro
+     * Género del usuario: Masculino o Femenino
      */
     private String genero;
     
