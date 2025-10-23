@@ -1,21 +1,37 @@
 -- Migración para corregir el tipo de ID de INTEGER a UUID en partido
 -- MANTIENE LOS IDs EXISTENTES convirtiéndolos a UUIDs determinísticos
 
--- 1. Crear tabla de mapeo para convertir INTEGER IDs a UUIDs determinísticos
+-- 1. Verificar si la columna id ya es UUID, si es así, no hacer nada
+DO $$ 
+DECLARE
+    current_type TEXT;
+BEGIN
+    SELECT data_type INTO current_type
+    FROM information_schema.columns
+    WHERE table_name = 'partido' AND column_name = 'id';
+    
+    IF current_type = 'uuid' THEN
+        RAISE NOTICE 'Column partido.id is already UUID, skipping migration';
+        RETURN;
+    END IF;
+END $$;
+
+-- 2. Crear tabla de mapeo para convertir INTEGER IDs a UUIDs determinísticos
 CREATE TEMP TABLE id_mapping AS
 SELECT 
     id::TEXT as old_id_text,
     id as old_id_int,
-    -- Genera UUID determinístico basado en el ID entero usando MD5
-    -- Formato: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx donde y = 8,9,a,b
+    -- Genera UUID determinístico basado en el ID entero
+    -- Convierte el entero a hexadecimal con CAST para evitar problemas de tipo
     (
-        lpad(to_hex(id), 8, '0') || '-' ||
-        lpad(to_hex(id), 4, '0') || '-' ||
-        '4' || lpad(to_hex(id), 3, '0') || '-' ||
-        '8' || lpad(to_hex(id), 3, '0') || '-' ||
-        lpad(to_hex(id), 12, '0')
+        lpad(to_hex(CAST(id AS INTEGER)), 8, '0') || '-' ||
+        lpad(to_hex(CAST(id AS INTEGER)), 4, '0') || '-' ||
+        '4' || lpad(to_hex(CAST(id AS INTEGER)), 3, '0') || '-' ||
+        '8' || lpad(to_hex(CAST(id AS INTEGER)), 3, '0') || '-' ||
+        lpad(to_hex(CAST(id AS INTEGER)), 12, '0')
     )::UUID as new_id_uuid
-FROM partido;
+FROM partido
+WHERE pg_typeof(id) <> 'uuid'::regtype;
 
 -- 2. Eliminar todas las foreign keys que apuntan a partido(id)
 ALTER TABLE IF EXISTS inscripcion DROP CONSTRAINT IF EXISTS inscripcion_partido_id_fkey;
