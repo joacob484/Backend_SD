@@ -18,6 +18,7 @@ import java.util.UUID;
 public interface PartidoMapper {
 
     // Entity -> DTO
+    @Mapping(target = "id", source = "id") // ⬅️ fuerza el mapeo del ID
     @Mapping(source = "organizador.id", target = "organizadorId")
     @Mapping(source = "organizador", target = "organizador", qualifiedByName = "usuarioToMin")
     @Mapping(target = "precioPorJugador", expression = "java(calcularPrecioPorJugador(partido))")
