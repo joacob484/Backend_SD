@@ -42,10 +42,10 @@ jobs:
               git pull origin main
               
               # Make script executable
-              chmod +x deploy.sh
+              chmod +x deploy-zero-downtime.sh
               
-              # Run deployment script (handles zero-downtime restart)
-              bash deploy.sh
+              # Run zero-downtime deployment script
+              bash deploy-zero-downtime.sh
             "
       
       - name: Verify deployment

@@ -1,8 +1,9 @@
 version: '3.8'
 
 networks:
-  appnet:
-    driver: bridge
+  faltauno-network:
+    external: true
+    name: backend_sd_faltauno-network
 
 services:
   # Green deployment (nuevo)
@@ -22,19 +23,14 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - FRONTEND_URL=${FRONTEND_URL}
-      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_HOST=faltauno_redis
       - SPRING_REDIS_PORT=6379
-      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_HOST=faltauno_rabbitmq
       - SPRING_RABBITMQ_PORT=5672
       - SPRING_RABBITMQ_USERNAME=guest
       - SPRING_RABBITMQ_PASSWORD=guest
     networks:
-      - appnet
-    depends_on:
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      - faltauno-network
     deploy:
       resources:
         limits:
@@ -43,45 +39,9 @@ services:
         reservations:
           memory: 256M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health/readiness"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 120s
 
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
-    networks:
-      - appnet
-    deploy:
-      resources:
-        limits:
-          cpus: '0.3'
-          memory: 128M
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  rabbitmq:
-    image: rabbitmq:3.12-management-alpine
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    networks:
-      - appnet
-    deploy:
-      resources:
-        limits:
-          cpus: '0.3'
-          memory: 192M
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 15s
-      timeout: 10s
-      retries: 3
