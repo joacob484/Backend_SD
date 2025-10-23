@@ -13,7 +13,10 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 
 import java.time.Duration;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
@@ -42,5 +45,24 @@ public class CacheConfig {
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)
                 .build();
+    }
+
+    @Bean
+    public CacheErrorHandler cacheErrorHandler() {
+        Logger log = LoggerFactory.getLogger("CacheErrorHandler");
+        return new CacheErrorHandler() {
+            @Override public void handleCacheGetError(RuntimeException ex, Cache cache, Object key) {
+                log.warn("Cache GET fallo en {} para key {}: {}", cache.getName(), key, ex.toString());
+            }
+            @Override public void handleCachePutError(RuntimeException ex, Cache cache, Object key, Object value) {
+                log.warn("Cache PUT fallo en {} para key {}: {}", cache.getName(), key, ex.toString());
+            }
+            @Override public void handleCacheEvictError(RuntimeException ex, Cache cache, Object key) {
+                log.warn("Cache EVICT fallo en {} para key {}: {}", cache.getName(), key, ex.toString());
+            }
+            @Override public void handleCacheClearError(RuntimeException ex, Cache cache) {
+                log.warn("Cache CLEAR fallo en {}: {}", cache.getName(), ex.toString());
+            }
+        };
     }
 }

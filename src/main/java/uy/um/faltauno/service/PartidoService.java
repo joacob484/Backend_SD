@@ -98,10 +98,6 @@ public class PartidoService {
     @Transactional(readOnly = true)
     @Cacheable(value = "partidos", key = "#id")
     public PartidoDTO obtenerPartidoCompleto(UUID id) {
-        log.debug("Buscando partido en DB: {}", id);
-        boolean exists = partidoRepository.existsById(id);
-        log.debug("existsById({}) = {}", id, exists);
-
         Partido partido = partidoRepository.findByIdWithOrganizador(id)
             .orElseThrow(() -> new NoSuchElementException("Partido no encontrado: " + id));
 
