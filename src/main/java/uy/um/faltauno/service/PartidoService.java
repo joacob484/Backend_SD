@@ -95,8 +95,8 @@ public class PartidoService {
     @Transactional(readOnly = true)
     @Cacheable(value = "partidos", key = "#id")
     public PartidoDTO obtenerPartidoCompleto(UUID id) {
-        Partido partido = partidoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+        Partido partido = partidoRepository.findByIdWithOrganizador(id)
+            .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
 
         PartidoDTO dto = entityToDtoCompleto(partido);
 
@@ -637,7 +637,7 @@ public class PartidoService {
         
         // Calcular precio por jugador si no viene
         if (dto.getPrecioPorJugador() == null) {
-            dto.setPrecioPorJugador(dto.getPrecioPorJugador()); // Usa el getter que calcula
+            dto.setPrecioPorJugador(partidoMapper.calcularPrecioPorJugador(partido));
         }
         
         return dto;

@@ -23,6 +23,7 @@ spring:
       ddl-auto: none  # ✅ Flyway maneja el schema
     properties:
       hibernate:
+        default_schema: public
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         jdbc:
@@ -67,6 +68,7 @@ spring:
   cache:
     type: redis
     redis:
+      cache-null-values: false
       time-to-live: 600s  # 10 minutos (con unidad)
 
   data:

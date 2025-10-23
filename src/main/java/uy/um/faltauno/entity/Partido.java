@@ -3,7 +3,9 @@ package uy.um.faltauno.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -23,6 +25,7 @@ public class Partido {
     @Id
     @GeneratedValue
     @UuidGenerator
+    @JdbcTypeCode(SqlTypes.UUID) // <-- fuerza tipo UUID en Hibernate 6
     @Column(name = "id", columnDefinition = "uuid")
     private UUID id;
 

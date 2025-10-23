@@ -31,6 +31,7 @@ public interface PartidoMapper {
     List<PartidoDTO> toDtoList(List<Partido> partidos);
 
     // DTO -> Entity
+    @Mapping(target = "id", ignore = true) // ⬅️ no sobreescribas el PK al actualizar
     @Mapping(target = "organizador", source = "organizadorId", qualifiedByName = "idToUsuario")
     @Mapping(target = "createdAt", ignore = true)
     Partido toEntity(PartidoDTO dto);

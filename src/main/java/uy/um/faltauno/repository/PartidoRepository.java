@@ -8,9 +8,18 @@ import uy.um.faltauno.entity.Partido;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface PartidoRepository extends JpaRepository<Partido, UUID>, JpaSpecificationExecutor<Partido> {
+    @Query("""
+           select p
+           from Partido p
+           left join fetch p.organizador
+           where p.id = :id
+           """)
+    Optional<Partido> findByIdWithOrganizador(@Param("id") UUID id);
+
     /**
      * Buscar partidos por organizador
      */
