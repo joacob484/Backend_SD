@@ -67,9 +67,9 @@ jobs:
             --set-env-vars "SPRING_DATASOURCE_URL=jdbc:postgresql:///faltauno_db?cloudSqlInstance=${{ env.CLOUDSQL_INSTANCE }}&socketFactory=com.google.cloud.sql.postgres.SocketFactory" \
             --set-env-vars "SPRING_DATASOURCE_USERNAME=${{ secrets.DB_USERNAME }}" \
             --set-env-vars "SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }}" \
-            --set-env-vars "SPRING_REDIS_HOST=34.66.92.72" \
+            --set-env-vars "SPRING_REDIS_HOST=34.44.39.79" \
             --set-env-vars "SPRING_REDIS_PORT=6379" \
-            --set-env-vars "SPRING_RABBITMQ_HOST=34.66.92.72" \
+            --set-env-vars "SPRING_RABBITMQ_HOST=34.44.39.79" \
             --set-env-vars "SPRING_RABBITMQ_PORT=5672" \
             --set-env-vars "SPRING_RABBITMQ_USERNAME=guest" \
             --set-env-vars "SPRING_RABBITMQ_PASSWORD=guest" \
