@@ -27,82 +27,63 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
       
-      - name: Deploy on VM (Blue-Green)
+      - name: Deploy Backend with Zero-Downtime
         run: |
           gcloud compute ssh augus@${{ env.GCP_VM_NAME }} \
             --zone=${{ env.GCP_ZONE }} \
             --command="
               set -e
               
-              # Hacer backup de .env
-              if [ -f ~/Backend_SD/.env ]; then
-                cp ~/Backend_SD/.env ~/Backend_SD/.env.backup
-              fi
-              
               cd ~/Backend_SD
               
-              # Blue-Green Deployment
-              echo '🔵🟢 Starting Blue-Green Deployment'
-              
-              # Discard local changes and pull latest code
+              # Discard any local changes and pull latest code
               git reset --hard HEAD
               git clean -fd
               git pull origin main
               
-              # Build and start GREEN (port 8081)
-              echo '📦 Starting GREEN deployment on port 8081'
-              docker-compose -f docker-compose.bluegreen.yml up -d --build backend-green
+              # Make script executable
+              chmod +x deploy.sh
               
-              # Wait for GREEN to be healthy
-              echo '⏳ Waiting for GREEN to be healthy...'
-              SECONDS_WAITED=0
-              until curl -f http://localhost:8081/actuator/health > /dev/null 2>&1; do
-                if [ \$SECONDS_WAITED -ge 180 ]; then
-                  echo '❌ GREEN failed to start, rolling back'
-                  docker-compose -f docker-compose.bluegreen.yml stop backend-green
-                  exit 1
-                fi
-                echo \"⏳ Waiting... (\$SECONDS_WAITED s)\"
-                sleep 5
-                SECONDS_WAITED=\$((SECONDS_WAITED + 5))
-              done
-              
-              echo '✅ GREEN is healthy!'
-              
-              # Stop BLUE (port 8080)
-              echo '🛑 Stopping BLUE deployment'
-              docker-compose -f docker-compose.cloudsql.yml stop backend || true
-              
-              # Switch: Restart GREEN on port 8080
-              echo '🔄 Switching GREEN to port 8080'
-              docker stop backend-green
-              docker rm backend-1 || true
-              
-              # Start with main compose (port 8080)
-              docker-compose -f docker-compose.cloudsql.yml up -d backend
-              
-              # Cleanup
-              docker-compose -f docker-compose.bluegreen.yml down || true
-              docker image prune -f
-              
-              echo '✅ Blue-Green Deployment complete!'
+              # Run deployment script (handles zero-downtime restart)
+              bash deploy.sh
             "
       
       - name: Verify deployment
         run: |
+          echo "⏳ Waiting 30 seconds for deployment to stabilize..."
           sleep 30
-          VM_IP=\$(gcloud compute instances describe ${{ env.GCP_VM_NAME }} \
-            --zone=${{ env.GCP_ZONE }} \
-            --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
           
-          echo "Testing health endpoint at http://\${VM_IP}:8080/actuator/health"
-          curl -f http://\${VM_IP}:8080/actuator/health || echo "⚠️ Health check failed, but deployment completed"
+          echo "🔍 Checking backend health..."
+          gcloud compute ssh augus@${{ env.GCP_VM_NAME }} \
+            --zone=${{ env.GCP_ZONE }} \
+            --command="
+              echo '=== Container Status ==='
+              docker ps --format '{{.Names}}: {{.Status}}' | grep -E 'backend|redis|rabbit|postgres'
+              
+              echo -e '\n=== Health Check ==='
+              curl -sS http://localhost:8080/actuator/health || echo 'Health endpoint failed'
+              
+              echo -e '\n=== Readiness Check ==='
+              curl -sS http://localhost:8080/actuator/health/readiness || echo 'Readiness endpoint failed'
+            "
       
-      - name: Notify deployment status
+      - name: Deployment Summary
         if: always()
         run: |
+          echo "======================================"
+          echo "  BACKEND DEPLOYMENT SUMMARY"
+          echo "======================================"
+          echo "Status: ${{ job.status }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Author: ${{ github.actor }}"
+          echo "======================================"
+          
           if [ "${{ job.status }}" == "success" ]; then
-            echo "🎉 Backend deployed successfully!"
+            echo "✅ Backend deployed successfully with zero-downtime!"
+            echo "🚀 Application is running at http://34.45.130.122:8080"
+            echo "📊 Health: http://34.45.130.122:8080/actuator/health"
           else
-            echo "❌ Deployment failed!"
+            echo "❌ Deployment failed - check logs above"
+            echo "💡 Previous version should still be running"
           fi
