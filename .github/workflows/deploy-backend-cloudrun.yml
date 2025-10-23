@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'Back/Backend_SD/**'
   workflow_dispatch:
 
 env:
@@ -44,9 +42,7 @@ jobs:
       
       - name: Build and Push Docker image
         run: |
-          cd Back/Backend_SD
-          
-          # Build production image
+          # Build production image (already in Backend_SD root)
           docker build -f Dockerfile.prod -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/faltauno/${{ env.SERVICE_NAME }}:latest .
           
           # Push to Artifact Registry
