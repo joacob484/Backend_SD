@@ -107,10 +107,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // Orígenes permitidos (desarrollo y producción)
+        // Orígenes permitidos (desarrollo local, Docker y Cloud Run)
         configuration.setAllowedOriginPatterns(Arrays.asList(
             "http://localhost:*",
             "http://host.docker.internal:*",
+            "https://*.run.app",  // ✅ Cloud Run frontend
             frontendUrl
         ));
         
