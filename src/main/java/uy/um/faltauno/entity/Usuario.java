@@ -36,6 +36,11 @@ public class Usuario {
     private String cedula;
     
     /**
+     * Género del usuario: Masculino, Femenino, Otro
+     */
+    private String genero;
+    
+    /**
      * Proveedor de autenticación (LOCAL para email/password, GOOGLE para OAuth, etc.)
      * - LOCAL: Usuario registrado con email y contraseña
      * - GOOGLE: Usuario registrado con Google OAuth (password = null)
