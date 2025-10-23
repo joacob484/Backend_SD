@@ -1,0 +1,60 @@
+version: '3.8'
+
+# ================================================================
+# Simplified VM Services - Only Redis & RabbitMQ
+# Backend → Moved to Cloud Run (HTTPS)
+# PostgreSQL → Using Cloud SQL
+# ================================================================
+
+services:
+  # ============================================================
+  # Redis - Caching Layer
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: faltauno_redis
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru --save ""
+    ports:
+      - "6379:6379"  # Exposed for Cloud Run to connect
+    networks:
+      - faltauno-network
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.2
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ============================================================
+  # RabbitMQ - Message Queue for Async Events
+  # ============================================================
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: faltauno_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"   # AMQP port - Exposed for Cloud Run
+      - "15672:15672" # Management UI
+    networks:
+      - faltauno-network
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.2
+    command: >
+      sh -c "
+      echo 'vm_memory_high_watermark.relative = 0.5' > /etc/rabbitmq/rabbitmq.conf &&
+      rabbitmq-server
+      "
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+networks:
+  faltauno-network:
+    driver: bridge
