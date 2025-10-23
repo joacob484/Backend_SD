@@ -70,12 +70,15 @@ sleep 5
 # Verify the new container is healthy
 echo -e "${YELLOW}⏳ Verifying new backend on port 8080...${NC}"
 SECONDS_WAITED=0
+MAX_WAIT_FINAL=120  # 2 minutes for final verification
 until curl -f http://localhost:8080/actuator/health/readiness > /dev/null 2>&1; do
-    if [ ${SECONDS_WAITED} -ge 60 ]; then
-        echo -e "${RED}❌ Failed to verify backend on port 8080${NC}"
+    if [ ${SECONDS_WAITED} -ge ${MAX_WAIT_FINAL} ]; then
+        echo -e "${RED}❌ Failed to verify backend on port 8080 after ${MAX_WAIT_FINAL}s${NC}"
+        echo -e "${RED}📋 Last 50 lines of logs:${NC}"
+        docker logs faltauno_backend --tail=50
         exit 1
     fi
-    echo -e "${YELLOW}⏳ Waiting... (${SECONDS_WAITED}s / 60s)${NC}"
+    echo -e "${YELLOW}⏳ Waiting... (${SECONDS_WAITED}s / ${MAX_WAIT_FINAL}s)${NC}"
     sleep 5
     SECONDS_WAITED=$((SECONDS_WAITED + 5))
 done
