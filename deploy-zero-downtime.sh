@@ -18,7 +18,10 @@ echo -e "${BLUE}📥 Step 1: Pulling latest code${NC}"
 git pull origin main
 
 echo -e "${BLUE}📦 Step 2: Building new GREEN image${NC}"
+# Build and tag the image
 docker-compose -f docker-compose.bluegreen.yml build backend-green
+# Tag it so we can reuse it later
+docker tag $(docker images --format "{{.Repository}}:{{.Tag}}" | grep backend_sd-backend-green | head -1) backend_sd-backend:latest
 
 echo -e "${BLUE}🟢 Step 3: Starting GREEN deployment on port 8081${NC}"
 echo "Current BLUE is still serving traffic on port 8080"
