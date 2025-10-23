@@ -43,7 +43,7 @@ echo -e "${BLUE}🔄 Step 4: Switching traffic from BLUE to GREEN${NC}"
 # For now, we'll just change the main compose file
 
 echo -e "${BLUE}🛑 Step 5: Stopping BLUE deployment (port ${BLUE_PORT})${NC}"
-docker-compose -f docker-compose.cloudsql.yml stop backend || true
+docker-compose -f docker-compose.prod.yml stop backend || true
 
 echo -e "${BLUE}♻️  Step 6: Promoting GREEN to BLUE${NC}"
 # Stop the green container
@@ -58,7 +58,7 @@ docker stop backend-1 || true
 docker rm backend-1 || true
 
 # Restart with the main compose file
-docker-compose -f docker-compose.cloudsql.yml up -d backend
+docker-compose -f docker-compose.prod.yml up -d backend
 
 echo -e "${GREEN}🧹 Step 7: Cleanup${NC}"
 docker-compose -f docker-compose.bluegreen.yml down --remove-orphans || true
