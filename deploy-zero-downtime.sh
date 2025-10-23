@@ -52,6 +52,7 @@ echo -e "${BLUE}🔄 Step 5: Switching traffic from BLUE (8080) to GREEN${NC}"
 # Stop the old BLUE container (from docker-compose.prod.yml)
 echo -e "${YELLOW}Stopping old BLUE container...${NC}"
 docker-compose -f docker-compose.prod.yml stop backend 2>/dev/null || true
+docker-compose -f docker-compose.prod.yml rm -f backend 2>/dev/null || true
 
 # Now remap GREEN from 8081 to 8080
 echo -e "${YELLOW}Remapping GREEN to port 8080...${NC}"
@@ -60,9 +61,10 @@ docker stop backend-green
 # Remove the GREEN container but keep the image
 docker rm backend-green
 
-# Start GREEN on port 8080 using docker-compose.prod.yml
-# This will use the same image we just built
-docker-compose -f docker-compose.prod.yml up -d backend
+# Start backend on port 8080 using docker-compose.prod.yml
+# Force recreate to use the newly built image
+echo -e "${YELLOW}Starting backend on 8080 with new image...${NC}"
+docker-compose -f docker-compose.prod.yml up -d --force-recreate --no-deps backend
 
 # Wait a moment for it to start
 sleep 5
