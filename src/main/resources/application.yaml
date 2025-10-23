@@ -121,6 +121,7 @@ server:
     enabled: true
     mime-types: application/json,application/xml,text/html,text/xml,text/plain
   connection-timeout: 30s                 # ✅ correcta (Spring Boot usa esta)
+  forward-headers-strategy: framework     # ✅ Detectar HTTPS detrás de proxy (Cloud Run)
   tomcat:
     keep-alive-timeout: 60s               # ✅ mayor que el proxy para evitar EOFs
     max-connections: 10000
@@ -128,6 +129,10 @@ server:
     threads:
       max: 200
       min-spare: 10
+    remoteip:                             # ✅ Configuración para Cloud Run
+      remote-ip-header: x-forwarded-for
+      protocol-header: x-forwarded-proto
+      protocol-header-https-value: https
 
 management:
   endpoints:
