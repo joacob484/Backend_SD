@@ -1,0 +1,105 @@
+name: Deploy Backend to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Back/Backend_SD/**'
+  workflow_dispatch:
+
+env:
+  GCP_PROJECT_ID: master-might-274420
+  GCP_REGION: us-central1
+  SERVICE_NAME: faltauno-backend
+  CLOUDSQL_INSTANCE: master-might-274420:us-central1:faltauno-db
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      
+      - name: Configure Docker for GCP
+        run: |
+          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+      
+      - name: Create Artifact Registry repository if not exists
+        run: |
+          gcloud artifacts repositories create faltauno \
+            --repository-format=docker \
+            --location=${{ env.GCP_REGION }} \
+            --description="Falta Uno Docker images" \
+            --project=${{ env.GCP_PROJECT_ID }} || true
+      
+      - name: Build and Push Docker image
+        run: |
+          cd Back/Backend_SD
+          
+          # Build production image
+          docker build -f Dockerfile.prod -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/faltauno/${{ env.SERVICE_NAME }}:latest .
+          
+          # Push to Artifact Registry
+          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/faltauno/${{ env.SERVICE_NAME }}:latest
+      
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/faltauno/${{ env.SERVICE_NAME }}:latest \
+            --platform managed \
+            --region ${{ env.GCP_REGION }} \
+            --allow-unauthenticated \
+            --memory 1Gi \
+            --cpu 2 \
+            --min-instances 1 \
+            --max-instances 10 \
+            --port 8080 \
+            --timeout 300 \
+            --concurrency 80 \
+            --add-cloudsql-instances ${{ env.CLOUDSQL_INSTANCE }} \
+            --set-env-vars "SPRING_PROFILES_ACTIVE=prod" \
+            --set-env-vars "SPRING_DATASOURCE_URL=jdbc:postgresql:///faltauno?cloudSqlInstance=${{ env.CLOUDSQL_INSTANCE }}&socketFactory=com.google.cloud.sql.postgres.SocketFactory" \
+            --set-env-vars "SPRING_DATASOURCE_USERNAME=${{ secrets.DB_USERNAME }}" \
+            --set-env-vars "SPRING_DATASOURCE_PASSWORD=${{ secrets.DB_PASSWORD }}" \
+            --set-env-vars "JWT_SECRET=${{ secrets.JWT_SECRET }}" \
+            --set-env-vars "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" \
+            --set-env-vars "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+            --set-env-vars "GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}" \
+            --set-env-vars "FRONTEND_URL=https://faltauno-frontend-169771742214.us-central1.run.app" \
+            --project ${{ env.GCP_PROJECT_ID }}
+      
+      - name: Get Backend URL
+        id: get-url
+        run: |
+          BACKEND_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --platform managed \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+          echo "Backend URL: $BACKEND_URL"
+          echo "backend_url=$BACKEND_URL" >> $GITHUB_OUTPUT
+      
+      - name: Verify deployment
+        run: |
+          sleep 20
+          curl -f ${{ steps.get-url.outputs.backend_url }}/actuator/health || echo "⚠️ Health check failed"
+      
+      - name: Update Frontend with new Backend URL
+        run: |
+          echo "================================================"
+          echo "🎉 Backend deployed successfully!"
+          echo "Backend URL: ${{ steps.get-url.outputs.backend_url }}"
+          echo "================================================"
+          echo ""
+          echo "⚠️ IMPORTANT: Update the frontend workflow with:"
+          echo "BACKEND_URL=\"${{ steps.get-url.outputs.backend_url }}\""
+          echo "================================================"

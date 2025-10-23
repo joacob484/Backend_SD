@@ -77,6 +77,14 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!-- Google Cloud SQL Socket Factory for PostgreSQL -->
+    <dependency>
+      <groupId>com.google.cloud.sql</groupId>
+      <artifactId>postgres-socket-factory</artifactId>
+      <version>1.18.1</version>
+      <scope>runtime</scope>
+    </dependency>
+
     <!-- Redis -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
