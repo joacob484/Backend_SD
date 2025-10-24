@@ -3,8 +3,6 @@ spring:
     name: falta-uno-backend
 
   datasource:
-    # En prod, esta URL debe venir por env con el socketFactory de Cloud SQL:
-    # SPRING_DATASOURCE_URL='jdbc:postgresql:///faltauno_db?cloudSqlInstance=PROJECT:REGION:INSTANCE&socketFactory=com.google.cloud.sql.postgres.SocketFactory'
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/faltauno_db}
     username: ${SPRING_DATASOURCE_USERNAME:app}
     password: ${SPRING_DATASOURCE_PASSWORD:pass}
@@ -26,7 +24,6 @@ spring:
     properties:
       hibernate:
         default_schema: public
-        # El dialect no es obligatorio; si querés, podés dejarlo. Lo mantengo como lo tenías.
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
         jdbc:
@@ -127,7 +124,6 @@ server:
     mime-types: application/json,application/xml,text/html,text/xml,text/plain
   connection-timeout: 30s                 # ✅ correcta (Spring Boot usa esta)
   forward-headers-strategy: framework     # ✅ Detectar HTTPS detrás de proxy (Cloud Run)
-  shutdown: graceful                      # ✅ Cierre prolijo en Cloud Run
   tomcat:
     keep-alive-timeout: 60s               # ✅ mayor que el proxy para evitar EOFs
     max-connections: 10000
@@ -139,10 +135,6 @@ server:
       remote-ip-header: x-forwarded-for
       protocol-header: x-forwarded-proto
       protocol-header-https-value: https
-
-spring:
-  lifecycle:
-    timeout-per-shutdown-phase: 15s        # ✅ tiempo para graceful shutdown
 
 management:
   endpoints:
@@ -193,9 +185,9 @@ logging:
     io.netty: WARN
     org.apache.coyote.http11: WARN
     org.apache.tomcat.util.net: WARN
-  # En Cloud Run se recomienda stdout/stderr; mantenemos patrón de consola si querés.
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 # ✅ Profiles
 ---
@@ -216,13 +208,14 @@ spring:
     activate:
       on-profile: prod
 
-# 🔊 Producción (Cloud Run): SOLO consola → nada de archivos
 logging:
   level:
     root: WARN
     uy.um.faltauno: INFO
     org.springframework.security: WARN
   file:
-    name:                          # vacío → desactiva file appender
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} %level [%thread] %logger - %msg%n"
+    name: logs/faltauno-backend.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
