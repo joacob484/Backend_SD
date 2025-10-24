@@ -1,5 +1,6 @@
 package uy.um.faltauno.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
@@ -23,6 +24,7 @@ public class PartidoDTO {
     
     private String genero;
     
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private LocalDate fecha;
     
     private LocalTime hora;
