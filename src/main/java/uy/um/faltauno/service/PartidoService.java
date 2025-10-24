@@ -96,7 +96,7 @@ public class PartidoService {
      * Obtener partido completo con jugadores
      */
     @Transactional(readOnly = true)
-    @Cacheable(value = "partidos", key = "#id")
+    @Cacheable(cacheNames = "partidos_v2", value = "partidos", key = "#id")
     public PartidoDTO obtenerPartidoCompleto(UUID id) {
         Partido partido = partidoRepository.findByIdWithOrganizador(id)
             .orElseThrow(() -> new NoSuchElementException("Partido no encontrado: " + id));
