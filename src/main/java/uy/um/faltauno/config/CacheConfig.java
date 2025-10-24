@@ -31,7 +31,6 @@ import java.time.Duration;
 
 @Configuration
 @EnableCaching
-@ConditionalOnProperty(name = "spring.cache.type", havingValue = "redis")
 public class CacheConfig {
 
     @Value("${spring.redis.host:redis}")
@@ -39,6 +38,21 @@ public class CacheConfig {
 
     @Value("${spring.redis.port:6379}")
     private int redisPort;
+
+    @Bean
+    public RedisCacheConfiguration redisCacheConfiguration(ObjectMapper baseMapper) {
+        ObjectMapper om = baseMapper.copy()
+        .registerModule(new JavaTimeModule())
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        GenericJackson2JsonRedisSerializer valueSer =
+        new GenericJackson2JsonRedisSerializer(om);
+
+        return RedisCacheConfiguration.defaultCacheConfig()
+        .serializeValuesWith(
+            RedisSerializationContext.SerializationPair.fromSerializer(valueSer)
+        );
+    }
 
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
