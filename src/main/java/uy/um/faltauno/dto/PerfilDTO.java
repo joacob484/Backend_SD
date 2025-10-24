@@ -16,6 +16,7 @@ public class PerfilDTO {
     private String peso;         // stringify from frontend
     private String direccion;    // opcional
     private String placeDetails; // JSON string de Google Places (opcional)
+    private String genero;       // Masculino o Femenino
 
     @JsonProperty("fecha_nacimiento") // mapea JSON "fecha_nacimiento" a este campo camelCase
     private String fechaNacimiento;

@@ -161,6 +161,11 @@ public class UsuarioService {
                 ? Double.valueOf(perfilDTO.getAltura()) : null);
         usuario.setPeso(perfilDTO.getPeso() != null && !perfilDTO.getPeso().isEmpty()
                 ? Double.valueOf(perfilDTO.getPeso()) : null);
+        
+        // Mapear género si está presente
+        if (perfilDTO.getGenero() != null && !perfilDTO.getGenero().isBlank()) {
+            usuario.setGenero(perfilDTO.getGenero());
+        }
 
         try {
             String fechaStr = perfilDTO.getFechaNacimiento();
