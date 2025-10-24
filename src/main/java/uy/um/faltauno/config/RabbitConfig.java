@@ -1,10 +1,12 @@
 package uy.um.faltauno.config;
 
 import org.springframework.amqp.core.*;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@ConditionalOnProperty(value = "app.rabbit.enabled", havingValue = "true", matchIfMissing = false)
 public class RabbitConfig {
     public static final String EXCHANGE_PARTIDOS = "exchange.partidos";
     public static final String QUEUE_NOTIFICATIONS = "notificaciones.queue";
