@@ -287,7 +287,7 @@ public class PartidoService {
      * Cancelar un partido
      */
     @Transactional
-    @CacheEvict(value = {"partidos", "partidos-disponibles"}, allEntries = true)
+    @CacheEvict(cacheNames = {"partidos_v2", "partidos-disponibles"}, allEntries = true)
     public void cancelarPartido(UUID id, String motivo, Authentication auth) {
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
