@@ -92,6 +92,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
             
+            // ✅ CRÍTICO: Agregar userId como atributo del request para que los controladores puedan accederlo
+            if (userId != null) {
+                request.setAttribute("userId", userId);
+                log.debug("📌 UserId set in request attribute: {}", userId);
+            }
+            
             log.info("✅ User authenticated via JWT: {} (userId: {}) for: {}", email, userId, path);
 
         } catch (Exception ex) {
