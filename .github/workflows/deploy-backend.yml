@@ -1,91 +1,146 @@
-name: Deploy Backend to GCP VM (DISABLED - Using Cloud Run)
+name: Deploy Backend (Cloud Run + VM)
 
-# DISABLED: Now using deploy-backend-cloudrun.yml instead
-# Uncomment below to re-enable VM deployment
 on:
-  workflow_dispatch:  # Manual trigger only
-  # push:
-  #   branches:
-  #     - main
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  id-token: write
 
 env:
-  GCP_PROJECT_ID: master-might-274420
-  GCP_VM_NAME: faltauno-vm
-  GCP_ZONE: us-central1-a
+  # ====== GCP ======
+  PROJECT_ID: master-might-274420
+  REGION: us-central1
+  AR_REPO: faltauno                   # Artifact Registry repo (Docker)
+  RUN_SERVICE: faltauno-backend
+  CLOUDSQL_INSTANCE: master-might-274420:us-central1:faltauno-db
+  VPC_CONNECTOR: run-vpc
+  # ====== VM ======
+  VM_NAME: faltauno-vm
+  VM_ZONE: us-central1-a
+  # ====== App ======
+  FRONTEND_URL: https://faltauno-frontend-169771742214.us-central1.run.app
+  REDIS_HOST: 10.128.0.2
+  RABBIT_HOST: 10.128.0.2
+
+  # Imagen
+  IMG_BASENAME: us-central1-docker.pkg.dev/master-might-274420/faltauno/faltauno-backend
+
+  # Ajustes de Cloud Run (podes tunear si querés)
+  MIN_INSTANCES: "1"
+  MAX_INSTANCES: "10"
+  CPU: "1"
+  MEMORY: "512Mi"
+  TIMEOUT: "300"
 
 jobs:
-  deploy-backend:
+  deploy:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
+      # --- Checkout ---
+      - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Authenticate to Google Cloud
+
+      # --- Java para compilar el backend ---
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: "maven"
+
+      - name: Build (Maven)
+        run: |
+          mvn -v
+          mvn -B -DskipTests package
+
+      # --- Auth OIDC ---
+      - name: Auth to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-      
-      - name: Set up Cloud SDK
+          workload_identity_provider: projects/169771742214/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+          service_account: deploy-cicd@master-might-274420.iam.gserviceaccount.com
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Set up gcloud SDK
         uses: google-github-actions/setup-gcloud@v2
-      
-      - name: Deploy Backend with Zero-Downtime
+
+      # --- Docker login a Artifact Registry ---
+      - name: Configure Docker to Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev -q
+
+      # --- Build & Push de imagen ---
+      - name: Build & Push image
         run: |
-          gcloud compute ssh augus@${{ env.GCP_VM_NAME }} \
-            --zone=${{ env.GCP_ZONE }} \
-            --command="
-              set -e
-              
-              cd ~/Backend_SD
-              
-              # Discard any local changes and pull latest code
-              git reset --hard HEAD
-              git clean -fd
-              git pull origin main
-              
-              # Make script executable
-              chmod +x deploy-zero-downtime.sh
-              
-              # Run zero-downtime deployment script
-              bash deploy-zero-downtime.sh
-            "
-      
-      - name: Verify deployment
+          GIT_SHA="${{ github.sha }}"
+          IMG_SHA="${{ env.IMG_BASENAME }}:${GIT_SHA}"
+          IMG_LATEST="${{ env.IMG_BASENAME }}:latest"
+
+          echo "Building $IMG_SHA"
+          docker build \
+            -f Dockerfile.prod \
+            -t "$IMG_SHA" \
+            -t "$IMG_LATEST" \
+            .
+
+          docker push "$IMG_SHA"
+          docker push "$IMG_LATEST"
+
+          echo "IMG_SHA=$IMG_SHA" >> $GITHUB_ENV
+
+      # --- Deploy sin downtime a Cloud Run ---
+      - name: Deploy to Cloud Run (zero-downtime)
         run: |
-          echo "⏳ Waiting 30 seconds for deployment to stabilize..."
-          sleep 30
-          
-          echo "🔍 Checking backend health..."
-          gcloud compute ssh augus@${{ env.GCP_VM_NAME }} \
-            --zone=${{ env.GCP_ZONE }} \
-            --command="
-              echo '=== Container Status ==='
-              docker ps --format '{{.Names}}: {{.Status}}' | grep -E 'backend|redis|rabbit|postgres'
-              
-              echo -e '\n=== Health Check ==='
-              curl -sS http://localhost:8080/actuator/health || echo 'Health endpoint failed'
-              
-              echo -e '\n=== Readiness Check ==='
-              curl -sS http://localhost:8080/actuator/health/readiness || echo 'Readiness endpoint failed'
-            "
-      
-      - name: Deployment Summary
-        if: always()
+          # Nota: Cloud Run hace rollout sin downtime por diseño al crear un revision nuevo y mover tráfico.
+          gcloud run deploy "$RUN_SERVICE" \
+            --image "$IMG_SHA" \
+            --region "$REGION" \
+            --platform managed \
+            --project "$PROJECT_ID" \
+            --allow-unauthenticated \
+            --execution-environment gen2 \
+            --min-instances "$MIN_INSTANCES" \
+            --max-instances "$MAX_INSTANCES" \
+            --cpu "$CPU" \
+            --memory "$MEMORY" \
+            --timeout "$TIMEOUT" \
+            --vpc-connector "$VPC_CONNECTOR" \
+            --vpc-egress private-ranges-only \
+            --set-env-vars "SPRING_PROFILES_ACTIVE=prod" \
+            --set-env-vars "FRONTEND_URL=${FRONTEND_URL}" \
+            --set-env-vars "SPRING_DATASOURCE_URL=jdbc:postgresql:///faltauno_db?cloudSqlInstance=${CLOUDSQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory" \
+            --set-env-vars "SPRING_DATASOURCE_USERNAME=app" \
+            --set-env-vars "SPRING_REDIS_HOST=${REDIS_HOST}" \
+            --set-env-vars "SPRING_RABBITMQ_HOST=${RABBIT_HOST}" \
+            --set-env-vars "JWT_EXPIRATION=86400000" \
+            --set-secrets "SPRING_DATASOURCE_PASSWORD=db-password:latest" \
+            --set-secrets "JWT_SECRET=jwt-secret:latest" \
+            --set-secrets "GOOGLE_CLIENT_SECRET=google-client-secret:latest" \
+            --set-secrets "SPRING_RABBITMQ_USERNAME=rabbit-username:latest" \
+            --set-secrets "SPRING_RABBITMQ_PASSWORD=rabbit-password:latest"
+
+      # --- Refresh Redis & RabbitMQ en la VM ---
+      # Requiere: firewall permite IAP TCP tunneling o SSH 22, y el SA de deploy tiene roles/compute.osAdminLogin + roles/iap.tunnelResourceAccessor
+      - name: Refresh infra on VM (Redis/Rabbit via systemd)
         run: |
-          echo "======================================"
-          echo "  BACKEND DEPLOYMENT SUMMARY"
-          echo "======================================"
-          echo "Status: ${{ job.status }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Author: ${{ github.actor }}"
-          echo "======================================"
-          
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Backend deployed successfully with zero-downtime!"
-            echo "🚀 Application is running at http://34.45.130.122:8080"
-            echo "📊 Health: http://34.45.130.122:8080/actuator/health"
-          else
-            echo "❌ Deployment failed - check logs above"
-            echo "💡 Previous version should still be running"
-          fi
+          gcloud compute ssh "$VM_NAME" \
+            --zone "$VM_ZONE" \
+            --tunnel-through-iap \
+            --project "$PROJECT_ID" \
+            --command "sudo systemctl daemon-reload && sudo systemctl restart faltauno-services && sudo systemctl --no-pager --full status faltauno-services || true"
+
+      # --- Smoke checks (opcionales pero útiles) ---
+      - name: Show Cloud Run URL & last revision
+        run: |
+          URL=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.url)')
+          REV=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestCreatedRevisionName)')
+          echo "Service URL: $URL"
+          echo "Latest Revision: $REV"
+
+      - name: Quick VM port checks (optional)
+        continue-on-error: true
+        run: |
+          gcloud compute ssh "$VM_NAME" \
+            --zone "$VM_ZONE" --tunnel-through-iap --project "$PROJECT_ID" \
+            --command "sudo ss -lntp | egrep 'LISTEN.+:(6379|5672|15672)' || true"

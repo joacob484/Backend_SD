@@ -207,15 +207,3 @@ spring:
   config:
     activate:
       on-profile: prod
-
-logging:
-  level:
-    root: WARN
-    uy.um.faltauno: INFO
-    org.springframework.security: WARN
-  file:
-    name: logs/faltauno-backend.log
-  logback:
-    rollingpolicy:
-      max-file-size: 10MB
-      max-history: 30
