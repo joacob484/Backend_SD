@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -30,12 +32,15 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final UserDetailsService userDetailsService;
-    
+    private final JwtAuthenticationFilter jwtFilter;
+    private final RateLimitingFilter rateLimitingFilter;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+
     @Value("${FRONTEND_URL:http://localhost:3000}")
     private String frontendUrl;
-    
+
+    // ======== Autenticación base ========
     @Bean
-    @SuppressWarnings("deprecation") // API moderna no disponible en Spring Boot 3.5.0
     public DaoAuthenticationProvider authenticationProvider(PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
@@ -48,106 +53,94 @@ public class SecurityConfig {
         return new ProviderManager(provider);
     }
 
+    // ======== Configuración principal ========
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                    DaoAuthenticationProvider provider,
-                                                    JwtAuthenticationFilter jwtFilter,
-                                                    RateLimitingFilter rateLimitingFilter,
-                                                    OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
+                                                   DaoAuthenticationProvider provider) throws Exception {
+
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ Habilitar CORS
+            // --- CORS y CSRF ---
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+            // --- Manejo de sesiones (OAuth2 necesita una sesión temporal) ---
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+
+            // --- Autorización de endpoints ---
             .authorizeHttpRequests(auth -> auth
-                // ✅ CRÍTICO: Permitir OPTIONS para CORS preflight
-                .requestMatchers("OPTIONS", "/**").permitAll()
-                
-                // ✅ Endpoints públicos de autenticación
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
-                
-                // ✅ CRÍTICO: Permitir POST a /api/usuarios (registro)
-                .requestMatchers("POST", "/api/usuarios").permitAll()
-                
-                // ✅ Endpoints públicos generales (sin H2 console en producción)
+                .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
                 .requestMatchers("/public/**", "/actuator/health", "/error").permitAll()
-                
-                // ✅ Todo lo demás requiere autenticación
                 .anyRequest().authenticated()
             )
+
+            // --- OAuth2 Login (Google) ---
             .oauth2Login(oauth -> oauth
                 .loginPage("/oauth2/authorization/google")
                 .successHandler(oAuth2SuccessHandler)
             )
-            .authenticationProvider(provider)
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint(authenticationEntryPoint())
-            );
 
-        // ✅ Agregar filtro de rate limiting ANTES del filtro JWT
+            // --- Provider personalizado (usuario/clave) ---
+            .authenticationProvider(provider)
+
+            // --- Manejo de errores de autenticación ---
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint()));
+
+        // --- Filtros personalizados ---
         http.addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class);
-        
-        // ✅ Agregar filtro JWT ANTES de UsernamePasswordAuthenticationFilter
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-        
-        // ✅ Headers de seguridad para producción
+
+        // --- Headers de seguridad ---
         http.headers(h -> h
-            .frameOptions(f -> f.deny()) // Denegar frames en producción
-            .xssProtection(xss -> xss.disable()) // Spring Security 6+ recomienda CSP
+            .frameOptions(f -> f.deny()) // evita clickjacking
+            .xssProtection(xss -> xss.disable()) // ya controlado por CSP
             .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'"))
         );
-        
+
         return http.build();
     }
 
-    /**
-     * ✅ Configuración de CORS explícita usando FRONTEND_URL
-     */
+    // ======== Configuración CORS ========
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Orígenes permitidos (desarrollo local, Docker y Cloud Run)
-        configuration.setAllowedOriginPatterns(Arrays.asList(
+
+        configuration.setAllowedOriginPatterns(List.of(
             "http://localhost:*",
             "http://host.docker.internal:*",
-            "https://*.run.app",  // ✅ Cloud Run frontend
+            "https://*.run.app",
             frontendUrl
         ));
-        
-        // Métodos HTTP permitidos
-        configuration.setAllowedMethods(Arrays.asList(
+
+        configuration.setAllowedMethods(List.of(
             "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
-        
-        // Headers permitidos
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        
-        // Permitir credenciales
-        configuration.setAllowCredentials(true);
-        
-        // Headers expuestos
-        configuration.setExposedHeaders(Arrays.asList(
+
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of(
             "Authorization",
             "Content-Type",
             "X-Requested-With"
         ));
-        
-        // Max age para preflight cache
+        configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
-        
         return source;
     }
 
+    // ======== Entry Point para respuestas 401 JSON ========
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, ex) -> {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
-            response.getWriter().write("{\"success\":false,\"message\":\"Unauthorized\",\"data\":null}");
+            response.getWriter().write("""
+                {"success":false,"message":"Unauthorized","data":null}
+            """);
         };
     }
 }

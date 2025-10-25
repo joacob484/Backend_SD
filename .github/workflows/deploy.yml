@@ -39,6 +39,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       # --- Checkout ---
       - name: Checkout
@@ -65,8 +66,6 @@ jobs:
           workload_identity_provider: projects/169771742214/locations/global/workloadIdentityPools/github-pool/providers/github-provider
           service_account: deploy-cicd@master-might-274420.iam.gserviceaccount.com
           project_id: ${{ env.PROJECT_ID }}
-          # 👇 audience = TU repo
-          audience: https://github.com/joacob484/Backend_SD
           create_credentials_file: true
 
       # Exportar credenciales para gcloud/SDKs
@@ -75,7 +74,7 @@ jobs:
           echo "GOOGLE_APPLICATION_CREDENTIALS=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
           echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
 
-      # --- Cloud SDK + componentes beta (requerido para SSH con OIDC) ---
+      # --- Cloud SDK + componentes beta (para SSH con IAP) ---
       - name: Set up gcloud SDK (with beta)
         uses: google-github-actions/setup-gcloud@v2
         with:
@@ -105,6 +104,7 @@ jobs:
           echo "IMG_SHA=$IMG_SHA" >> $GITHUB_ENV
 
       # --- Deploy sin downtime a Cloud Run ---
+      # NOTA: No sobreescribimos secretos/vars críticas más allá de lo necesario.
       - name: Deploy to Cloud Run (zero-downtime)
         run: |
           gcloud run deploy "$RUN_SERVICE" \
@@ -121,24 +121,27 @@ jobs:
             --timeout "$TIMEOUT" \
             --vpc-connector "$VPC_CONNECTOR" \
             --vpc-egress private-ranges-only \
-            --set-env-vars "SPRING_PROFILES_ACTIVE=prod" \
-            --set-env-vars "FRONTEND_URL=${FRONTEND_URL}" \
-            --set-env-vars "SPRING_DATASOURCE_URL=jdbc:postgresql:///faltauno_db?cloudSqlInstance=${CLOUDSQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory" \
-            --set-env-vars "SPRING_DATASOURCE_USERNAME=app" \
-            --set-env-vars "SPRING_REDIS_HOST=${REDIS_HOST}" \
-            --set-env-vars "SPRING_RABBITMQ_HOST=${RABBIT_HOST}" \
-            --set-env-vars "JWT_EXPIRATION=86400000" \
-            --set-secrets "SPRING_DATASOURCE_PASSWORD=db-password:latest" \
-            --set-secrets "JWT_SECRET=jwt-secret:latest" \
-            --set-secrets "GOOGLE_CLIENT_ID=google-client-id:latest" \
-            --set-secrets "GOOGLE_CLIENT_SECRET=google-client-secret:latest" \
-            --set-secrets "SPRING_RABBITMQ_USERNAME=rabbit-username:latest" \
-            --set-secrets "SPRING_RABBITMQ_PASSWORD=rabbit-password:latest"
+            \
+            --set-env-vars SPRING_PROFILES_ACTIVE=prod \
+            --set-env-vars FRONTEND_URL="${FRONTEND_URL}" \
+            --set-env-vars SPRING_DATASOURCE_URL="jdbc:postgresql:///faltauno_db?cloudSqlInstance=${CLOUDSQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory" \
+            --set-env-vars SPRING_DATASOURCE_USERNAME=app \
+            --set-env-vars SPRING_REDIS_HOST="${REDIS_HOST}" \
+            --set-env-vars SPRING_RABBITMQ_HOST="${RABBIT_HOST}" \
+            --set-env-vars SPRING_RABBITMQ_PORT=5672 \
+            --set-env-vars SPRING_RABBITMQ_USERNAME=faltauno \
+            --set-env-vars APP_RABBIT_ENABLED=true \
+            --set-env-vars JWT_EXPIRATION=86400000 \
+            \
+            --set-secrets SPRING_DATASOURCE_PASSWORD=db-password:latest \
+            --set-secrets JWT_SECRET=jwt-secret:latest \
+            --set-secrets GOOGLE_CLIENT_ID=google-client-id:latest \
+            --set-secrets GOOGLE_CLIENT_SECRET=google-client-secret:latest \
+            --set-secrets SPRING_RABBITMQ_PASSWORD=rabbitmq-password:latest
 
       # --- Refrescar servicios en la VM (Redis/Rabbit) vía IAP + OS Login ---
       - name: Refresh infra on VM (Redis/Rabbit via systemd)
         run: |
-          # 1 intento + reintento simple (por si tarda en crear la clave SSH o abrir túnel IAP)
           for i in 1 2; do
             set +e
             gcloud beta compute ssh "$VM_NAME" \
@@ -151,10 +154,10 @@ jobs:
             rc=$?
             set -e
             if [ $rc -eq 0 ]; then
-              echo "VM refresh OK"
+              echo 'VM refresh OK'
               break
             fi
-            echo "Retrying VM refresh in 10s..."
+            echo 'Retrying VM refresh in 10s...'
             sleep 10
           done
 
