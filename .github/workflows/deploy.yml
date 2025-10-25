@@ -59,14 +59,21 @@ jobs:
 
       # --- Auth OIDC (WIF) ---
       - name: Auth to Google Cloud (WIF)
+        id: auth
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/169771742214/locations/global/workloadIdentityPools/github-pool/providers/github-provider
           service_account: deploy-cicd@master-might-274420.iam.gserviceaccount.com
           project_id: ${{ env.PROJECT_ID }}
+          # 👇 audience = TU repo
           audience: https://github.com/joacob484/Backend_SD
           create_credentials_file: true
-          export_default_credentials: true
+
+      # Exportar credenciales para gcloud/SDKs
+      - name: Export ADC env vars
+        run: |
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
+          echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
 
       # --- Cloud SDK + componentes beta (requerido para SSH con OIDC) ---
       - name: Set up gcloud SDK (with beta)
@@ -123,23 +130,33 @@ jobs:
             --set-env-vars "JWT_EXPIRATION=86400000" \
             --set-secrets "SPRING_DATASOURCE_PASSWORD=db-password:latest" \
             --set-secrets "JWT_SECRET=jwt-secret:latest" \
-            --set-secrets "SPRING_RABBITMQ_USERNAME=rabbit-username:latest" \
-            --set-secrets "SPRING_RABBITMQ_PASSWORD=rabbit-password:latest" \
             --set-secrets "GOOGLE_CLIENT_ID=google-client-id:latest" \
-            --set-secrets "GOOGLE_CLIENT_SECRET=google-client-secret:latest"
+            --set-secrets "GOOGLE_CLIENT_SECRET=google-client-secret:latest" \
+            --set-secrets "SPRING_RABBITMQ_USERNAME=rabbit-username:latest" \
+            --set-secrets "SPRING_RABBITMQ_PASSWORD=rabbit-password:latest"
 
-      # --- Refrescar servicios en la VM (Redis/Rabbit) ---
+      # --- Refrescar servicios en la VM (Redis/Rabbit) vía IAP + OS Login ---
       - name: Refresh infra on VM (Redis/Rabbit via systemd)
         run: |
-          gcloud beta compute ssh "$VM_NAME" \
-            --project "$PROJECT_ID" \
-            --zone "$VM_ZONE" \
-            --tunnel-through-iap \
-            --quiet \
-            --ssh-flag='-o StrictHostKeyChecking=no' \
-            --ssh-flag='-o UserKnownHostsFile=/dev/null' \
-            --ssh-flag='-o CheckHostIP=no' \
-            --command "sudo systemctl daemon-reload && sudo systemctl restart faltauno-services && sudo systemctl --no-pager --full status faltauno-services || true"
+          # 1 intento + reintento simple (por si tarda en crear la clave SSH o abrir túnel IAP)
+          for i in 1 2; do
+            set +e
+            gcloud beta compute ssh "$VM_NAME" \
+              --zone "$VM_ZONE" \
+              --tunnel-through-iap \
+              --project "$PROJECT_ID" \
+              --quiet \
+              -- -o StrictHostKeyChecking=no \
+              "sudo systemctl daemon-reload && sudo systemctl restart faltauno-services && sudo systemctl --no-pager --full status faltauno-services"
+            rc=$?
+            set -e
+            if [ $rc -eq 0 ]; then
+              echo "VM refresh OK"
+              break
+            fi
+            echo "Retrying VM refresh in 10s..."
+            sleep 10
+          done
 
       # --- Smoke checks ---
       - name: Show Cloud Run URL & last revision
@@ -153,9 +170,6 @@ jobs:
         continue-on-error: true
         run: |
           gcloud beta compute ssh "$VM_NAME" \
-            --zone "$VM_ZONE" --tunnel-through-iap --project "$PROJECT_ID" \
-            --quiet \
-            --ssh-flag='-o StrictHostKeyChecking=no' \
-            --ssh-flag='-o UserKnownHostsFile=/dev/null' \
-            --ssh-flag='-o CheckHostIP=no' \
-            --command "sudo ss -lntp | egrep 'LISTEN.+:(6379|5672|15672)' || true"
+            --zone "$VM_ZONE" --tunnel-through-iap --project "$PROJECT_ID" --quiet \
+            -- -o StrictHostKeyChecking=no \
+            "sudo ss -lntp | egrep 'LISTEN.+:(6379|5672|15672)' || true"
