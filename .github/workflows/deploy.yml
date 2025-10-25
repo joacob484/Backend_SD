@@ -12,22 +12,24 @@ env:
   # ====== GCP ======
   PROJECT_ID: master-might-274420
   REGION: us-central1
-  AR_REPO: faltauno                   # Artifact Registry repo (Docker)
+  AR_REPO: faltauno
   RUN_SERVICE: faltauno-backend
   CLOUDSQL_INSTANCE: master-might-274420:us-central1:faltauno-db
   VPC_CONNECTOR: run-vpc
+
   # ====== VM ======
   VM_NAME: faltauno-vm
   VM_ZONE: us-central1-a
+
   # ====== App ======
   FRONTEND_URL: https://faltauno-frontend-169771742214.us-central1.run.app
   REDIS_HOST: 10.128.0.2
   RABBIT_HOST: 10.128.0.2
 
-  # Imagen
+  # Imagen base (Artifact Registry)
   IMG_BASENAME: us-central1-docker.pkg.dev/master-might-274420/faltauno/faltauno-backend
 
-  # Ajustes de Cloud Run (podes tunear si querés)
+  # Cloud Run runtime
   MIN_INSTANCES: "1"
   MAX_INSTANCES: "10"
   CPU: "1"
@@ -42,7 +44,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # --- Java para compilar el backend ---
+      # --- Java para compilar ---
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -55,13 +57,16 @@ jobs:
           mvn -v
           mvn -B -DskipTests package
 
-      # --- Auth OIDC ---
+      # --- Auth OIDC (WIF) ---
       - name: Auth to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: projects/169771742214/locations/global/workloadIdentityPools/github-pool/providers/github-provider
           service_account: deploy-cicd@master-might-274420.iam.gserviceaccount.com
           project_id: ${{ env.PROJECT_ID }}
+          # 👇 FIX CLAVE para tu error: el audience debe ser TU repo de GitHub
+          audience: https://github.com/joacob484/Backend_SD
+          create_credentials_file: true
 
       - name: Set up gcloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -70,7 +75,7 @@ jobs:
       - name: Configure Docker to Artifact Registry
         run: gcloud auth configure-docker us-central1-docker.pkg.dev -q
 
-      # --- Build & Push de imagen ---
+      # --- Build & Push imagen ---
       - name: Build & Push image
         run: |
           GIT_SHA="${{ github.sha }}"
@@ -92,7 +97,6 @@ jobs:
       # --- Deploy sin downtime a Cloud Run ---
       - name: Deploy to Cloud Run (zero-downtime)
         run: |
-          # Nota: Cloud Run hace rollout sin downtime por diseño al crear un revision nuevo y mover tráfico.
           gcloud run deploy "$RUN_SERVICE" \
             --image "$IMG_SHA" \
             --region "$REGION" \
@@ -116,12 +120,13 @@ jobs:
             --set-env-vars "JWT_EXPIRATION=86400000" \
             --set-secrets "SPRING_DATASOURCE_PASSWORD=db-password:latest" \
             --set-secrets "JWT_SECRET=jwt-secret:latest" \
-            --set-secrets "GOOGLE_CLIENT_SECRET=google-client-secret:latest" \
             --set-secrets "SPRING_RABBITMQ_USERNAME=rabbit-username:latest" \
-            --set-secrets "SPRING_RABBITMQ_PASSWORD=rabbit-password:latest"
+            --set-secrets "SPRING_RABBITMQ_PASSWORD=rabbit-password:latest" \
+            --set-secrets "GOOGLE_CLIENT_ID=google-client-id:latest" \
+            --set-secrets "GOOGLE_CLIENT_SECRET=google-client-secret:latest"
 
-      # --- Refresh Redis & RabbitMQ en la VM ---
-      # Requiere: firewall permite IAP TCP tunneling o SSH 22, y el SA de deploy tiene roles/compute.osAdminLogin + roles/iap.tunnelResourceAccessor
+      # --- Refrescar servicios en la VM (Redis/Rabbit) ---
+      # Requiere: roles/compute.osAdminLogin + roles/iap.tunnelResourceAccessor (al SA deploy-cicd)
       - name: Refresh infra on VM (Redis/Rabbit via systemd)
         run: |
           gcloud compute ssh "$VM_NAME" \
@@ -130,7 +135,7 @@ jobs:
             --project "$PROJECT_ID" \
             --command "sudo systemctl daemon-reload && sudo systemctl restart faltauno-services && sudo systemctl --no-pager --full status faltauno-services || true"
 
-      # --- Smoke checks (opcionales pero útiles) ---
+      # --- Smoke checks ---
       - name: Show Cloud Run URL & last revision
         run: |
           URL=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.url)')
