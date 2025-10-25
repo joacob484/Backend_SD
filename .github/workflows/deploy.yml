@@ -58,7 +58,7 @@ jobs:
           mvn -v
           mvn -B -DskipTests package
 
-      # --- Auth OIDC (WIF) ---
+      # --- Auth OIDC (Workload Identity Federation) ---
       - name: Auth to Google Cloud (WIF)
         id: auth
         uses: google-github-actions/auth@v2
@@ -66,15 +66,16 @@ jobs:
           workload_identity_provider: projects/169771742214/locations/global/workloadIdentityPools/github-pool/providers/github-provider
           service_account: deploy-cicd@master-might-274420.iam.gserviceaccount.com
           project_id: ${{ env.PROJECT_ID }}
+          audience: https://github.com/joacob484/Backend_SD  # 👈 FIX clave
           create_credentials_file: true
 
-      # Exportar credenciales para gcloud/SDKs
+      # --- Exportar credenciales para gcloud ---
       - name: Export ADC env vars
         run: |
           echo "GOOGLE_APPLICATION_CREDENTIALS=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
           echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
 
-      # --- Cloud SDK + componentes beta (para SSH con IAP) ---
+      # --- Instalar gcloud SDK + componente beta ---
       - name: Set up gcloud SDK (with beta)
         uses: google-github-actions/setup-gcloud@v2
         with:
@@ -91,7 +92,7 @@ jobs:
           IMG_SHA="${{ env.IMG_BASENAME }}:${GIT_SHA}"
           IMG_LATEST="${{ env.IMG_BASENAME }}:latest"
 
-          echo "Building $IMG_SHA"
+          echo "Building image $IMG_SHA"
           docker build \
             -f Dockerfile.prod \
             -t "$IMG_SHA" \
@@ -104,14 +105,13 @@ jobs:
           echo "IMG_SHA=$IMG_SHA" >> $GITHUB_ENV
 
       # --- Deploy sin downtime a Cloud Run ---
-      # NOTA: No sobreescribimos secretos/vars críticas más allá de lo necesario.
       - name: Deploy to Cloud Run (zero-downtime)
         run: |
           gcloud run deploy "$RUN_SERVICE" \
             --image "$IMG_SHA" \
             --region "$REGION" \
-            --platform managed \
             --project "$PROJECT_ID" \
+            --platform managed \
             --allow-unauthenticated \
             --execution-environment gen2 \
             --min-instances "$MIN_INSTANCES" \
@@ -139,7 +139,7 @@ jobs:
             --set-secrets GOOGLE_CLIENT_SECRET=google-client-secret:latest \
             --set-secrets SPRING_RABBITMQ_PASSWORD=rabbitmq-password:latest
 
-      # --- Refrescar servicios en la VM (Redis/Rabbit) vía IAP + OS Login ---
+      # --- Reiniciar servicios en la VM (Redis/Rabbit) ---
       - name: Refresh infra on VM (Redis/Rabbit via systemd)
         run: |
           for i in 1 2; do
@@ -161,15 +161,16 @@ jobs:
             sleep 10
           done
 
-      # --- Smoke checks ---
-      - name: Show Cloud Run URL & last revision
+      # --- Mostrar info del deploy ---
+      - name: Show Cloud Run URL & revision
         run: |
           URL=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.url)')
           REV=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestCreatedRevisionName)')
-          echo "Service URL: $URL"
-          echo "Latest Revision: $REV"
+          echo "✅ Service URL: $URL"
+          echo "✅ Latest Revision: $REV"
 
-      - name: Quick VM port checks (optional)
+      # --- Chequeo rápido de puertos en VM ---
+      - name: Quick VM port checks
         continue-on-error: true
         run: |
           gcloud beta compute ssh "$VM_NAME" \
