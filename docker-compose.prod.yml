@@ -41,22 +41,24 @@ services:
     image: rabbitmq:3.13-management-alpine
     container_name: faltauno_rabbitmq
     environment:
-      # Creamos el usuario que usa Cloud Run (coincide con SPRING_RABBITMQ_USERNAME)
-      RABBITMQ_DEFAULT_USER: ${SPRING_RABBITMQ_USERNAME:-faltauno}
-      RABBITMQ_DEFAULT_PASS: ${SPRING_RABBITMQ_PASSWORD:-change_me}
-    networks:
-      - faltauno-network
-    restart: unless-stopped
-    mem_limit: 256m
-    cpus: 0.2
+      # Arranca ya con el usuario real (no guest)
+      RABBITMQ_DEFAULT_USER: faltauno
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}   # lo seteamos por systemd/ENV
     command: >
       sh -c "
       echo 'vm_memory_high_watermark.relative = 0.5' > /etc/rabbitmq/rabbitmq.conf &&
       rabbitmq-server
       "
     ports:
-      - "15672:15672"  # consola de mgmt (opcional)
       - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - faltauno-network
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.2
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 30s
@@ -106,6 +108,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  rabbitmq_data:
     driver: local
 
 networks:
