@@ -50,9 +50,12 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    connection-timeout: 5s
     listener:
       simple:
         acknowledge-mode: auto
+        missing-queues-fatal: false
+        default-requeue-rejected: false
         retry:
           enabled: true
           initial-interval: 1000ms
