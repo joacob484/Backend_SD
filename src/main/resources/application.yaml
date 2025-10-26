@@ -46,6 +46,9 @@ spring:
         min-idle: 2
 
   rabbitmq:
+    template:
+      retry:
+        enabled: true
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
@@ -53,6 +56,7 @@ spring:
     connection-timeout: 5s
     listener:
       simple:
+        startup-timeout: 60000
         acknowledge-mode: auto
         missing-queues-fatal: false
         default-requeue-rejected: false
