@@ -96,7 +96,7 @@ public class PartidoService {
      * Obtener partido completo con jugadores
      */
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "partidos_v2", key = "#id")
+    @Cacheable(cacheNames = "partidos_v3", key = "#id")
     public PartidoDTO obtenerPartidoCompleto(UUID id) {
         log.debug("[PartidoService] Obteniendo partido: {}", id);
         
