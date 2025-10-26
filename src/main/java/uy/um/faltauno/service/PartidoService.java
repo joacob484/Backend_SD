@@ -98,14 +98,22 @@ public class PartidoService {
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = "partidos_v2", key = "#id")
     public PartidoDTO obtenerPartidoCompleto(UUID id) {
+        log.debug("[PartidoService] Obteniendo partido: {}", id);
+        
         Partido partido = partidoRepository.findByIdWithOrganizador(id)
             .orElseThrow(() -> new NoSuchElementException("Partido no encontrado: " + id));
+        
+        log.debug("[PartidoService] Partido encontrado, organizador: {}", 
+            partido.getOrganizador() != null ? partido.getOrganizador().getId() : "null");
 
         PartidoDTO dto = entityToDtoCompleto(partido);
+        log.debug("[PartidoService] DTO creado, buscando jugadores");
 
         // jugadores aceptados
         List<Inscripcion> inscripciones = inscripcionRepository
             .findByPartido_IdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO);
+        
+        log.debug("[PartidoService] Inscripciones encontradas: {}", inscripciones.size());
 
         List<UsuarioMinDTO> jugadores = inscripciones.stream()
             .map(i -> {
@@ -115,6 +123,7 @@ public class PartidoService {
             .toList();
 
         dto.setJugadores(jugadores);
+        log.debug("[PartidoService] DTO completo, jugadores: {}", jugadores.size());
         return dto;
     }
 
@@ -613,17 +622,22 @@ public class PartidoService {
     }
 
     private PartidoDTO entityToDtoCompleto(Partido partido) {
+        log.debug("[PartidoService.entityToDtoCompleto] Iniciando mapeo para partido: {}", partido.getId());
+        
         PartidoDTO dto = partidoMapper.toDto(partido);
+        log.debug("[PartidoService.entityToDtoCompleto] Mapper completado");
         
         // Calcular jugadores actuales
         long jugadoresActuales = inscripcionRepository
             .findByPartido_IdAndEstado(partido.getId(), Inscripcion.EstadoInscripcion.ACEPTADO)
             .size();
         dto.setJugadoresActuales((int) jugadoresActuales);
+        log.debug("[PartidoService.entityToDtoCompleto] Jugadores actuales: {}", jugadoresActuales);
         
         // Setear información del organizador
         if (partido.getOrganizador() != null) {
             Usuario org = partido.getOrganizador();
+            log.debug("[PartidoService.entityToDtoCompleto] Procesando organizador: {}", org.getId());
             UsuarioMinDTO orgMin = new UsuarioMinDTO(
                 org.getId(),
                 org.getNombre(),
@@ -631,6 +645,8 @@ public class PartidoService {
                 org.getFotoPerfil()
             );
             dto.setOrganizador(orgMin);
+        } else {
+            log.warn("[PartidoService.entityToDtoCompleto] Partido sin organizador: {}", partido.getId());
         }
         
         // Calcular precio por jugador si no viene
@@ -639,7 +655,8 @@ public class PartidoService {
                 partido.getPrecioTotal().divide(BigDecimal.valueOf(partido.getCantidadJugadores()), 2, RoundingMode.HALF_UP)
             );
         }
-                
+        
+        log.debug("[PartidoService.entityToDtoCompleto] DTO completo");        
         return dto;
     }
 
