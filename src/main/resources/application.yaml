@@ -49,6 +49,11 @@ spring:
     template:
       retry:
         enabled: true
+        initial-interval: 500ms
+        max-attempts: 3
+        multiplier: 2.0
+    publisher-returns: true
+    publisher-confirm-type: correlated
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
