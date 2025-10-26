@@ -288,7 +288,3 @@ logging:
 ### Error de CORS
 - Verificar `FRONTEND_URL` en variables de entorno
 - Revisar configuración en `SecurityConfig.java`
-
-## 📄 Licencia
-
-Proyecto académico - Universidad de Montevideo
