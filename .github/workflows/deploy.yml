@@ -25,6 +25,8 @@ env:
   FRONTEND_URL: https://faltauno-frontend-169771742214.us-central1.run.app
   REDIS_HOST: 10.128.0.2
   RABBIT_HOST: 10.128.0.2
+  # Whether to enable RabbitMQ consumers in Cloud Run (set to false for Cloud Run-only deployments)
+  APP_RABBIT_ENABLED: "false"
 
   # Imagen base (Artifact Registry)
   IMG_BASENAME: us-central1-docker.pkg.dev/master-might-274420/faltauno/faltauno-backend
@@ -131,7 +133,7 @@ jobs:
             --set-env-vars SPRING_RABBITMQ_HOST="${RABBIT_HOST}" \
             --set-env-vars SPRING_RABBITMQ_PORT=5672 \
             --set-env-vars SPRING_RABBITMQ_USERNAME=faltauno \
-            --set-env-vars APP_RABBIT_ENABLED=true \
+            --set-env-vars APP_RABBIT_ENABLED="${APP_RABBIT_ENABLED}" \
             --set-env-vars JWT_EXPIRATION=86400000 \
             \
             --set-secrets SPRING_DATASOURCE_PASSWORD=db-password:latest \
@@ -169,6 +171,26 @@ jobs:
           REV=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestCreatedRevisionName)')
           echo "✅ Service URL: $URL"
           echo "✅ Latest Revision: $REV"
+
+      - name: Wait for revision to become ready
+        run: |
+          REV=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestCreatedRevisionName)')
+          echo "Waiting for revision $REV to be Ready..."
+          READY=""
+          for i in $(seq 1 20); do
+            READY=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestReadyRevisionName)')
+            if [ "$READY" = "$REV" ]; then
+              echo "Revision $REV is Ready"
+              break
+            fi
+            echo "Not ready yet (attempt $i), waiting..."
+            sleep 6
+          done
+          if [ "$READY" != "$REV" ]; then
+            echo "ERROR: revision $REV did not become Ready in time"
+            gcloud run services describe "$RUN_SERVICE" --region "$REGION"
+            exit 1
+          fi
 
       # --- Chequeo rápido de puertos en VM ---
       - name: Quick VM port checks
