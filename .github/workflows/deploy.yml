@@ -189,10 +189,36 @@ jobs:
             echo "Not ready yet (attempt $i), waiting..."
             sleep 6
           done
+
           if [ "$READY" != "$REV" ]; then
-            echo "ERROR: revision $REV did not become Ready in time"
-            gcloud run services describe "$RUN_SERVICE" --region "$REGION"
-            exit 1
+            echo "Revision $REV did not become Ready in time. Inspecting revision status..."
+            # Inspect the created revision conditions to detect 'Retired' behavior
+            CREATED_JSON=$(gcloud run revisions describe "$REV" --region "$REGION" --project "$PROJECT_ID" --format=json)
+            RETIRED_REASON=$(echo "$CREATED_JSON" | jq -r '.status.conditions[]? | select(.type=="Ready") | .reason' || true)
+            echo "Revision $REV Ready reason: $RETIRED_REASON"
+
+            # If the created revision was retired, check if its imageDigest equals the currently serving ready revision's imageDigest.
+            if [ "$RETIRED_REASON" = "Retired" ]; then
+              CURRENT_READY=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestReadyRevisionName)')
+              echo "Currently serving ready revision: $CURRENT_READY"
+              NEW_DIGEST=$(echo "$CREATED_JSON" | jq -r '.status.imageDigest')
+              CURRENT_JSON=$(gcloud run revisions describe "$CURRENT_READY" --region "$REGION" --project "$PROJECT_ID" --format=json || true)
+              CURRENT_DIGEST=$(echo "$CURRENT_JSON" | jq -r '.status.imageDigest' || true)
+              echo "New revision imageDigest: $NEW_DIGEST"
+              echo "Current ready revision imageDigest: $CURRENT_DIGEST"
+              if [ "$NEW_DIGEST" = "$CURRENT_DIGEST" ]; then
+                echo "New revision retired but image digest is identical to current ready revision. Treating as successful no-op deploy."
+                READY=$CURRENT_READY
+              else
+                echo "New revision retired and image digest differs. Failing to allow manual inspection."
+                gcloud run services describe "$RUN_SERVICE" --region "$REGION"
+                exit 1
+              fi
+            else
+              echo "ERROR: revision $REV did not become Ready in time and was not retired. Failing so operator can inspect logs."
+              gcloud run services describe "$RUN_SERVICE" --region "$REGION"
+              exit 1
+            fi
           fi
 
       - name: Health check deployed service
