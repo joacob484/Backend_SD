@@ -130,7 +130,9 @@ spring:
     default-encoding: UTF-8
 
 server:
-  port: ${SERVER_PORT:8080}
+  # Support Cloud Run which provides PORT env var. Prefer explicit SERVER_PORT if set,
+  # otherwise fall back to PORT (Cloud Run) and finally 8080.
+  port: ${SERVER_PORT:${PORT:8080}}
   compression:
     enabled: true
     mime-types: application/json,application/xml,text/html,text/xml,text/plain
