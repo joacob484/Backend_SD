@@ -37,6 +37,8 @@ env:
   CPU: "1"
   MEMORY: "512Mi"
   TIMEOUT: "300"
+  # Health check path (used after deploy). Set to '/' or '/actuator/health' as appropriate.
+  HEALTH_PATH: "/actuator/health"
 
 jobs:
   deploy:
@@ -188,6 +190,33 @@ jobs:
           done
           if [ "$READY" != "$REV" ]; then
             echo "ERROR: revision $REV did not become Ready in time"
+            gcloud run services describe "$RUN_SERVICE" --region "$REGION"
+            exit 1
+          fi
+
+      - name: Health check deployed service
+        run: |
+          URL=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.url)')
+          HEALTH_PATH="${HEALTH_PATH:-/actuator/health}"
+          echo "Probing $URL$HEALTH_PATH"
+          OK=0
+          for i in $(seq 1 12); do
+            if curl -fsS "$URL$HEALTH_PATH" -o /dev/null; then
+              echo "Health check passed at attempt $i"
+              OK=1
+              break
+            fi
+            # fallback to root if health path not available
+            if curl -fsS "$URL" -o /dev/null; then
+              echo "Root responded (fallback) at attempt $i"
+              OK=1
+              break
+            fi
+            echo "Health probe attempt $i failed, sleeping..."
+            sleep 5
+          done
+          if [ $OK -ne 1 ]; then
+            echo "ERROR: service did not respond to health probe"
             gcloud run services describe "$RUN_SERVICE" --region "$REGION"
             exit 1
           fi
