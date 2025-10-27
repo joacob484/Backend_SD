@@ -179,7 +179,8 @@ jobs:
           REV=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestCreatedRevisionName)')
           echo "Waiting for revision $REV to be Ready..."
           READY=""
-          for i in $(seq 1 20); do
+          # increase attempts to allow for slower cold starts or image pull delays
+          for i in $(seq 1 40); do
             READY=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestReadyRevisionName)')
             if [ "$READY" = "$REV" ]; then
               echo "Revision $REV is Ready"
@@ -200,7 +201,8 @@ jobs:
           HEALTH_PATH="${HEALTH_PATH:-/actuator/health}"
           echo "Probing $URL$HEALTH_PATH"
           OK=0
-          for i in $(seq 1 12); do
+          # increase attempts so transient startup tasks can complete
+          for i in $(seq 1 20); do
             if curl -fsS "$URL$HEALTH_PATH" -o /dev/null; then
               echo "Health check passed at attempt $i"
               OK=1
@@ -220,6 +222,14 @@ jobs:
             gcloud run services describe "$RUN_SERVICE" --region "$REGION"
             exit 1
           fi
+
+      - name: Promote revision to traffic after health check
+        run: |
+          REV=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestCreatedRevisionName)')
+          echo "Promoting revision $REV to receive 100% traffic"
+          gcloud run services update-traffic "$RUN_SERVICE" --to-revisions "$REV"=100 --region "$REGION" --project "$PROJECT_ID"
+          echo "Traffic updated. Current allocations:"
+          gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='table(status.traffic[*].revisionName,status.traffic[*].percent)'
 
       # --- Chequeo rápido de puertos en VM ---
       - name: Quick VM port checks
