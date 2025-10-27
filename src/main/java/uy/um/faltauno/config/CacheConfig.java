@@ -50,6 +50,10 @@ public class CacheConfig {
         // Enable polymorphic typing so cached objects include type information
         BasicPolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
             .allowIfSubType("uy.um.faltauno")
+            // Allow a few JDK packages that may appear as type ids (e.g. BigDecimal)
+            .allowIfSubType("java.math")
+            .allowIfSubType("java.util")
+            .allowIfSubType("java.lang")
             .build();
         om.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
 
@@ -84,6 +88,10 @@ public class CacheConfig {
     // Enable polymorphic typing so cached objects include type information
     BasicPolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
         .allowIfSubType("uy.um.faltauno")
+        // Allow common JDK packages used inside cached structures
+        .allowIfSubType("java.math")
+        .allowIfSubType("java.util")
+        .allowIfSubType("java.lang")
         .build();
     mapper.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
 
