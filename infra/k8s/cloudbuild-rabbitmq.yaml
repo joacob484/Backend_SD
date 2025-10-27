@@ -1,0 +1,28 @@
+steps:
+- name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -euo pipefail
+    echo "Getting GKE credentials..."
+    gcloud container clusters get-credentials faltauno-rabbitmq --region=us-central1 --project=master-might-274420
+    echo "Installing helm..."
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    echo "Adding Helm repo..."
+    helm repo add bitnami https://charts.bitnami.com/bitnami
+    helm repo update
+    echo "Reading rabbitmq password (secret version 5)..."
+    PW=$(gcloud secrets versions access 5 --secret=rabbitmq-password --project=master-might-274420)
+    if [ -z "$$PW" ]; then
+      echo "ERROR: secret value is empty"; exit 1
+    fi
+    echo "Installing/upgrading RabbitMQ via Helm..."
+    helm upgrade --install rabbitmq bitnami/rabbitmq \
+      --namespace rabbitmq --create-namespace \
+      --set rbac.create=false \
+      --set auth.username=faltauno \
+      --set auth.password="$$PW" \
+      --values infra/k8s/rabbitmq-values.yaml
+    echo "Helm install finished."
+timeout: 1200s
