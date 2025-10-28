@@ -148,3 +148,6 @@ docker-compose.override.yml
 # Spring Boot
 # ==============================================
 spring-boot-devtools.properties
+
+# Node package cache (front-end)
+.pnpm-store/
