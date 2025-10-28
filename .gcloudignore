@@ -1,0 +1,36 @@
+# Whitelist-only gcloudignore for backend project
+# We ignore everything, then allow only the files/folders needed to build the backend image
+# This minimizes upload size when running `gcloud builds submit` from this folder.
+
+# Ignore everything by default
+**
+
+# Allow project files required for build
+!pom.xml
+!src/**
+!Dockerfile*
+!cloudrun-entrypoint.sh
+!cloudbuild-cloudrun.yaml
+!cloudbuild-*.yaml
+!scripts/**
+!src/main/**
+!src/test/**
+!src/resources/**
+!target/**
+!README.md
+!.dockerignore
+!.gcloudignore
+
+# Exclude local env and editor files explicitly
+.env
+.env.*
+.git
+.git/**
+.idea/
+.vscode/
+node_modules/
+**/node_modules/
+target/
+**/target/
+*.log
+.DS_Store
