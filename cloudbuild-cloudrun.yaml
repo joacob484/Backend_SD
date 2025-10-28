@@ -14,7 +14,7 @@ images:
 - name: 'gcr.io/cloud-builders/gcloud'
   args: [
     'run', 'deploy', 'faltauno-backend',
-    '--image', 'gcr.io/master-might-274420/faltauno-backend:$SHORT_SHA',
+    '--image', 'gcr.io/master-might-274420/faltauno-backend:${SHORT_SHA}',
     '--region', 'us-central1',
     '--platform', 'managed',
     '--allow-unauthenticated',
