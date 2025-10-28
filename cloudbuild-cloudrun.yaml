@@ -1,22 +1,31 @@
 steps:
-- name: 'gcr.io/cloud-builders/docker'
-  args: [ 'build', '-t', 'gcr.io/master-might-274420/faltauno-backend:deploy-20251027-cloudrun', '-f', 'Dockerfile.cloudrun', '.' ]
+  # Build the Docker image and tag it with the short commit sha
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/faltauno-backend:$SHORT_SHA', '-f', 'Dockerfile.cloudrun', '.' ]
+
+  # Push the image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [ 'push', 'gcr.io/$PROJECT_ID/faltauno-backend:$SHORT_SHA' ]
+
+  # Deploy to Cloud Run using the pushed image. Use substitutions for secrets/envs.
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud run deploy faltauno-backend \
+          --image gcr.io/$PROJECT_ID/faltauno-backend:$SHORT_SHA \
+          --region us-central1 \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars "SPRING_DATASOURCE_PASSWORD=${_SPRING_DATASOURCE_PASSWORD},REDIS_HOST=${_REDIS_HOST},POSTGRES_HOST=${_POSTGRES_HOST},SPRING_DATASOURCE_USERNAME=${_SPRING_DATASOURCE_USERNAME},SPRING_DATASOURCE_URL=${_SPRING_DATASOURCE_URL}"
+
 images:
-- 'gcr.io/master-might-274420/faltauno-backend:deploy-20251027-cloudrun'
-- name: 'gcr.io/cloud-builders/gcloud'
-  args: [
-    'run', 'deploy', 'faltauno-backend',
-    '--image', 'gcr.io/master-might-274420/faltauno-backend:deploy-20251027-cloudrun',
-    '--region', 'us-central1',
-    '--platform', 'managed',
-    '--allow-unauthenticated'
-  ]
-- name: 'gcr.io/cloud-builders/gcloud'
-  args: [
-    'run', 'deploy', 'faltauno-backend',
-    '--image', 'gcr.io/master-might-274420/faltauno-backend:${SHORT_SHA}',
-    '--region', 'us-central1',
-    '--platform', 'managed',
-    '--allow-unauthenticated',
-    '--set-env-vars', 'SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD,REDIS_HOST=$REDIS_HOST'
-  ]
+  - 'gcr.io/$PROJECT_ID/faltauno-backend:$SHORT_SHA'
+
+substitutions:
+  _SPRING_DATASOURCE_PASSWORD: "REPLACE_AT_SUBMIT"
+  _REDIS_HOST: "REPLACE_AT_SUBMIT"
+  _POSTGRES_HOST: "REPLACE_AT_SUBMIT"
+  _SPRING_DATASOURCE_USERNAME: "app"
+  _SPRING_DATASOURCE_URL: "jdbc:postgresql://$(_POSTGRES_HOST):5432/faltauno_db"

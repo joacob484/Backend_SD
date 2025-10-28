@@ -39,17 +39,18 @@ jobs:
           --image $IMAGE \
           --region us-central1 \
           --platform managed \
-          --allow-unauthenticated
+          --allow-unauthenticated \
+          --set-env-vars "SPRING_DATASOURCE_PASSWORD=${{ secrets.SPRING_DATASOURCE_PASSWORD }},REDIS_HOST=${{ secrets.REDIS_HOST }},POSTGRES_HOST=${{ secrets.POSTGRES_HOST }},SPRING_DATASOURCE_USERNAME=${{ secrets.SPRING_DATASOURCE_USERNAME }},SPRING_DATASOURCE_URL=${{ secrets.SPRING_DATASOURCE_URL }}"
 
-    - name: Notify on Failure
+    - name: Notify on Failure (create issue)
       if: failure()
       uses: actions/github-script@v6
       with:
         script: |
-          const repo = github.context.repo || github.context.payload.repository;
-          github.rest.issues.createComment({
-            owner: repo.owner,
-            repo: repo.name,
-            issue_number: github.context.run_id,
-            body: `Deployment failed for commit ${github.context.sha}. Please check the logs.`
+          // Create an issue in the repo with the failure details so you can track it
+          github.rest.issues.create({
+            owner: github.context.repo.owner,
+            repo: github.context.repo.repo,
+            title: `Deployment failed: ${github.context.sha}`,
+            body: `Deployment failed for commit ${github.context.sha}. Check the Actions logs: ${process.env.GITHUB_SERVER_URL}/${github.context.repo.owner}/${github.context.repo.repo}/actions/runs/${process.env.GITHUB_RUN_ID}`
           });
