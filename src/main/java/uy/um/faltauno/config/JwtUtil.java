@@ -98,14 +98,13 @@ public class JwtUtil {
      * Extrae todos los claims del token.
      */
     private Claims extractAllClaims(String token) {
-    // Use the parserBuilder API (jjwt 0.11+) to set the signing key and parse the JWS
-    return Jwts.parserBuilder()
-        .setSigningKey(getSigningKey())
-        .build()
-        .parseClaimsJws(token)
-        .getBody();
+        // Use the older parser() API which is available across jjwt versions
+        // This avoids compile-time errors if parserBuilder() isn't present.
+        return Jwts.parser()
+                .setSigningKey(getSigningKey())
+                .parseClaimsJws(token)
+                .getBody();
     }
-
     /**
      * Valida si el token es válido (firma correcta y no expirado).
      */
