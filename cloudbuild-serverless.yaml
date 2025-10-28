@@ -1,0 +1,17 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        TAG=${_TARGET_TAG:-serverless-latest}
+        PROJECT_ID=${PROJECT_ID}
+        IMAGE="us-central1-docker.pkg.dev/${PROJECT_ID}/faltauno/faltauno-backend:${_TARGET_TAG}"
+        echo "Building image $IMAGE using Dockerfile.cloudrun"
+        docker build -t "$IMAGE" -f Dockerfile.cloudrun .
+        echo "Pushing $IMAGE"
+        docker push "$IMAGE"
+images: []
+options:
+  machineType: "E2_HIGHCPU_8"

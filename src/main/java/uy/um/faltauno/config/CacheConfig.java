@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.springframework.cache.Cache;
 import org.springframework.cache.annotation.EnableCaching;
@@ -35,10 +34,10 @@ import java.time.Duration;
 @EnableCaching
 public class CacheConfig {
 
-    @Value("${spring.redis.host:redis}")
+    @Value("10.217.135.172")
     private String redisHost;
 
-    @Value("${spring.redis.port:6379}")
+    @Value("6379")
     private int redisPort;
 
     @Bean

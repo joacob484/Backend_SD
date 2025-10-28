@@ -25,9 +25,6 @@ env:
   FRONTEND_URL: https://faltauno-frontend-169771742214.us-central1.run.app
   # Point the deployed service to managed services (Memorystore and GKE ILB)
   REDIS_HOST: 10.217.135.172
-  RABBIT_HOST: 10.128.0.5
-  # Enable RabbitMQ consumers in Cloud Run so the VM can be removed safely
-  APP_RABBIT_ENABLED: "true"
 
   # Imagen base (Artifact Registry)
   IMG_BASENAME: us-central1-docker.pkg.dev/master-might-274420/faltauno/faltauno-backend
@@ -133,20 +130,13 @@ jobs:
             --set-env-vars SPRING_DATASOURCE_URL="jdbc:postgresql:///faltauno_db?cloudSqlInstance=${CLOUDSQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory" \
             --set-env-vars SPRING_DATASOURCE_USERNAME=app \
             --set-env-vars SPRING_REDIS_HOST="${REDIS_HOST}" \
-            --set-env-vars SPRING_RABBITMQ_HOST="${RABBIT_HOST}" \
-            --set-env-vars SPRING_RABBITMQ_PORT=5672 \
-            --set-env-vars SPRING_RABBITMQ_USERNAME=faltauno \
-            --set-env-vars APP_RABBIT_ENABLED="${APP_RABBIT_ENABLED}" \
             --set-env-vars JWT_EXPIRATION=86400000 \
             \
             --set-secrets SPRING_DATASOURCE_PASSWORD=db-password:latest \
             --set-secrets JWT_SECRET=jwt-secret:latest \
             --set-secrets GOOGLE_CLIENT_ID=google-client-id:latest \
             --set-secrets GOOGLE_CLIENT_SECRET=google-client-secret:latest \
-            --set-secrets SPRING_RABBITMQ_PASSWORD=rabbitmq-password:latest
 
-      # --- Reiniciar servicios en la VM (Redis/Rabbit) ---
-      - name: Refresh infra on VM (Redis/Rabbit via systemd)
         run: |
           for i in 1 2; do
             set +e
@@ -265,4 +255,4 @@ jobs:
           gcloud beta compute ssh "$VM_NAME" \
             --zone "$VM_ZONE" --tunnel-through-iap --project "$PROJECT_ID" --quiet \
             -- -o StrictHostKeyChecking=no \
-            "sudo ss -lntp | egrep 'LISTEN.+:(6379|5672|15672)' || true"
+            "sudo ss -lntp | egrep 'LISTEN.+:(6379)' || true"

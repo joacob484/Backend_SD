@@ -130,7 +130,6 @@ networks:
 
 Esto permite que GREEN acceda a:
 - `faltauno_redis` - Same Redis as BLUE
-- `faltauno_rabbitmq` - Same RabbitMQ as BLUE  
 - `faltauno_postgres` - Same Postgres as BLUE
 
 **Sin necesidad de duplicar infraestructura.**
@@ -185,7 +184,7 @@ services:
 
 **Importante:**
 - Usa la red `backend_sd_faltauno-network` existente
-- Se conecta a Redis/RabbitMQ/Postgres ya corriendo
+- Se conecta a Redis/Postgres ya corriendo
 - No levanta su propia infraestructura
 
 ### docker-compose.prod.yml
@@ -196,7 +195,6 @@ Define todos los servicios de producción:
 services:
   backend:    # Port 8080
   redis:      # Port 6379
-  rabbitmq:   # Port 5672
   postgres:   # Port 5432
 ```
 

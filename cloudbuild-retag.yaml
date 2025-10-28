@@ -1,0 +1,21 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        SOURCE_IMAGE="us-central1-docker.pkg.dev/${PROJECT_ID}/cloud-run-source-deploy/faltauno-backend@${_IMAGE_DIGEST}"
+        TARGET_IMAGE="us-central1-docker.pkg.dev/${PROJECT_ID}/faltauno/faltauno-backend:${_TARGET_TAG}"
+        echo "Pulling $SOURCE_IMAGE"
+        docker pull "$SOURCE_IMAGE"
+        echo "Tagging $SOURCE_IMAGE -> $TARGET_IMAGE"
+        docker tag "$SOURCE_IMAGE" "$TARGET_IMAGE"
+        echo "Pushing $TARGET_IMAGE"
+        docker push "$TARGET_IMAGE"
+images: []
+options:
+  machineType: "E2_HIGHCPU_8"
+ 
+# optional: substitutions can be added to parametrize digest/tag if you want to reuse this file
+# timeout: "1200s"

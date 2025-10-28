@@ -1,0 +1,5 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'build', '-t', 'gcr.io/master-might-274420/faltauno-backend:deploy-20251027-cloudrun', '-f', 'Dockerfile.cloudrun', '.' ]
+images:
+- 'gcr.io/master-might-274420/faltauno-backend:deploy-20251027-cloudrun'

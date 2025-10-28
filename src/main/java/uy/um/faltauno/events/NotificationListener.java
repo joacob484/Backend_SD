@@ -1,87 +1,54 @@
 package uy.um.faltauno.events;
 
+import com.google.cloud.pubsub.v1.AckReplyConsumer;
+import com.google.cloud.pubsub.v1.MessageReceiver;
+import com.google.cloud.pubsub.v1.Subscriber;
+import com.google.pubsub.v1.PubsubMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
-import java.util.Map;
 
 @Component
-@ConditionalOnProperty(value = "app.rabbit.enabled", havingValue = "true", matchIfMissing = false)
 @RequiredArgsConstructor
 @Slf4j
-public class NotificationListener {
+public class NotificationListener implements MessageReceiver {
 
-    @RabbitListener(queues = "notificaciones.queue")
-    public void onEvent(Map<String, Object> event) {
-        String type = (String) event.get("event");
-        
-        log.info("📩 Evento recibido: {} - Payload: {}", type, event);
-        
-        // Aquí se puede implementar lógica adicional según el tipo de evento:
-        // - Enviar emails
-        // - Push notifications
-        // - Webhooks a servicios externos
-        // - Analytics/métricas
-        // - Logs en sistemas externos
-        
+    public void startPubSubListener() {
+        String subscriptionId = "faltauno-events-sub";
+        Subscriber subscriber = Subscriber.newBuilder(subscriptionId, this::receiveMessage).build();
+        subscriber.startAsync().awaitRunning();
+    }
+
+    @Override
+    public void receiveMessage(PubsubMessage message, AckReplyConsumer consumer) {
+        String type = message.getAttributesOrDefault("event", "unknown");
+        System.out.printf("\u2705 Event received: %s - Payload: %s%n", type, message.getData().toStringUtf8());
+
         switch (type) {
             case "PARTIDO_CREADO":
-                procesarPartidoCreado(event);
+                procesarPartidoCreado(message);
                 break;
             case "PARTIDO_CANCELADO":
-                procesarPartidoCancelado(event);
+                procesarPartidoCancelado(message);
                 break;
             case "PARTIDO_COMPLETADO":
-                procesarPartidoCompletado(event);
+                procesarPartidoCompletado(message);
                 break;
             default:
-                log.warn("Tipo de evento desconocido: {}", type);
+                System.out.printf("Unknown event type: %s%n", type);
         }
+        consumer.ack();
     }
 
-    private void procesarPartidoCreado(Map<String, Object> event) {
-        String partidoId = (String) event.get("partidoId");
-        String tipoPartido = (String) event.get("tipoPartido");
-        
-        log.info("✅ Partido creado: {} - Tipo: {}", partidoId, tipoPartido);
-        
-        // FUTURO: Implementar acciones adicionales:
-        // - Enviar email de confirmación al organizador (ya manejado por EmailService)
-        // - Notificar a usuarios cercanos según ubicación (requiere servicio de geolocalización)
-        // - Registrar métrica en sistema de analytics externo (Google Analytics, Mixpanel, etc.)
-        
-        // Por ahora, el log es suficiente para auditoría
+    private void procesarPartidoCreado(PubsubMessage message) {
+        System.out.printf("\u2705 Partido creado: %s%n", message.getData().toStringUtf8());
     }
 
-    private void procesarPartidoCancelado(Map<String, Object> event) {
-        String partidoId = (String) event.get("partidoId");
-        String motivo = (String) event.get("motivo");
-        Integer jugadoresAfectados = (Integer) event.get("jugadoresAfectados");
-        
-        log.warn("❌ Partido cancelado: {} - Motivo: {} - Jugadores afectados: {}", 
-                 partidoId, motivo, jugadoresAfectados);
-        
-        // FUTURO: Implementar acciones adicionales:
-        // - Enviar emails de cancelación masivos a participantes (ya manejado por EmailService)
-        // - Push notifications urgentes vía Firebase Cloud Messaging
-        // - Sistema de reembolsos automáticos (si se implementan pagos)
-        
-        // Por ahora, el log y las notificaciones in-app son suficientes
+    private void procesarPartidoCancelado(PubsubMessage message) {
+        System.out.printf("\u274c Partido cancelado: %s%n", message.getData().toStringUtf8());
     }
 
-    private void procesarPartidoCompletado(Map<String, Object> event) {
-        String partidoId = (String) event.get("partidoId");
-        Integer jugadores = (Integer) event.get("jugadoresParticipantes");
-        
-        log.info("🏁 Partido completado: {} - Participantes: {}", partidoId, jugadores);
-        
-        // FUTURO: Implementar acciones adicionales:
-        // - Enviar recordatorio para calificar jugadores (puede ser un job programado 24h después)
-        // - Actualizar estadísticas agregadas de usuarios (partidos jugados, ratio participación)
-        // - Generar reportes de actividad para dashboards administrativos
-        
-        // Por ahora, las calificaciones se solicitan in-app al finalizar el partido
+    private void procesarPartidoCompletado(PubsubMessage message) {
+        System.out.printf("\u2705 Partido completado: %s%n", message.getData().toStringUtf8());
     }
 }

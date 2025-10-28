@@ -37,34 +37,6 @@ services:
       timeout: 3s
       retries: 5
 
-  rabbitmq:
-    image: rabbitmq:3.13-management-alpine
-    container_name: faltauno_rabbitmq
-    environment:
-      # Arranca ya con el usuario real (no guest)
-      RABBITMQ_DEFAULT_USER: faltauno
-      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}   # lo seteamos por systemd/ENV
-    command: >
-      sh -c "
-      echo 'vm_memory_high_watermark.relative = 0.5' > /etc/rabbitmq/rabbitmq.conf &&
-      rabbitmq-server
-      "
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - faltauno-network
-    restart: unless-stopped
-    mem_limit: 256m
-    cpus: 0.2
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
   backend:
     image: backend_sd-backend:latest
     container_name: faltauno_backend
@@ -76,10 +48,6 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - SPRING_REDIS_HOST=${SPRING_REDIS_HOST}
       - SPRING_REDIS_PORT=${SPRING_REDIS_PORT}
-      - SPRING_RABBITMQ_HOST=${SPRING_RABBITMQ_HOST}
-      - SPRING_RABBITMQ_PORT=${SPRING_RABBITMQ_PORT}
-      - SPRING_RABBITMQ_USERNAME=${SPRING_RABBITMQ_USERNAME}
-      - SPRING_RABBITMQ_PASSWORD=${SPRING_RABBITMQ_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
@@ -91,8 +59,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     networks:
       - faltauno-network
@@ -108,8 +74,6 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
-  rabbitmq_data:
     driver: local
 
 networks:

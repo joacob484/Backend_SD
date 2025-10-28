@@ -36,12 +36,7 @@ SPRING_REDIS_PORT=6379
 SPRING_REDIS_PASSWORD=REDIS_PASSWORD_AQUI
 
 # ===================================
-# RABBITMQ
 # ===================================
-SPRING_RABBITMQ_HOST=tu-rabbitmq-host
-SPRING_RABBITMQ_PORT=5672
-SPRING_RABBITMQ_USERNAME=rabbitmq_user
-SPRING_RABBITMQ_PASSWORD=RABBITMQ_PASSWORD_AQUI
 
 # ===================================
 # OAUTH2 - GOOGLE
@@ -97,7 +92,6 @@ SPRING_PROFILES_ACTIVE=prod
   - Solo accesible desde red interna
   - Persistencia habilitada si es necesario
 
-- [ ] **RabbitMQ seguro**
   - Credenciales cambiadas (no guest/guest)
   - Management UI deshabilitado o protegido
   - Solo accesible desde red interna
@@ -131,7 +125,6 @@ SPRING_PROFILES_ACTIVE=prod
 
 - [ ] **Firewall configurado**
   - Solo puertos necesarios expuestos (80, 443)
-  - Puertos de BD/Redis/RabbitMQ solo accesibles internamente
   - SSH con key-based auth
 
 - [ ] **Backups configurados**

@@ -1,0 +1,95 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    run.googleapis.com/client-name: gcloud
+    run.googleapis.com/client-version: 544.0.0
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+    run.googleapis.com/operation-id: edebda5b-5f90-4e93-844a-f4bd0581dc3a
+    run.googleapis.com/urls: '["https://faltauno-backend-test-169771742214.us-central1.run.app"]'
+    serving.knative.dev/creator: leborgneaugusto@gmail.com
+    serving.knative.dev/lastModifier: leborgneaugusto@gmail.com
+  creationTimestamp: '2025-10-27T17:49:16.379364Z'
+  generation: 4
+  labels:
+    cloud.googleapis.com/location: us-central1
+  name: faltauno-backend-test
+  namespace: '169771742214'
+  resourceVersion: AAZCL3pKIBg
+  selfLink: /apis/serving.knative.dev/v1/namespaces/169771742214/services/faltauno-backend-test
+  uid: a3757cc3-e18f-4f5f-9f6f-1f8447063463
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '20'
+        run.googleapis.com/client-name: gcloud
+        run.googleapis.com/client-version: 544.0.0
+        run.googleapis.com/cloudsql-instances: master-might-274420:us-central1:faltauno-db
+        run.googleapis.com/startup-cpu-boost: 'true'
+        run.googleapis.com/vpc-access-connector: run-vpc
+        run.googleapis.com/vpc-access-egress: private-ranges-only
+      labels:
+        client.knative.dev/nonce: bhgvpiklab
+        run.googleapis.com/startupProbeType: Default
+    spec:
+      containerConcurrency: 80
+      containers:
+      - env:
+          valueFrom:
+            secretKeyRef:
+              key: '5'
+        - name: SPRING_REDIS_HOST
+        - name: PORT
+          value: "8080"
+        image: us-central1-docker.pkg.dev/master-might-274420/cloud-run-source-deploy/faltauno-backend@sha256:693f0f0621cd57354c25dd016999bd390e8cb7bfae896b95c0eefe06d2af7076
+        ports:
+        - containerPort: 8080
+          name: http1
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        startupProbe:
+          failureThreshold: 1
+          periodSeconds: 240
+          tcpSocket:
+            port: 8080
+          timeoutSeconds: 240
+      serviceAccountName: 169771742214-compute@developer.gserviceaccount.com
+      timeoutSeconds: 300
+  traffic:
+  - latestRevision: true
+    percent: 100
+status:
+  conditions:
+  - lastTransitionTime: '2025-10-28T03:19:02.816908Z'
+    message: |-
+      The user-provided container failed to start and listen on the port defined provided by the PORT=8080 environment variable within the allocated timeout. This can happen when the container port is misconfigured or if the timeout is too short. The health check timeout can be extended. Logs for this revision might contain more information.
+
+      Logs URL: https://console.cloud.google.com/logs/viewer?project=master-might-274420&resource=cloud_run_revision/service_name/faltauno-backend-test/revision_name/faltauno-backend-test-00004-czs&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22faltauno-backend-test%22%0Aresource.labels.revision_name%3D%22faltauno-backend-test-00004-czs%22 
+      For more troubleshooting guidance, see https://cloud.google.com/run/docs/troubleshooting#container-failed-to-start
+    reason: HealthCheckContainerError
+    status: 'False'
+    type: Ready
+  - lastTransitionTime: '2025-10-28T03:19:02.740230Z'
+    message: |-
+      The user-provided container failed to start and listen on the port defined provided by the PORT=8080 environment variable within the allocated timeout. This can happen when the container port is misconfigured or if the timeout is too short. The health check timeout can be extended. Logs for this revision might contain more information.
+
+      Logs URL: https://console.cloud.google.com/logs/viewer?project=master-might-274420&resource=cloud_run_revision/service_name/faltauno-backend-test/revision_name/faltauno-backend-test-00004-czs&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22faltauno-backend-test%22%0Aresource.labels.revision_name%3D%22faltauno-backend-test-00004-czs%22 
+      For more troubleshooting guidance, see https://cloud.google.com/run/docs/troubleshooting#container-failed-to-start
+    reason: HealthCheckContainerError
+    status: 'False'
+    type: ConfigurationsReady
+  - lastTransitionTime: '2025-10-28T03:19:02.816908Z'
+    message: |-
+      The user-provided container failed to start and listen on the port defined provided by the PORT=8080 environment variable within the allocated timeout. This can happen when the container port is misconfigured or if the timeout is too short. The health check timeout can be extended. Logs for this revision might contain more information.
+
+      Logs URL: https://console.cloud.google.com/logs/viewer?project=master-might-274420&resource=cloud_run_revision/service_name/faltauno-backend-test/revision_name/faltauno-backend-test-00004-czs&advancedFilter=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22faltauno-backend-test%22%0Aresource.labels.revision_name%3D%22faltauno-backend-test-00004-czs%22 
+      For more troubleshooting guidance, see https://cloud.google.com/run/docs/troubleshooting#container-failed-to-start
+    reason: HealthCheckContainerError
+    status: 'False'
+    type: RoutesReady
+  latestCreatedRevisionName: faltauno-backend-test-00004-czs
+  observedGeneration: 4

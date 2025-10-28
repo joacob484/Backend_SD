@@ -1,8 +1,10 @@
 package uy.um.faltauno.service;
 
+import com.google.cloud.pubsub.v1.Publisher;
+import com.google.protobuf.ByteString;
+import com.google.pubsub.v1.PubsubMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
@@ -11,7 +13,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uy.um.faltauno.config.CustomUserDetailsService;
-import uy.um.faltauno.config.RabbitConfig;
 import uy.um.faltauno.dto.PartidoDTO;
 import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.entity.Inscripcion;
@@ -42,7 +43,7 @@ public class PartidoService {
     private final InscripcionRepository inscripcionRepository;
     private final PartidoMapper partidoMapper;
     private final NotificacionService notificacionService;
-    private final RabbitTemplate rabbitTemplate;
+    private final Publisher pubSubPublisher;
 
     /**
      * Crear un nuevo partido
@@ -330,7 +331,7 @@ public class PartidoService {
             "partidoId", id.toString(),
             "organizadorId", userId.toString(),
             "motivo", motivo != null ? motivo : "Sin motivo especificado",
-            "jugadoresAfectados", usuariosIds.size()
+            "jugadoresAfectados", String.valueOf(usuariosIds.size())
         ));
     }
 
@@ -369,7 +370,7 @@ public class PartidoService {
             "event", "PARTIDO_COMPLETADO",
             "partidoId", id.toString(),
             "organizadorId", userId.toString(),
-            "jugadoresParticipantes", usuariosIds.size()
+            "jugadoresParticipantes", String.valueOf(usuariosIds.size())
         ));
     }
 
@@ -557,16 +558,17 @@ public class PartidoService {
 
     // ===== MÉTODOS AUXILIARES =====
 
-    /**
-     * Publicar evento en RabbitMQ
-     */
-    private void publicarEvento(String routingKey, Map<String, Object> payload) {
+    private void publicarEvento(String topicId, Map<String, String> payload) {
         try {
-            rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE_PARTIDOS, routingKey, payload);
-            log.info("Evento publicado: {} -> {}", routingKey, payload.get("event"));
+            PubsubMessage message = PubsubMessage.newBuilder()
+                .setData(ByteString.copyFromUtf8(payload.toString()))
+                .putAllAttributes(payload)
+                .build();
+
+            pubSubPublisher.publish(message);
+            log.info("Evento publicado en Pub/Sub: {} -> {}", topicId, payload.get("event"));
         } catch (Exception e) {
-            log.error("Error publicando evento {}: {}", routingKey, e.getMessage());
-            // No fallar la operación principal si falla la publicación del evento
+            log.error("Error publicando evento en Pub/Sub {}: {}", topicId, e.getMessage());
         }
     }
 

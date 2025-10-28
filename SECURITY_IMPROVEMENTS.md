@@ -268,7 +268,6 @@ SPRING_PROFILES_ACTIVE=prod
 
 - [SECURITY_SETUP.md](./SECURITY_SETUP.md) - Guía de configuración de seguridad
 - [OAUTH_DEBUG.md](./OAUTH_DEBUG.md) - Debug de autenticación OAuth2
-- [REDIS_RABBITMQ.md](./REDIS_RABBITMQ.md) - Configuración de Redis y RabbitMQ
 - [README.md](./README.md) - Documentación general del proyecto
 
 ---

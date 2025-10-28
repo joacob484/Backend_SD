@@ -45,31 +45,6 @@ spring:
         max-idle: 8
         min-idle: 2
 
-  rabbitmq:
-    template:
-      retry:
-        enabled: true
-        initial-interval: 500ms
-        max-attempts: 3
-        multiplier: 2.0
-    publisher-returns: true
-    publisher-confirm-type: correlated
-    host: ${SPRING_RABBITMQ_HOST:localhost}
-    port: ${SPRING_RABBITMQ_PORT:5672}
-    username: ${SPRING_RABBITMQ_USERNAME:guest}
-    password: ${SPRING_RABBITMQ_PASSWORD:guest}
-    connection-timeout: 5s
-    listener:
-      simple:
-        startup-timeout: 60000
-        acknowledge-mode: auto
-        missing-queues-fatal: false
-        default-requeue-rejected: false
-        retry:
-          enabled: true
-          initial-interval: 1000ms
-          max-attempts: 3
-
   flyway:
     enabled: true
     baseline-on-migrate: false
@@ -163,7 +138,7 @@ management:
         enabled: true
       group:                                  # ✅ readiness/liveness claros
         readiness:
-          include: db,redis,rabbit,readinessState
+          include: db,redis,readinessState
         liveness:
           include: livenessState
   health:

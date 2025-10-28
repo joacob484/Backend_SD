@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.security.Keys;
 
 import javax.crypto.SecretKey;
@@ -20,10 +21,10 @@ import java.util.UUID;
  */
 @Component
 public class JwtUtil {
-    
+
     @Value("${jwt.secret:mi_clave_super_segura_que_debe_ser_al_menos_256_bits_para_hs256}")
     private String secretKey;
-    
+
     @Value("${jwt.expiration:86400000}") // 24 horas en milisegundos
     private long EXPIRATION_TIME;
 
@@ -40,12 +41,13 @@ public class JwtUtil {
      * @return Token JWT firmado
      */
     public String generateToken(UUID userId, String email) {
+        Date now = new Date();
         return Jwts.builder()
                 .subject(email) // Subject es el email (username)
                 .claim("userId", userId.toString()) // UUID como claim separado
                 .claim("roles", List.of("ROLE_USER"))
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + EXPIRATION_TIME))
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -54,11 +56,12 @@ public class JwtUtil {
      * Sobrecarga para compatibilidad con código existente.
      */
     public String generateToken(String email) {
+        Date now = new Date();
         return Jwts.builder()
                 .subject(email)
                 .claim("roles", List.of("ROLE_USER"))
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + EXPIRATION_TIME))
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -95,24 +98,25 @@ public class JwtUtil {
     }
 
     /**
-     * Extrae todos los claims del token.
+     * Extrae todos los claims del token usando jjwt 0.12.x.
      */
     private Claims extractAllClaims(String token) {
-        // Use the older parser() API which is available across jjwt versions
-        // This avoids compile-time errors if parserBuilder() isn't present.
         return Jwts.parser()
-                .setSigningKey(getSigningKey())
-                .parseClaimsJws(token)
-                .getBody();
+                .verifyWith(getSigningKey())   // establece la key de verificación
+                .build()
+                .parseSignedClaims(token)      // valida firma y parsea
+                .getPayload();                 // obtiene los Claims
     }
+
     /**
      * Valida si el token es válido (firma correcta y no expirado).
      */
     public boolean validateToken(String token) {
         try {
-            extractAllClaims(token); // Si esto no lanza excepción, el token es válido
-            return !isTokenExpired(token);
-        } catch (Exception e) {
+            Claims claims = extractAllClaims(token); // lanza si es inválido
+            Date exp = claims.getExpiration();
+            return exp != null && exp.after(new Date());
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
@@ -140,9 +144,7 @@ public class JwtUtil {
             if (rolesObj instanceof List) {
                 return (List<String>) rolesObj;
             }
-        } catch (Exception e) {
-            // Ignorar
-        }
+        } catch (Exception ignored) {}
         return Collections.singletonList("ROLE_USER");
     }
 

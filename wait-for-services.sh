@@ -9,11 +9,8 @@ echo "🔍 Waiting for required services..."
 # Configuración
 POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
-# Prefer explicit SPRING_* env vars when present (Cloud Run sets SPRING_REDIS_HOST / SPRING_RABBITMQ_HOST)
 REDIS_HOST="${REDIS_HOST:-${SPRING_REDIS_HOST:-redis}}"
 REDIS_PORT="${REDIS_PORT:-${SPRING_REDIS_PORT:-6379}}"
-RABBITMQ_HOST="${RABBITMQ_HOST:-${SPRING_RABBITMQ_HOST:-rabbitmq}}"
-RABBITMQ_PORT="${RABBITMQ_PORT:-${SPRING_RABBITMQ_PORT:-5672}}"
 
 MAX_RETRIES=30
 RETRY_INTERVAL=2
@@ -67,9 +64,6 @@ fi
 
 # Esperar Redis
 wait_for_service "$REDIS_HOST" "$REDIS_PORT" "Redis"
-
-# Esperar RabbitMQ
-wait_for_service "$RABBITMQ_HOST" "$RABBITMQ_PORT" "RabbitMQ"
 
 echo ""
 echo "🎉 All services are ready!"

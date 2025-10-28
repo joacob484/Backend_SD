@@ -252,7 +252,6 @@ components/pages/user/
 
 ### Mejoras de Producción
 - [ ] Rate limiting por usuario
-- [ ] Queue con RabbitMQ para emails
 - [ ] Retry automático en caso de fallo
 - [ ] Almacenar historial de emails enviados
 - [ ] Webhook para eventos de email (bounces, opens)

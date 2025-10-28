@@ -33,24 +33,6 @@ services:
     networks:
       - appnet
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "status"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 5s
-    networks:
-      - appnet
-
   backend:
     build: .
     image: backend_sd-backend
@@ -64,16 +46,11 @@ services:
       SPRING_DATASOURCE_PASSWORD: pass
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: guest
-      SPRING_RABBITMQ_PASSWORD: guest
       SERVER_PORT: 8080
       FRONTEND_URL: http://localhost:3000
     depends_on:
       - postgres
       - redis
-      - rabbitmq
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]

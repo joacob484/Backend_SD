@@ -1,9 +1,9 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
-    args: 
+    args:
       - 'build'
       - '-f'
-      - 'Dockerfile.cloudrun'
+      - './Dockerfile.cloudrun'
       - '-t'
       - 'gcr.io/master-might-274420/backend'
       - '.'

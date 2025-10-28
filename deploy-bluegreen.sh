@@ -20,7 +20,6 @@ git pull origin main
 echo -e "${BLUE}📦 Step 2: Rebuilding backend image${NC}"
 docker-compose -f docker-compose.prod.yml build backend
 
-echo -e "${BLUE}🔄 Step 3: Restarting backend (keeps Redis/RabbitMQ/Postgres running)${NC}"
 docker-compose -f docker-compose.prod.yml up -d backend
 
 echo -e "${YELLOW}⏳ Step 4: Waiting for backend to be healthy...${NC}"
