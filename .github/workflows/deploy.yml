@@ -1,258 +1,42 @@
-name: Deploy Backend (Cloud Run + VM)
+name: Deploy to Google Cloud Run
 
 on:
   push:
-    branches: [ main ]
-
-permissions:
-  contents: read
-  id-token: write
-
-env:
-  # ====== GCP ======
-  PROJECT_ID: master-might-274420
-  REGION: us-central1
-  AR_REPO: faltauno
-  RUN_SERVICE: faltauno-backend
-  CLOUDSQL_INSTANCE: master-might-274420:us-central1:faltauno-db
-  VPC_CONNECTOR: run-vpc
-
-  # ====== VM ======
-  VM_NAME: faltauno-vm
-  VM_ZONE: us-central1-a
-
-  # ====== App ======
-  FRONTEND_URL: https://faltauno-frontend-169771742214.us-central1.run.app
-  # Point the deployed service to managed services (Memorystore and GKE ILB)
-  REDIS_HOST: 10.217.135.172
-
-  # Imagen base (Artifact Registry)
-  IMG_BASENAME: us-central1-docker.pkg.dev/master-might-274420/faltauno/faltauno-backend
-
-  # Cloud Run runtime
-  MIN_INSTANCES: "1"
-  MAX_INSTANCES: "10"
-  CPU: "1"
-  MEMORY: "512Mi"
-  TIMEOUT: "300"
-  # Health check path (used after deploy). Set to '/' or '/actuator/health' as appropriate.
-  HEALTH_PATH: "/actuator/health"
+    branches:
+      - main
 
 jobs:
   deploy:
+    name: Deploy to Cloud Run
     runs-on: ubuntu-latest
 
     steps:
-      # --- Checkout ---
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      # --- Java para compilar ---
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: "21"
-          distribution: "temurin"
-          cache: "maven"
+    - name: Authenticate with Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Build (Maven)
-        run: |
-          mvn -v
-          mvn -B -DskipTests package
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v3
+      with:
+        project_id: 'master-might-274420'
 
-      # --- Auth OIDC (Workload Identity Federation) ---
-      - name: Auth to Google Cloud (WIF)
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: projects/169771742214/locations/global/workloadIdentityPools/github-pool/providers/github-provider
-          service_account: deploy-cicd@master-might-274420.iam.gserviceaccount.com
-          project_id: ${{ env.PROJECT_ID }}
-          # Use dynamic audience based on the repository to avoid hard-coded values
-          audience: https://github.com/${{ github.repository }}
-          create_credentials_file: true
+    - name: Authenticate Docker with GCR
+      run: gcloud auth configure-docker
 
-      # --- Exportar credenciales para gcloud ---
-      - name: Export ADC env vars
-        run: |
-          echo "GOOGLE_APPLICATION_CREDENTIALS=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
-          echo "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
+    - name: Build and Push Docker Image
+      run: |
+        IMAGE=gcr.io/master-might-274420/faltauno-backend:${{ github.sha }}
+        docker build -t $IMAGE -f Dockerfile.cloudrun .
+        docker push $IMAGE
 
-      # --- Instalar gcloud SDK + componente beta ---
-      - name: Set up gcloud SDK (with beta)
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          install_components: 'beta'
-
-      # --- Docker login a Artifact Registry ---
-      - name: Configure Docker to Artifact Registry
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev -q
-
-      # --- Build & Push imagen ---
-      - name: Build & Push image
-        run: |
-          GIT_SHA="${{ github.sha }}"
-          IMG_SHA="${{ env.IMG_BASENAME }}:${GIT_SHA}"
-          IMG_LATEST="${{ env.IMG_BASENAME }}:latest"
-
-          echo "Building image $IMG_SHA"
-          docker build \
-            -f Dockerfile.prod \
-            -t "$IMG_SHA" \
-            -t "$IMG_LATEST" \
-            .
-
-          docker push "$IMG_SHA"
-          docker push "$IMG_LATEST"
-
-          echo "IMG_SHA=$IMG_SHA" >> $GITHUB_ENV
-
-      # --- Deploy sin downtime a Cloud Run ---
-      - name: Deploy to Cloud Run (zero-downtime)
-        run: |
-          gcloud run deploy "$RUN_SERVICE" \
-            --image "$IMG_SHA" \
-            --region "$REGION" \
-            --project "$PROJECT_ID" \
-            --platform managed \
-            --allow-unauthenticated \
-            --execution-environment gen2 \
-            --min-instances "$MIN_INSTANCES" \
-            --max-instances "$MAX_INSTANCES" \
-            --cpu "$CPU" \
-            --memory "$MEMORY" \
-            --timeout "$TIMEOUT" \
-            --vpc-connector "$VPC_CONNECTOR" \
-            --vpc-egress private-ranges-only \
-            \
-            --set-env-vars SPRING_PROFILES_ACTIVE=prod \
-            --set-env-vars FRONTEND_URL="${FRONTEND_URL}" \
-            --set-env-vars SPRING_DATASOURCE_URL="jdbc:postgresql:///faltauno_db?cloudSqlInstance=${CLOUDSQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory" \
-            --set-env-vars SPRING_DATASOURCE_USERNAME=app \
-            --set-env-vars SPRING_REDIS_HOST="${REDIS_HOST}" \
-            --set-env-vars JWT_EXPIRATION=86400000 \
-            \
-            --set-secrets SPRING_DATASOURCE_PASSWORD=db-password:latest \
-            --set-secrets JWT_SECRET=jwt-secret:latest \
-            --set-secrets GOOGLE_CLIENT_ID=google-client-id:latest \
-            --set-secrets GOOGLE_CLIENT_SECRET=google-client-secret:latest \
-
-        run: |
-          for i in 1 2; do
-            set +e
-            gcloud beta compute ssh "$VM_NAME" \
-              --zone "$VM_ZONE" \
-              --tunnel-through-iap \
-              --project "$PROJECT_ID" \
-              --quiet \
-              -- -o StrictHostKeyChecking=no \
-              "sudo systemctl daemon-reload && sudo systemctl restart faltauno-services && sudo systemctl --no-pager --full status faltauno-services"
-            rc=$?
-            set -e
-            if [ $rc -eq 0 ]; then
-              echo 'VM refresh OK'
-              break
-            fi
-            echo 'Retrying VM refresh in 10s...'
-            sleep 10
-          done
-
-      # --- Mostrar info del deploy ---
-      - name: Show Cloud Run URL & revision
-        run: |
-          URL=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.url)')
-          REV=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestCreatedRevisionName)')
-          echo "✅ Service URL: $URL"
-          echo "✅ Latest Revision: $REV"
-
-      - name: Wait for revision to become ready
-        run: |
-          REV=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestCreatedRevisionName)')
-          echo "Waiting for revision $REV to be Ready..."
-          READY=""
-          # increase attempts to allow for slower cold starts or image pull delays
-          for i in $(seq 1 40); do
-            READY=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestReadyRevisionName)')
-            if [ "$READY" = "$REV" ]; then
-              echo "Revision $REV is Ready"
-              break
-            fi
-            echo "Not ready yet (attempt $i), waiting..."
-            sleep 6
-          done
-
-          if [ "$READY" != "$REV" ]; then
-            echo "Revision $REV did not become Ready in time. Inspecting revision status..."
-            # Inspect the created revision conditions to detect 'Retired' behavior
-            CREATED_JSON=$(gcloud run revisions describe "$REV" --region "$REGION" --project "$PROJECT_ID" --format=json)
-            RETIRED_REASON=$(echo "$CREATED_JSON" | jq -r '.status.conditions[]? | select(.type=="Ready") | .reason' || true)
-            echo "Revision $REV Ready reason: $RETIRED_REASON"
-
-            # If the created revision was retired, check if its imageDigest equals the currently serving ready revision's imageDigest.
-            if [ "$RETIRED_REASON" = "Retired" ]; then
-              CURRENT_READY=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestReadyRevisionName)')
-              echo "Currently serving ready revision: $CURRENT_READY"
-              NEW_DIGEST=$(echo "$CREATED_JSON" | jq -r '.status.imageDigest')
-              CURRENT_JSON=$(gcloud run revisions describe "$CURRENT_READY" --region "$REGION" --project "$PROJECT_ID" --format=json || true)
-              CURRENT_DIGEST=$(echo "$CURRENT_JSON" | jq -r '.status.imageDigest' || true)
-              echo "New revision imageDigest: $NEW_DIGEST"
-              echo "Current ready revision imageDigest: $CURRENT_DIGEST"
-              if [ "$NEW_DIGEST" = "$CURRENT_DIGEST" ]; then
-                echo "New revision retired but image digest is identical to current ready revision. Treating as successful no-op deploy."
-                READY=$CURRENT_READY
-              else
-                echo "New revision retired and image digest differs. Failing to allow manual inspection."
-                gcloud run services describe "$RUN_SERVICE" --region "$REGION"
-                exit 1
-              fi
-            else
-              echo "ERROR: revision $REV did not become Ready in time and was not retired. Failing so operator can inspect logs."
-              gcloud run services describe "$RUN_SERVICE" --region "$REGION"
-              exit 1
-            fi
-          fi
-
-      - name: Health check deployed service
-        run: |
-          URL=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.url)')
-          HEALTH_PATH="${HEALTH_PATH:-/actuator/health}"
-          echo "Probing $URL$HEALTH_PATH"
-          OK=0
-          # increase attempts so transient startup tasks can complete
-          for i in $(seq 1 20); do
-            if curl -fsS "$URL$HEALTH_PATH" -o /dev/null; then
-              echo "Health check passed at attempt $i"
-              OK=1
-              break
-            fi
-            # fallback to root if health path not available
-            if curl -fsS "$URL" -o /dev/null; then
-              echo "Root responded (fallback) at attempt $i"
-              OK=1
-              break
-            fi
-            echo "Health probe attempt $i failed, sleeping..."
-            sleep 5
-          done
-          if [ $OK -ne 1 ]; then
-            echo "ERROR: service did not respond to health probe"
-            gcloud run services describe "$RUN_SERVICE" --region "$REGION"
-            exit 1
-          fi
-
-      - name: Promote revision to traffic after health check
-        run: |
-          REV=$(gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='value(status.latestCreatedRevisionName)')
-          echo "Promoting revision $REV to receive 100% traffic"
-          gcloud run services update-traffic "$RUN_SERVICE" --to-revisions "$REV"=100 --region "$REGION" --project "$PROJECT_ID"
-          echo "Traffic updated. Current allocations:"
-          gcloud run services describe "$RUN_SERVICE" --region "$REGION" --format='table(status.traffic[*].revisionName,status.traffic[*].percent)'
-
-      # --- Chequeo rápido de puertos en VM ---
-      - name: Quick VM port checks
-        continue-on-error: true
-        run: |
-          gcloud beta compute ssh "$VM_NAME" \
-            --zone "$VM_ZONE" --tunnel-through-iap --project "$PROJECT_ID" --quiet \
-            -- -o StrictHostKeyChecking=no \
-            "sudo ss -lntp | egrep 'LISTEN.+:(6379)' || true"
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy faltauno-backend \
+          --image $IMAGE \
+          --region us-central1 \
+          --platform managed \
+          --allow-unauthenticated

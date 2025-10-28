@@ -52,7 +52,7 @@ services:
       - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - FRONTEND_URL=${FRONTEND_URL}
+      - FRONTEND_URL=https://faltauno-frontend-169771742214.us-central1.run.app
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
       - JAVA_OPTS=-Xmx384m -Xms256m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC
     depends_on:

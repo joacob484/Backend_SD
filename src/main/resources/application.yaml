@@ -158,7 +158,7 @@ jwt:
 
 # Frontend URL for CORS (si lo usás en tu config de CORS)
 frontend:
-  url: ${FRONTEND_URL:http://localhost:3000}
+  url: ${FRONTEND_URL:https://faltauno-frontend-169771742214.us-central1.run.app}
 
 # Logging (niveles sensatos; menos ruido en Redis/Tomcat/Netty/Hibernate binder)
 logging:

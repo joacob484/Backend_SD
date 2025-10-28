@@ -6,12 +6,7 @@ Este proyecto implementa un sistema de **deployment automático con zero-downtim
 
 ### Flujo Automático (GitHub Actions)
 
-Cada vez que haces `git push` a `main`:
-
-1. **GitHub Actions se triggera automáticamente**
-2. **SSH a la VM** (`faltauno-vm`)
-3. **Git pull** del código más reciente
-4. **Ejecuta `deploy-zero-downtime.sh`**
+Cada vez que haces `git push` a `main` el flujo se ejecuta en CI (GitHub Actions) y despliega usando las configuraciones declarativas (`.github/workflows/deploy.yml` o `cloudbuild-*` si usas Cloud Build). Las antiguas instrucciones que ejecutaban `deploy-zero-downtime.sh` localmente fueron removidas; la recomendación es dejar que CI haga el despliegue para garantizar reproducibilidad y permisos adecuados.
 
 ### Proceso Blue-Green (Sin Downtime)
 
@@ -136,32 +131,9 @@ Esto permite que GREEN acceda a:
 
 ## �🔧 Scripts
 
-### `deploy-zero-downtime.sh`
+> Note: legacy local deploy scripts were removed from the repository. To perform deployments use the CI workflows mentioned above or build and run images locally for testing.
 
-Script principal que implementa Blue-Green:
-
-```bash
-cd ~/Backend_SD
-bash deploy-zero-downtime.sh
-```
-
-**Características:**
-- ✅ Builds GREEN mientras BLUE sirve tráfico
-- ✅ Health checks con timeout de 3 minutos
-- ✅ Rollback automático si GREEN falla
-- ✅ Logs detallados en caso de error
-- ✅ Cleanup de containers huérfanos
-
-### `deploy.sh` (Simple Restart)
-
-Script alternativo para desarrollo (CON downtime):
-
-```bash
-cd ~/Backend_SD
-bash deploy.sh
-```
-
-**Uso:** Solo para desarrollo/testing rápido.
+If you need a one-off manual deployment from a VM, follow the 'Deployment Manual' section below but use the GitHub Actions/Cloud Build approaches where possible. Creating new local scripts is fine but please document them and add tests/guardrails before use.
 
 ## 📋 Configuración
 
@@ -198,25 +170,9 @@ services:
   postgres:   # Port 5432
 ```
 
-## 🚀 Deployment Manual
+## 🚀 Deployment Manual (deprecated)
 
-Si necesitas hacer deployment manual (sin GitHub Actions):
-
-```bash
-# SSH a la VM
-gcloud compute ssh augus@faltauno-vm \
-  --zone=us-central1-a \
-  --project=master-might-274420
-
-# Ir al directorio
-cd ~/Backend_SD
-
-# Pull código
-git pull
-
-# Ejecutar deployment
-bash deploy-zero-downtime.sh
-```
+Manual deployments that relied on local scripts were deprecated. Prefer CI-driven deployments. If you must perform an ad-hoc deploy from a VM, build and tag the image locally or use the Cloud Build `retag` pipeline, then deploy with `gcloud run deploy` as shown in `deploy/README.md`.
 
 ## 🔍 Monitoreo
 

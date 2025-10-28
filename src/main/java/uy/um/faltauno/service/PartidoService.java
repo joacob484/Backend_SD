@@ -43,7 +43,9 @@ public class PartidoService {
     private final InscripcionRepository inscripcionRepository;
     private final PartidoMapper partidoMapper;
     private final NotificacionService notificacionService;
-    private final Publisher pubSubPublisher;
+    // Pub/Sub publisher is optional in environments where Pub/Sub isn't configured.
+    // Make it non-final so it's not required by Lombok's generated constructor.
+    private Publisher pubSubPublisher;
 
     /**
      * Crear un nuevo partido
@@ -565,8 +567,12 @@ public class PartidoService {
                 .putAllAttributes(payload)
                 .build();
 
-            pubSubPublisher.publish(message);
-            log.info("Evento publicado en Pub/Sub: {} -> {}", topicId, payload.get("event"));
+            if (pubSubPublisher != null) {
+                pubSubPublisher.publish(message);
+                log.info("Evento publicado en Pub/Sub: {} -> {}", topicId, payload.get("event"));
+            } else {
+                log.info("Pub/Sub publisher not available, skipping publish for topic {}", topicId);
+            }
         } catch (Exception e) {
             log.error("Error publicando evento en Pub/Sub {}: {}", topicId, e.getMessage());
         }

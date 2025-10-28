@@ -1,21 +1,27 @@
 #!/bin/bash
-# wait-for-services.sh - VERSIÓN CORREGIDA
-# Espera a que los servicios estén disponibles antes de iniciar la app
+# wait-for-services.sh - single, corrected version
+# Waits for optional services (Postgres, Redis) and then execs the provided command.
 
 set -e
 
 echo "🔍 Waiting for required services..."
 
-# Configuración
+# Configuration with sensible defaults
 POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 REDIS_HOST="${REDIS_HOST:-${SPRING_REDIS_HOST:-redis}}"
 REDIS_PORT="${REDIS_PORT:-${SPRING_REDIS_PORT:-6379}}"
 
+echo "ℹ️ Environment snapshot (non-sensitive):"
+echo "  SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-}"
+echo "  FRONTEND_URL=${FRONTEND_URL:-}"
+echo "  REDIS_HOST=${REDIS_HOST} REDIS_PORT=${REDIS_PORT}"
+echo "  POSTGRES_HOST=${POSTGRES_HOST} POSTGRES_PORT=${POSTGRES_PORT}"
+
 MAX_RETRIES=30
 RETRY_INTERVAL=2
 
-# Función para esperar un servicio
+# Helper: wait for a TCP port to be open
 wait_for_service() {
     local host=$1
     local port=$2
@@ -23,52 +29,47 @@ wait_for_service() {
     local retries=0
 
     echo "⏳ Waiting for $service_name ($host:$port)..."
-    
     while ! nc -z "$host" "$port" > /dev/null 2>&1; do
         retries=$((retries + 1))
-        
         if [ $retries -ge $MAX_RETRIES ]; then
-            echo "❌ ERROR: $service_name not available after $MAX_RETRIES attempts"
-            exit 1
+            echo "⚠️ WARNING: $service_name not available after $MAX_RETRIES attempts"
+            echo "  Continuing startup, application will start without $service_name. Monitor for failures."
+            return 1
         fi
-        
         echo "   Attempt $retries/$MAX_RETRIES - waiting ${RETRY_INTERVAL}s..."
         sleep $RETRY_INTERVAL
     done
-    
     echo "✅ $service_name is ready!"
+    return 0
 }
 
-# Esperar PostgreSQL
-# In Cloud Run we often use Cloud SQL SocketFactory (JDBC URL contains "cloudSqlInstance").
-# In that case the database is not reachable via TCP host/port and this script should
-# skip the TCP-based checks to avoid exiting the container before the app can
-# connect via the socket factory. Detect that and skip the wait when appropriate.
+# PostgreSQL: skip TCP wait if SPRING_DATASOURCE_URL uses Cloud SQL socketFactory
 if echo "${SPRING_DATASOURCE_URL:-}" | grep -q "cloudSqlInstance"; then
     echo "ℹ️ Detected Cloud SQL socket factory in SPRING_DATASOURCE_URL; skipping TCP PostgreSQL wait."
 else
-    wait_for_service "$POSTGRES_HOST" "$POSTGRES_PORT" "PostgreSQL"
-
-    # Verificar que PostgreSQL acepta conexiones (no solo que el puerto esté abierto)
-    echo "🔍 Verifying PostgreSQL accepts connections..."
-    PGPASSWORD="${SPRING_DATASOURCE_PASSWORD:-pass}" \
-        pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "${SPRING_DATASOURCE_USERNAME:-app}" -d "${POSTGRES_DB:-faltauno_db}" -t 30
-
-    if [ $? -eq 0 ]; then
-        echo "✅ PostgreSQL is accepting connections!"
+    if wait_for_service "$POSTGRES_HOST" "$POSTGRES_PORT" "PostgreSQL"; then
+        # Optionally verify connections using pg_isready if available
+        if command -v pg_isready > /dev/null 2>&1; then
+            echo "🔍 Verifying PostgreSQL accepts connections..."
+            PGPASSWORD="${SPRING_DATASOURCE_PASSWORD:-pass}" \
+                pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "${SPRING_DATASOURCE_USERNAME:-app}" -d "${POSTGRES_DB:-faltauno_db}" -t 5 || echo "⚠️ pg_isready failed; continuing startup"
+        fi
     else
-        echo "❌ ERROR: PostgreSQL not accepting connections"
-        exit 1
+        echo "?? WARNING: PostgreSQL not available after ${MAX_RETRIES} attempts; continuing without DB"
     fi
 fi
 
-# Esperar Redis
-wait_for_service "$REDIS_HOST" "$REDIS_PORT" "Redis"
+# Redis (optional)
+wait_for_service "$REDIS_HOST" "$REDIS_PORT" "Redis" || echo "⚠️ Redis wait timed out; continuing startup"
 
 echo ""
-echo "🎉 All services are ready!"
-echo "🚀 Starting Spring Boot application..."
+echo "🎉 Service wait complete; starting application..."
 echo ""
 
-# Ejecutar el comando que se pase como argumentos
+# Debug info: print the command and Java availability before exec
+echo "🔁 Exec command: $@"
+echo "🔍 which java: $(which java 2>/dev/null || echo 'java not found')"
+echo "🔍 PORT env: ${PORT:-not-set} SERVER_PORT env: ${SERVER_PORT:-not-set}"
+
+# Exec the supplied command (this replaces the shell with the target process)
 exec "$@"

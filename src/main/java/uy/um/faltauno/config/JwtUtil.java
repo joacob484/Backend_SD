@@ -122,18 +122,6 @@ public class JwtUtil {
     }
 
     /**
-     * Verifica si el token está expirado.
-     */
-    private boolean isTokenExpired(String token) {
-        try {
-            Date expiration = extractAllClaims(token).getExpiration();
-            return expiration.before(new Date());
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
-    /**
      * Extrae los roles desde el claim 'roles'.
      */
     @SuppressWarnings("unchecked")

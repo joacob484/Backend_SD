@@ -22,7 +22,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -50,7 +49,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(DaoAuthenticationProvider provider) {
-        return new ProviderManager(provider);
+        return new ProviderManager(List.of(provider)); // Updated to use List.of for compatibility
     }
 
     // ======== Configuración principal ========

@@ -19,14 +19,14 @@ Notes
 - The Cloud Build configs assume the Cloud Build service account has permissions to read/write Artifact Registry, deploy to Cloud Run, and access Secret Manager.
 # Deploy scripts and recommendations
 
-Existing scripts in this repo:
+Note about local deploy scripts
 
-- `deploy.sh` - generic deploy helper (inspect and use with care)
-- `deploy-bluegreen.sh` - blue/green deployment helper (older workflow)
-- `deploy-zero-downtime.sh` - zero-downtime deployment helper
+The legacy local deploy scripts (`deploy.sh`, `deploy-bluegreen.sh`, `deploy-zero-downtime.sh`) were removed from the repository to reduce maintenance burden and avoid accidental use. These scripts were replaced by CI/CD workflows that run in a controlled environment.
 
-Recommendations:
+Recommended approaches now:
 
-- These scripts are useful when deploying from a VM or CI runner with docker/helm access. For Cloud Run deployments prefer using `gcloud run deploy` with the `Dockerfile.cloudrun` image.
-- Consider moving these scripts to `deploy/` and adding a short README (this file) so the root folder is less cluttered.
-- If you want, open a PR that moves scripts into `deploy/` and leaves symlinks or README pointers in their original locations.
+- Use the GitHub Actions workflow: `.github/workflows/deploy.yml` (recommended for push->deploy flows).
+- Use the Cloud Build pipelines: `cloudbuild-ci.yaml`, `cloudbuild-cloudrun.yaml` for Cloud Build deployments.
+- For ad-hoc testing or local debugging, build images with `Dockerfile.cloudrun` (or run the application via your IDE/Maven) rather than running the legacy deploy scripts.
+
+If you really need a local helper script for a custom environment, create a new script in `deploy/` and document its intended usage.
