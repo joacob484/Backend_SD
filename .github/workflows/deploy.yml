@@ -46,9 +46,10 @@ jobs:
       uses: actions/github-script@v6
       with:
         script: |
+          const repo = github.context.repo || github.context.payload.repository;
           github.rest.issues.createComment({
-            owner: github.context.repo.owner,
-            repo: github.context.repo.repo,
+            owner: repo.owner,
+            repo: repo.name,
             issue_number: github.context.run_id,
             body: `Deployment failed for commit ${github.context.sha}. Please check the logs.`
           });

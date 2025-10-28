@@ -6,7 +6,7 @@ COPY src ./src
 RUN mvn -B -DskipTests package
 
 # Runtime stage
-FROM gcr.io/distroless/java:21
+FROM gcr.io/distroless/java17-debian11
 WORKDIR /app
 
 # Copiamos el JAR final
