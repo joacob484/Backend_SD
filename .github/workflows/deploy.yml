@@ -23,10 +23,11 @@ env:
 
   # ====== App ======
   FRONTEND_URL: https://faltauno-frontend-169771742214.us-central1.run.app
-  REDIS_HOST: 10.128.0.2
-  RABBIT_HOST: 10.128.0.2
-  # Whether to enable RabbitMQ consumers in Cloud Run (set to false for Cloud Run-only deployments)
-  APP_RABBIT_ENABLED: "false"
+  # Point the deployed service to managed services (Memorystore and GKE ILB)
+  REDIS_HOST: 10.217.135.172
+  RABBIT_HOST: 10.128.0.5
+  # Enable RabbitMQ consumers in Cloud Run so the VM can be removed safely
+  APP_RABBIT_ENABLED: "true"
 
   # Imagen base (Artifact Registry)
   IMG_BASENAME: us-central1-docker.pkg.dev/master-might-274420/faltauno/faltauno-backend
