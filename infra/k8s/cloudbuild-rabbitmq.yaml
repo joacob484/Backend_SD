@@ -25,4 +25,8 @@ steps:
       --set auth.password="$$PW" \
       --values infra/k8s/rabbitmq-values.yaml
     echo "Helm install finished."
+    echo "Applying StatefulSet container port patch to ensure named ports persist..."
+    kubectl apply -f infra/k8s/stset-rabbit-patch.yaml
+    kubectl rollout status statefulset/rabbitmq -n rabbitmq --timeout=120s || true
+    echo "StatefulSet patch applied."
 timeout: 1200s

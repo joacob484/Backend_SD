@@ -23,7 +23,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
   private final UsuarioService usuarioService;
   private final JwtUtil jwtUtil;
 
-  @Value("${FRONTEND_URL}")
+  // Provide a sensible default so bean creation doesn't fail if the env var is missing
+  @Value("${FRONTEND_URL:http://localhost:3000}")
   private String frontend;
 
   @Override

@@ -11,8 +11,12 @@ WORKDIR /app
 
 # Copiamos el JAR final
 COPY --from=builder /app/target/*.jar app.jar
+COPY cloudrun-entrypoint.sh /app/cloudrun-entrypoint.sh
+RUN chmod +x /app/cloudrun-entrypoint.sh
 
 EXPOSE 8080
 
-# Entry point directo sin wait-for-services (Cloud Run maneja las dependencias)
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Lightweight wrapper ensures Spring's SERVER_PORT reads the container's PORT
+# at runtime (Cloud Run injects PORT). This avoids mismatches between container
+# probes and the app's bound port.
+ENTRYPOINT ["/app/cloudrun-entrypoint.sh"]

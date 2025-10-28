@@ -8,6 +8,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -21,14 +22,15 @@ import java.util.UUID;
 public class JwtUtil {
     
     @Value("${jwt.secret:mi_clave_super_segura_que_debe_ser_al_menos_256_bits_para_hs256}")
-    private String SECRET_KEY;
+    private String secretKey;
     
     @Value("${jwt.expiration:86400000}") // 24 horas en milisegundos
     private long EXPIRATION_TIME;
 
     // Clave generada una vez para mejor seguridad
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+        // enforce UTF-8 to avoid platform charset differences
+        return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -96,11 +98,12 @@ public class JwtUtil {
      * Extrae todos los claims del token.
      */
     private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+    // Use the parserBuilder API (jjwt 0.11+) to set the signing key and parse the JWS
+    return Jwts.parserBuilder()
+        .setSigningKey(getSigningKey())
+        .build()
+        .parseClaimsJws(token)
+        .getBody();
     }
 
     /**
