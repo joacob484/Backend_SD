@@ -40,3 +40,16 @@ jobs:
           --region us-central1 \
           --platform managed \
           --allow-unauthenticated
+
+    - name: Notify on Failure
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const context = github.context;
+          github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.run_id,
+            body: `Deployment failed for commit ${context.sha}. Please check the logs.`
+          });

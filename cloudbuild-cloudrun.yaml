@@ -3,3 +3,20 @@ steps:
   args: [ 'build', '-t', 'gcr.io/master-might-274420/faltauno-backend:deploy-20251027-cloudrun', '-f', 'Dockerfile.cloudrun', '.' ]
 images:
 - 'gcr.io/master-might-274420/faltauno-backend:deploy-20251027-cloudrun'
+- name: 'gcr.io/cloud-builders/gcloud'
+  args: [
+    'run', 'deploy', 'faltauno-backend',
+    '--image', 'gcr.io/master-might-274420/faltauno-backend:deploy-20251027-cloudrun',
+    '--region', 'us-central1',
+    '--platform', 'managed',
+    '--allow-unauthenticated'
+  ]
+- name: 'gcr.io/cloud-builders/gcloud'
+  args: [
+    'run', 'deploy', 'faltauno-backend',
+    '--image', 'gcr.io/master-might-274420/faltauno-backend:$SHORT_SHA',
+    '--region', 'us-central1',
+    '--platform', 'managed',
+    '--allow-unauthenticated',
+    '--set-env-vars', 'SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD,REDIS_HOST=$REDIS_HOST'
+  ]

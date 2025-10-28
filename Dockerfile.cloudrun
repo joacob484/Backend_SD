@@ -6,7 +6,7 @@ COPY src ./src
 RUN mvn -B -DskipTests package
 
 # Runtime stage
-FROM eclipse-temurin:21-jre
+FROM gcr.io/distroless/java:21
 WORKDIR /app
 
 # Copiamos el JAR final
@@ -15,6 +15,9 @@ COPY cloudrun-entrypoint.sh /app/cloudrun-entrypoint.sh
 RUN chmod +x /app/cloudrun-entrypoint.sh
 
 EXPOSE 8080
+
+# Add a health check to monitor the application's health
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD curl -f http://localhost:8080/actuator/health || exit 1
 
 # Lightweight wrapper ensures Spring's SERVER_PORT reads the container's PORT
 # at runtime (Cloud Run injects PORT). This avoids mismatches between container
