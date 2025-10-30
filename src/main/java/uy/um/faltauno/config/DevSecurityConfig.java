@@ -95,7 +95,9 @@ public class DevSecurityConfig {
         configuration.setAllowedOriginPatterns(Arrays.asList(
             "http://localhost:3000",
             "http://localhost:*",
-            "http://host.docker.internal:*"
+            "http://host.docker.internal:*",
+            "https://faltauno-frontend-*.us-central1.run.app",  // Frontend en Cloud Run
+            "https://*.run.app"  // Cualquier servicio Cloud Run (para desarrollo)
         ));
         configuration.setAllowedMethods(Arrays.asList(
             "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
