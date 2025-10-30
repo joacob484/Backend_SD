@@ -105,17 +105,12 @@ USER spring:spring
 # Expose port
 EXPOSE 8080
 
-# Health check endpoint
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD java -cp /app/app.jar org.springframework.boot.loader.launch.JarLauncher --spring.main.web-application-type=none || exit 1
+# NO usar HEALTHCHECK - Cloud Run lo maneja automáticamente
+# El healthcheck de Cloud Run hace HTTP GET a / o al puerto configurado
 
 # Run the application
-# Use array form for proper signal handling
-ENTRYPOINT ["java"]
-CMD ["-Xms512m", "-Xmx1536m", \
-     "-XX:+UseContainerSupport", \
-     "-XX:MaxRAMPercentage=75.0", \
-     "-Djava.security.egd=file:/dev/./urandom", \
-     "-Dserver.port=8080", \
-     "-jar", "/app/app.jar"]
+# Cloud Run inyecta PORT environment variable
+ENTRYPOINT ["sh", "-c"]
+CMD ["java -Xms512m -Xmx1536m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom -Dserver.port=${PORT:-8080} -jar /app/app.jar"]
+
 
