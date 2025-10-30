@@ -1,24 +1,50 @@
+# ═══════════════════════════════════════════════════════════
+# DOCKERFILE ULTRA-SIMPLIFICADO PARA CLOUD RUN
+# ═══════════════════════════════════════════════════════════
+
 # Build stage
-FROM maven:3.9.10-eclipse-temurin-21 AS builder
-WORKDIR /app
+FROM maven:3.9-eclipse-temurin-21-alpine AS builder
+
+WORKDIR /build
+
+# Copy project files
 COPY pom.xml .
 COPY src ./src
-RUN mvn -B -DskipTests clean package && \
-    ls -lah /app/target/ && \
-    echo "JAR file:" && \
-    ls -lah /app/target/*.jar
 
-# Runtime stage (use a reliable JRE that includes shell utilities for healthcheck)
-FROM eclipse-temurin:21-jre
+# Build with verbose output
+RUN echo "════════ BUILDING JAR ════════" && \
+    mvn clean package -DskipTests -B -e && \
+    echo "════════ BUILD COMPLETE ════════" && \
+    echo "Contents of target/:" && \
+    ls -lah target/ && \
+    echo "════════════════════════════════"
+
+# ═══════════════════════════════════════════════════════════
+# Runtime stage - MINIMAL
+# ═══════════════════════════════════════════════════════════
+FROM eclipse-temurin:21-jre-alpine
+
 WORKDIR /app
 
-# Copy final JAR with explicit name
-COPY --from=builder /app/target/falta-uno-0.0.1-SNAPSHOT.jar app.jar
+# Copy JAR
+COPY --from=builder /build/target/*.jar app.jar
 
+# Verify JAR exists and is executable
+RUN echo "════════ VERIFYING JAR ════════" && \
+    ls -lah /app/app.jar && \
+    jar tf /app/app.jar | head -20 && \
+    echo "════════════════════════════════"
+
+# Expose port
 EXPOSE 8080
 
-# Cloud Run maneja sus propios health checks, no uses HEALTHCHECK de Docker
-# El health check se hace en /actuator/health/readiness
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=120s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
 
-# Ejecutar directamente Java sin entrypoint personalizado
-CMD ["java", "-Dserver.port=${PORT:-8080}", "-jar", "/app/app.jar"]
+# Run Java with explicit memory settings and PORT support
+ENV JAVA_OPTS="-Xmx512m -Xms256m"
+
+# Use shell form to allow environment variable expansion
+CMD java $JAVA_OPTS -Dserver.port=${PORT:-8080} -jar /app/app.jar
+

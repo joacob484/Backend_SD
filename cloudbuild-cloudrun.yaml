@@ -1,5 +1,5 @@
 steps:
-  # Build the Docker image and tag it with the short commit sha
+  # Build the Docker image and tag it with the build ID
   - name: 'gcr.io/cloud-builders/docker'
     args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID', '-f', 'Dockerfile.cloudrun', '.' ]
 
@@ -7,48 +7,13 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: [ 'push', 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID' ]
 
-  # Deploy to Cloud Run using the pushed image. Use substitutions for secrets/envs.
+  # Deploy to Cloud Run using simplified script
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
-      - 'scripts/cloudrun-deploy.sh'
-      - '${_SPRING_DATASOURCE_PASSWORD}'
-      - '${_REDIS_HOST}'
-      - '${_POSTGRES_HOST}'
-      - '${_CLOUDSQL_INSTANCE}'
-      - '${_SPRING_DATASOURCE_URL}'
-      - '${_SPRING_DATASOURCE_USERNAME}'
-      - '$BUILD_ID'
+      - 'scripts/cloudrun-deploy-simple.sh'
     env:
-      - 'GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}'
-      - 'GCP_PUBSUB_TOPIC=${_GCP_PUBSUB_TOPIC}'
-      - 'GCP_PUBSUB_SUBSCRIPTION=${_GCP_PUBSUB_SUBSCRIPTION}'
-      - 'FRONTEND_URL=${_FRONTEND_URL}'
-      - 'JWT_SECRET=${_JWT_SECRET}'
-      - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
-      - 'GOOGLE_CLIENT_SECRET=${_GOOGLE_CLIENT_SECRET}'
-    secretEnv: ['SPRING_DATASOURCE_PASSWORD']
-
-# Fetch secret from Secret Manager
-availableSecrets:
-  secretManager:
-  - versionName: projects/master-might-274420/secrets/db-password/versions/latest
-    env: 'SPRING_DATASOURCE_PASSWORD'
+      - 'BUILD_ID=$BUILD_ID'
 
 images:
   - 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID'
-
-substitutions:
-  _SPRING_DATASOURCE_PASSWORD: "REPLACE_AT_SUBMIT"
-  _REDIS_HOST: "REPLACE_AT_SUBMIT"
-  _POSTGRES_HOST: "REPLACE_AT_SUBMIT"
-  _CLOUDSQL_INSTANCE: ""
-  _SPRING_DATASOURCE_USERNAME: "app"
-  _SPRING_DATASOURCE_URL: ""
-  _GCP_PUBSUB_ENABLED: "false"
-  _GCP_PUBSUB_TOPIC: "faltauno-events"
-  _GCP_PUBSUB_SUBSCRIPTION: "faltauno-events-sub"
-  _FRONTEND_URL: "https://faltauno-frontend-169771742214.us-central1.run.app"
-  _JWT_SECRET: "REPLACE_AT_SUBMIT"
-  _GOOGLE_CLIENT_ID: "REPLACE_AT_SUBMIT"
-  _GOOGLE_CLIENT_SECRET: "REPLACE_AT_SUBMIT"

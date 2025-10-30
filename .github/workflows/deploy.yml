@@ -53,19 +53,32 @@ jobs:
       run: |
         gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
-    - name: Build and Deploy to Cloud Run
+    - name: Build and Deploy to Cloud Run (SIMPLIFIED)
       run: |
-        echo "Submitting Cloud Build — build will run in Cloud Build and deploy per cloudbuild-cloudrun.yaml"
-        # Submit Cloud Build asynchronously (service account doesn't have Viewer role to stream logs)
+        echo "════════════════════════════════════════════════════════"
+        echo "🚀 SIMPLIFIED DEPLOYMENT - MINIMAL CONFIGURATION"
+        echo "════════════════════════════════════════════════════════"
+        echo ""
+        echo "📦 Building image and deploying with ONLY Spring Profile..."
+        echo ""
+        
+        # Submit Cloud Build with minimal configuration
         BUILD_ID=$(gcloud builds submit --config=cloudbuild-cloudrun.yaml \
-          --substitutions=_SPRING_DATASOURCE_PASSWORD="${{ secrets.SPRING_DATASOURCE_PASSWORD }}",_REDIS_HOST="${{ env.SPRING_REDIS_HOST }}",_POSTGRES_HOST="${{ env.POSTGRES_HOST }}",_CLOUDSQL_INSTANCE="${{ env.CLOUDSQL_INSTANCE }}",_SPRING_DATASOURCE_URL="${{ env.SPRING_DATASOURCE_URL }}",_GCP_PUBSUB_ENABLED="${{ env.GCP_PUBSUB_ENABLED }}",_GCP_PUBSUB_TOPIC="${{ env.GCP_PUBSUB_TOPIC }}",_GCP_PUBSUB_SUBSCRIPTION="${{ env.GCP_PUBSUB_SUBSCRIPTION }}",_FRONTEND_URL="${{ env.FRONTEND_URL }}",_JWT_SECRET="${{ secrets.JWT_SECRET }}",_GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}",_GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
           --format='value(id)' --async)
+        
+        echo ""
         echo "✅ Build submitted successfully!"
         echo "📋 Build ID: $BUILD_ID"
         echo "🔗 View logs: https://console.cloud.google.com/cloud-build/builds/$BUILD_ID?project=master-might-274420"
         echo ""
-        echo "⏳ Build is running in Cloud Build. Check the link above for progress."
-        echo "Note: This workflow completes immediately. Check Cloud Build logs to verify deployment success."
+        echo "⏳ Build is running in Cloud Build. This will take ~5-8 minutes."
+        echo ""
+        echo "🎯 WHAT TO CHECK:"
+        echo "   1. Build logs - verify JAR creation"
+        echo "   2. Deployment logs - check container startup"
+        echo "   3. Cloud Run logs - look for Spring Boot output"
+        echo ""
+        echo "Note: This is a MINIMAL deployment. All external dependencies disabled."
 
     - name: Notify on Failure (create issue)
       if: failure()
