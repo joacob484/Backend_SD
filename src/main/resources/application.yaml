@@ -68,8 +68,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-id: ${GOOGLE_CLIENT_ID:not-configured}
+            client-secret: ${GOOGLE_CLIENT_SECRET:not-configured}
             scope:
               - openid
               - email
@@ -150,10 +150,10 @@ management:
       enabled: true
 
 # JWT Configuration
-# ⚠️ CRÍTICO: JWT_SECRET debe ser configurada como variable de entorno
+# ⚠️ CRÍTICO: JWT_SECRET debe ser configurada como variable de entorno en producción
 # Generar con: openssl rand -base64 64
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:changeme-this-is-insecure-default-only-for-local-dev-please-set-JWT_SECRET-in-production}
   expiration: ${JWT_EXPIRATION:86400000}  # 24 horas
 
 # Frontend URL for CORS (si lo usás en tu config de CORS)
