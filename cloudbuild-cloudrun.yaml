@@ -111,19 +111,18 @@ steps:
           echo ""
           echo "⏳ Waiting for revision to be ready (checking every 5 seconds)..."
           
-          # Wait for revision to be ready - poll aggressively for fast migration
+          # Wait for revision to be ready
           TIMEOUT=300  # 5 minutes max
           ELAPSED=0
           READY="Unknown"
           
           while [ $$ELAPSED -lt $$TIMEOUT ]; do
-            # Get full conditions JSON and parse with grep
-            CONDITIONS=$$(gcloud run revisions describe "$$NEW_REVISION" \
+            # Get the JSON and extract Ready status with python (available in gcloud image)
+            READY=$$(gcloud run revisions describe "$$NEW_REVISION" \
               --region=us-central1 \
               --platform=managed \
-              --format=json 2>/dev/null | grep -A 2 '"type": "Ready"' | grep '"status"' | cut -d'"' -f4 || echo "Unknown")
-            
-            READY="$$CONDITIONS"
+              --format=json 2>/dev/null | \
+              python3 -c "import sys, json; data=json.load(sys.stdin); conditions=[c for c in data.get('status',{}).get('conditions',[]) if c.get('type')=='Ready']; print(conditions[0].get('status','Unknown') if conditions else 'Unknown')" 2>/dev/null || echo "Unknown")
             
             if [ "$$READY" = "True" ]; then
               echo ""
