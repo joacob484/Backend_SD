@@ -28,12 +28,12 @@ steps:
       - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
       - 'GOOGLE_CLIENT_SECRET=${_GOOGLE_CLIENT_SECRET}'
     secretEnv: ['SPRING_DATASOURCE_PASSWORD']
-  
-  # Fetch secret from Secret Manager
-  availableSecrets:
-    secretManager:
-    - versionName: projects/master-might-274420/secrets/db-password/versions/latest
-      env: 'SPRING_DATASOURCE_PASSWORD'
+
+# Fetch secret from Secret Manager
+availableSecrets:
+  secretManager:
+  - versionName: projects/master-might-274420/secrets/db-password/versions/latest
+    env: 'SPRING_DATASOURCE_PASSWORD'
 
 images:
   - 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID'
