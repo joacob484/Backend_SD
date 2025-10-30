@@ -25,6 +25,8 @@ jobs:
       RUNTIME_SA: 169771742214-compute@developer.gserviceaccount.com
       FRONTEND_URL: https://faltauno-frontend-169771742214.us-central1.run.app
       SPRING_DATASOURCE_USERNAME: app
+      SPRING_DATASOURCE_DATABASE: faltauno_db
+      SPRING_DATASOURCE_NAME: faltauno_db
       SPRING_DATASOURCE_URL: jdbc:postgresql:///faltauno_db?cloudSqlInstance=master-might-274420:us-central1:faltauno-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory
       SPRING_REDIS_HOST: 10.128.0.2
       POSTGRES_HOST: postgres
@@ -66,7 +68,7 @@ jobs:
         
         # Submit Cloud Build with only necessary substitutions
         BUILD_ID=$(gcloud builds submit --config=cloudbuild-cloudrun.yaml \
-          --substitutions=_CLOUDSQL_INSTANCE="${{ env.CLOUDSQL_INSTANCE }}",_SPRING_DATASOURCE_URL="${{ env.SPRING_DATASOURCE_URL }}",_SPRING_DATASOURCE_USERNAME="${{ env.SPRING_DATASOURCE_USERNAME }}",_REDIS_HOST="${{ env.SPRING_REDIS_HOST }}",_GCP_PUBSUB_ENABLED="${{ env.GCP_PUBSUB_ENABLED }}",_GCP_PUBSUB_TOPIC="${{ env.GCP_PUBSUB_TOPIC }}",_GCP_PUBSUB_SUBSCRIPTION="${{ env.GCP_PUBSUB_SUBSCRIPTION }}",_FRONTEND_URL="${{ env.FRONTEND_URL }}" \
+          --substitutions=_CLOUDSQL_INSTANCE="${{ env.CLOUDSQL_INSTANCE }}",_SPRING_DATASOURCE_URL="${{ env.SPRING_DATASOURCE_URL }}",_SPRING_DATASOURCE_USERNAME="${{ env.SPRING_DATASOURCE_USERNAME }}",_SPRING_DATASOURCE_DATABASE="${{ env.SPRING_DATASOURCE_DATABASE }}",_SPRING_DATASOURCE_NAME="${{ env.SPRING_DATASOURCE_NAME }}",_REDIS_HOST="${{ env.SPRING_REDIS_HOST }}",_POSTGRES_HOST="${{ env.POSTGRES_HOST }}",_GCP_PUBSUB_ENABLED="${{ env.GCP_PUBSUB_ENABLED }}",_GCP_PUBSUB_TOPIC="${{ env.GCP_PUBSUB_TOPIC }}",_GCP_PUBSUB_SUBSCRIPTION="${{ env.GCP_PUBSUB_SUBSCRIPTION }}",_FRONTEND_URL="${{ env.FRONTEND_URL }}" \
           --format='value(id)' --async)
         
         echo ""
