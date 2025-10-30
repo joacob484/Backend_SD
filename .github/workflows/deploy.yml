@@ -26,8 +26,11 @@ jobs:
       SPRING_DATASOURCE_USERNAME: app
       SPRING_DATASOURCE_URL: jdbc:postgresql:///faltauno_db?cloudSqlInstance=master-might-274420:us-central1:faltauno-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory
       SPRING_REDIS_HOST: 10.128.0.2
-      SPRING_RABBITMQ_HOST: 10.128.0.2
       POSTGRES_HOST: postgres
+      # Pub/Sub configuration - set to false to disable Pub/Sub features
+      GCP_PUBSUB_ENABLED: "false"
+      GCP_PUBSUB_TOPIC: faltauno-events
+      GCP_PUBSUB_SUBSCRIPTION: faltauno-events-sub
       IMAGE: "us-central1-docker.pkg.dev/master-might-274420/faltauno/faltauno-backend:${{ github.sha }}"
     steps:
     - name: Checkout code

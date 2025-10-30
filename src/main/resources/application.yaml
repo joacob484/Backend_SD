@@ -160,6 +160,13 @@ jwt:
 frontend:
   url: ${FRONTEND_URL:https://faltauno-frontend-169771742214.us-central1.run.app}
 
+# Google Cloud Pub/Sub Configuration
+gcp:
+  pubsub:
+    enabled: ${GCP_PUBSUB_ENABLED:false}
+    topic: ${GCP_PUBSUB_TOPIC:faltauno-events}
+    subscription: ${GCP_PUBSUB_SUBSCRIPTION:faltauno-events-sub}
+
 # Logging (niveles sensatos; menos ruido en Redis/Tomcat/Netty/Hibernate binder)
 logging:
   level:

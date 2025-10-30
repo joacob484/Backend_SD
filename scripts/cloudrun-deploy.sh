@@ -109,6 +109,7 @@ escape_for_yaml() {
 
 printf 'SPRING_DATASOURCE_PASSWORD: "%s"\n' "$(escape_for_yaml "${SPRING_PASS}")" > "${ENV_FILE}"
 printf 'REDIS_HOST: "%s"\n' "$(escape_for_yaml "${REDIS_HOST}")" >> "${ENV_FILE}"
+printf 'SPRING_REDIS_HOST: "%s"\n' "$(escape_for_yaml "${REDIS_HOST}")" >> "${ENV_FILE}"
 printf 'POSTGRES_HOST: "%s"\n' "$(escape_for_yaml "${POSTGRES_HOST}")" >> "${ENV_FILE}"
 printf 'SPRING_DATASOURCE_USERNAME: "%s"\n' "$(escape_for_yaml "${SPRING_USER}")" >> "${ENV_FILE}"
 printf 'SPRING_DATASOURCE_URL: "%s"\n' "$(escape_for_yaml "${SPRING_URL}")" >> "${ENV_FILE}"
@@ -120,6 +121,13 @@ printf 'SERVER_PORT: "%s"\n' "8080" >> "${ENV_FILE}"
 printf 'SPRING_DATASOURCE_DATABASE: "%s"\n' "faltauno_db" >> "${ENV_FILE}"
 printf 'SPRING_DATASOURCE_NAME: "%s"\n' "faltauno_db" >> "${ENV_FILE}"
 printf 'SPRING_CLOUDSQL_INSTANCE: "%s"\n' "$(escape_for_yaml "${CLOUDSQL_INSTANCE}")" >> "${ENV_FILE}"
+
+# Pub/Sub configuration (optional - set to false to disable)
+printf 'GCP_PUBSUB_ENABLED: "%s"\n' "${GCP_PUBSUB_ENABLED:-false}" >> "${ENV_FILE}"
+printf 'GCP_PUBSUB_TOPIC: "%s"\n' "${GCP_PUBSUB_TOPIC:-faltauno-events}" >> "${ENV_FILE}"
+printf 'GCP_PUBSUB_SUBSCRIPTION: "%s"\n' "${GCP_PUBSUB_SUBSCRIPTION:-faltauno-events-sub}" >> "${ENV_FILE}"
+printf 'GCP_PROJECT_ID: "%s"\n' "$(escape_for_yaml "${PROJECT_ID}")" >> "${ENV_FILE}"
+
 # Disable Spring Cloud GCP Cloud SQL environment post-processor so the app uses the provided
 # SPRING_DATASOURCE_URL directly and does not require additional Cloud SQL-specific properties.
 printf 'SPRING_CLOUD_GCP_SQL_ENABLED: "%s"\n' "false" >> "${ENV_FILE}"
