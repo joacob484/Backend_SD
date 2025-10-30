@@ -1,37 +1,66 @@
-FROM maven:3.9.9-eclipse-temurin-21 AS builder
+# ======================================
+# Build Stage - Optimized for Cloud Run
+# ======================================
+FROM maven:3.9.10-eclipse-temurin-21 AS builder
 
 WORKDIR /build
 
-# FORZAR LIMPIEZA DE CACHE DE MAVEN
-RUN rm -rf /root/.m2/repository
-
-# COPIAR POM Y DESCARGAR DEPENDENCIES
+# Copy pom.xml first (better caching)
 COPY pom.xml .
 
-RUN echo "=== DOWNLOADING DEPENDENCIES ===" && \
-    mvn --version && \
-    mvn dependency:resolve dependency:resolve-plugins -B -U -X && \
-    echo "Dependencies count:" && \
-    find /root/.m2/repository -name "*.jar" | wc -l
+# Download dependencies only once (cached layer)
+RUN echo "=== Downloading Maven dependencies ===" && \
+    mvn dependency:go-offline -B -U
 
-# COPIAR CODIGO
+# Copy source code
 COPY src ./src
 
-# COMPILAR
-RUN echo "=== COMPILING JAVA ===" && \
-    find src/main/java -name "*.java" && \
-    mvn clean package -DskipTests -B -e -X && \
-    echo "=== BUILD RESULT ===" && \
-    ls -lah target/ && \
-    jar tf target/*.jar | head -20
+# Build application with optimizations
+RUN echo "=== Building application ===" && \
+    mvn clean package -DskipTests -B \
+    -Dproject.build.sourceEncoding=UTF-8 \
+    -Dmaven.compiler.release=21 && \
+    echo "=== Build completed ===" && \
+    ls -lh target/*.jar
 
-FROM eclipse-temurin:21-jre
+# Verify JAR content
+RUN jar tf target/*.jar | head -20
+
+# ======================================
+# Runtime Stage - Minimal JRE for Cloud Run
+# ======================================
+FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
+
+# Copy JAR from build stage
 COPY --from=builder /build/target/*.jar app.jar
 
+# Verify JAR
 RUN ls -lh app.jar
+
+# Install curl for health checks
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-8080}/actuator/health || exit 1
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "exec java -Xms512m -Xmx1536m -jar /app/app.jar --server.port=${PORT:-8080}"]
+# Optimized JVM flags for Cloud Run
+# - Xms512m/Xmx1536m: Memory limits for Cloud Run
+# - UseContainerSupport: Respect container memory limits
+# - MaxRAMPercentage: Use up to 75% of container RAM
+CMD ["sh", "-c", "exec java \
+    -Xms512m \
+    -Xmx1536m \
+    -XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=75.0 \
+    -XX:+UseG1GC \
+    -XX:+OptimizeStringConcat \
+    -Djava.security.egd=file:/dev/./urandom \
+    -jar /app/app.jar \
+    --server.port=${PORT:-8080}"]

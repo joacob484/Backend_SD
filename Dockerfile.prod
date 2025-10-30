@@ -1,7 +1,7 @@
 # ======================================
 # Build Stage - Maven compilation
 # ======================================
-FROM maven:3.9-eclipse-temurin-21-alpine AS build
+FROM maven:3.9.10-eclipse-temurin-21-alpine AS build
 
 WORKDIR /app
 
@@ -14,35 +14,52 @@ RUN mvn dependency:go-offline -B
 # Copy source code
 COPY src ./src
 
-# Build application (skip tests for faster builds)
-RUN mvn clean package -DskipTests -B
+# Build application with proper encoding
+RUN mvn clean package -DskipTests -B \
+    -Dproject.build.sourceEncoding=UTF-8 \
+    -Dmaven.compiler.release=21
+
+# Verify build
+RUN ls -lh target/*.jar
 
 # ======================================
-# Runtime Stage - Minimal JRE
+# Runtime Stage - Minimal Alpine JRE
 # ======================================
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-# Install wget for healthcheck
-RUN apk add --no-cache wget
+# Install tools for healthcheck
+RUN apk add --no-cache curl
 
 # Copy jar from build stage
 COPY --from=build /app/target/*.jar app.jar
 
 # Create non-root user for security
 RUN addgroup -S spring && adduser -S spring -G spring
+
+# Change ownership of the app
+RUN chown -R spring:spring /app
+
 USER spring:spring
 
-# JVM options optimized for small container (f1-micro)
-ENV JAVA_OPTS="-Xmx384m -Xms256m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -XX:MaxRAM=512m"
+# JVM options optimized for production
+ENV JAVA_OPTS="\
+    -Xms256m \
+    -Xmx512m \
+    -XX:MaxMetaspaceSize=128m \
+    -XX:+UseG1GC \
+    -XX:+UseContainerSupport \
+    -XX:MaxRAMPercentage=80.0 \
+    -XX:+OptimizeStringConcat \
+    -Djava.security.egd=file:/dev/./urandom"
 
 # Expose port
 EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+  CMD curl -f http://localhost:8080/actuator/health || exit 1
 
 # Run application
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

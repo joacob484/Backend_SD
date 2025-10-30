@@ -1,0 +1,146 @@
+╔══════════════════════════════════════════════════════════════╗
+║                   DOCKER MAVEN QUICK REFERENCE               ║
+╚══════════════════════════════════════════════════════════════╝
+
+🚀 BUILD COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Cloud Run (Recommended):
+  $ docker build -f Dockerfile.cloudrun -t faltauno-backend:cloudrun .
+
+Local Development:
+  $ docker build -f Dockerfile -t faltauno-backend:dev .
+
+Production (Alpine):
+  $ docker build -f Dockerfile.prod -t faltauno-backend:prod .
+
+
+🧪 TEST COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Validate Configuration:
+  $ ./validate-docker-config.sh
+
+Test Maven Build:
+  $ ./test-maven-build-local.sh
+
+Maven Clean Build:
+  $ mvn clean package -DskipTests
+
+
+🐳 RUN COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run Container:
+  $ docker run -p 8080:8080 \
+    -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/faltauno_db \
+    -e SPRING_DATASOURCE_USERNAME=app \
+    -e SPRING_DATASOURCE_PASSWORD=pass \
+    faltauno-backend:cloudrun
+
+Health Check:
+  $ curl http://localhost:8080/actuator/health
+
+
+☁️ CLOUD RUN DEPLOY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Using Cloud Build:
+  $ gcloud builds submit --config=cloudbuild-cloudrun.yaml
+
+Manual Deploy:
+  $ docker build -f Dockerfile.cloudrun -t gcr.io/PROJECT_ID/faltauno-backend .
+  $ docker push gcr.io/PROJECT_ID/faltauno-backend
+  $ gcloud run deploy faltauno-backend \
+      --image gcr.io/PROJECT_ID/faltauno-backend \
+      --platform managed \
+      --region us-central1
+
+
+🔧 TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Clear Docker Cache:
+  $ docker builder prune -a
+
+Build with Logs:
+  $ docker build -f Dockerfile.cloudrun -t test --progress=plain .
+
+Clean Maven Cache:
+  $ rm -rf ~/.m2/repository
+  $ rm -rf target/
+
+Check Docker Version:
+  $ docker --version
+  $ docker system info
+
+
+📊 KEY SPECS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Java:              21 (eclipse-temurin)
+Maven:             3.9.10
+Spring Boot:       3.5.0
+Build Time:        ~1-2 min (with cache)
+Image Size:        ~250-350 MB (Cloud Run)
+JVM Memory:        512m-1536m (Cloud Run)
+
+
+📁 KEY FILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Configuration:
+  .mvn/maven.config              Maven build flags
+  .dockerignore                  Docker build exclusions
+  pom.xml                        Maven dependencies
+
+Dockerfiles:
+  Dockerfile                     Local development
+  Dockerfile.cloudrun            Cloud Run optimized
+  Dockerfile.prod                Production (Alpine)
+
+Scripts:
+  validate-docker-config.sh      Validate setup
+  test-maven-build-local.sh      Test Maven build
+
+Documentation:
+  DOCKER_BUILD_GUIDE.md          Complete usage guide
+  DOCKER_MAVEN_OPTIMIZATION.md   Optimization details
+
+
+✅ HEALTH CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Endpoint:     /actuator/health
+Interval:     30s
+Timeout:      10s
+Start Period: 60s
+Retries:      3
+
+
+🎯 OPTIMIZATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Multi-stage builds
+✓ Layer caching (dependency:go-offline)
+✓ UTF-8 encoding
+✓ G1GC garbage collector
+✓ Container-aware JVM
+✓ Optimized .dockerignore
+✓ Non-root user (prod)
+✓ Health checks configured
+
+
+📚 DOCUMENTATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read:  DOCKER_BUILD_GUIDE.md
+       DOCKER_MAVEN_OPTIMIZATION.md
+
+Run:   ./validate-docker-config.sh
+       ./test-maven-build-local.sh
+
+
+═══════════════════════════════════════════════════════════════
+              BROTHER, TODO LISTO PARA BUILDEAR! 🚀
+═══════════════════════════════════════════════════════════════
