@@ -56,7 +56,7 @@ jobs:
         echo "Submitting Cloud Build (async) — build will run in Cloud Build and deploy per cloudbuild-cloudrun.yaml"
         # Submit Cloud Build asynchronously. Provide explicit substitutions the cloudbuild file expects.
         BUILD_ID=$(gcloud builds submit --config=cloudbuild-cloudrun.yaml \
-          --substitutions=_SPRING_DATASOURCE_PASSWORD="${{ secrets.SPRING_DATASOURCE_PASSWORD }}",_REDIS_HOST="${{ env.SPRING_REDIS_HOST }}",_POSTGRES_HOST="${{ env.POSTGRES_HOST }}",_CLOUDSQL_INSTANCE="${{ env.CLOUDSQL_INSTANCE }}",_SPRING_DATASOURCE_URL="${{ env.SPRING_DATASOURCE_URL }}" \
+          --substitutions=_SPRING_DATASOURCE_PASSWORD="${{ secrets.SPRING_DATASOURCE_PASSWORD }}",_REDIS_HOST="${{ env.SPRING_REDIS_HOST }}",_POSTGRES_HOST="${{ env.POSTGRES_HOST }}",_CLOUDSQL_INSTANCE="${{ env.CLOUDSQL_INSTANCE }}",_SPRING_DATASOURCE_URL="${{ env.SPRING_DATASOURCE_URL }}",_GCP_PUBSUB_ENABLED="${{ env.GCP_PUBSUB_ENABLED }}",_GCP_PUBSUB_TOPIC="${{ env.GCP_PUBSUB_TOPIC }}",_GCP_PUBSUB_SUBSCRIPTION="${{ env.GCP_PUBSUB_SUBSCRIPTION }}",_FRONTEND_URL="${{ env.FRONTEND_URL }}",_JWT_SECRET="${{ secrets.JWT_SECRET }}",_GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}",_GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
           --async --format='value(id)')
         echo "Started Cloud Build ID: $BUILD_ID"
         echo "To follow logs: gcloud builds log $BUILD_ID --project=${{ env.GCP_PROJECT_ID }}"

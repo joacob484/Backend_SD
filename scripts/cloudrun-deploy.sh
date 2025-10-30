@@ -128,6 +128,20 @@ printf 'GCP_PUBSUB_TOPIC: "%s"\n' "${GCP_PUBSUB_TOPIC:-faltauno-events}" >> "${E
 printf 'GCP_PUBSUB_SUBSCRIPTION: "%s"\n' "${GCP_PUBSUB_SUBSCRIPTION:-faltauno-events-sub}" >> "${ENV_FILE}"
 printf 'GCP_PROJECT_ID: "%s"\n' "$(escape_for_yaml "${PROJECT_ID}")" >> "${ENV_FILE}"
 
+# Frontend URL for CORS
+printf 'FRONTEND_URL: "%s"\n' "${FRONTEND_URL:-https://faltauno-frontend-169771742214.us-central1.run.app}" >> "${ENV_FILE}"
+
+# JWT and OAuth secrets (if provided)
+if [ -n "${JWT_SECRET:-}" ]; then
+  printf 'JWT_SECRET: "%s"\n' "$(escape_for_yaml "${JWT_SECRET}")" >> "${ENV_FILE}"
+fi
+if [ -n "${GOOGLE_CLIENT_ID:-}" ]; then
+  printf 'GOOGLE_CLIENT_ID: "%s"\n' "$(escape_for_yaml "${GOOGLE_CLIENT_ID}")" >> "${ENV_FILE}"
+fi
+if [ -n "${GOOGLE_CLIENT_SECRET:-}" ]; then
+  printf 'GOOGLE_CLIENT_SECRET: "%s"\n' "$(escape_for_yaml "${GOOGLE_CLIENT_SECRET}")" >> "${ENV_FILE}"
+fi
+
 # Disable Spring Cloud GCP Cloud SQL environment post-processor so the app uses the provided
 # SPRING_DATASOURCE_URL directly and does not require additional Cloud SQL-specific properties.
 printf 'SPRING_CLOUD_GCP_SQL_ENABLED: "%s"\n' "false" >> "${ENV_FILE}"

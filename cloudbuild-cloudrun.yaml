@@ -19,6 +19,14 @@ steps:
       - '${_SPRING_DATASOURCE_URL}'
       - '${_SPRING_DATASOURCE_USERNAME}'
       - '$BUILD_ID'
+    env:
+      - 'GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}'
+      - 'GCP_PUBSUB_TOPIC=${_GCP_PUBSUB_TOPIC}'
+      - 'GCP_PUBSUB_SUBSCRIPTION=${_GCP_PUBSUB_SUBSCRIPTION}'
+      - 'FRONTEND_URL=${_FRONTEND_URL}'
+      - 'JWT_SECRET=${_JWT_SECRET}'
+      - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
+      - 'GOOGLE_CLIENT_SECRET=${_GOOGLE_CLIENT_SECRET}'
 
 images:
   - 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID'
@@ -29,5 +37,11 @@ substitutions:
   _POSTGRES_HOST: "REPLACE_AT_SUBMIT"
   _CLOUDSQL_INSTANCE: ""
   _SPRING_DATASOURCE_USERNAME: "app"
-  # Leave SPRING URL empty so the deploy script synthesizes a safe, connector-aware URL.
   _SPRING_DATASOURCE_URL: ""
+  _GCP_PUBSUB_ENABLED: "false"
+  _GCP_PUBSUB_TOPIC: "faltauno-events"
+  _GCP_PUBSUB_SUBSCRIPTION: "faltauno-events-sub"
+  _FRONTEND_URL: "https://faltauno-frontend-169771742214.us-central1.run.app"
+  _JWT_SECRET: "REPLACE_AT_SUBMIT"
+  _GOOGLE_CLIENT_ID: "REPLACE_AT_SUBMIT"
+  _GOOGLE_CLIENT_SECRET: "REPLACE_AT_SUBMIT"
