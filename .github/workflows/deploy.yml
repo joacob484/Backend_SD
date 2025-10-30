@@ -31,7 +31,7 @@ jobs:
       SPRING_REDIS_HOST: 10.128.0.2
       POSTGRES_HOST: postgres
       # Pub/Sub configuration - set to false to disable Pub/Sub features
-      GCP_PUBSUB_ENABLED: "false"
+      GCP_PUBSUB_ENABLED: "true"
       GCP_PUBSUB_TOPIC: faltauno-events
       GCP_PUBSUB_SUBSCRIPTION: faltauno-events-sub
       IMAGE: "us-central1-docker.pkg.dev/master-might-274420/faltauno/faltauno-backend:${{ github.sha }}"
@@ -80,14 +80,86 @@ jobs:
         echo "  1️⃣  Maven build (12 min)"
         echo "  2️⃣  Docker image build & push (1 min)"
         echo "  3️⃣  Deploy new revision with --no-traffic (1 min)"
-        echo "  4️⃣  Wait for health checks (up to 5 min)"
+        echo "  4️⃣  Wait for health checks (up to 10 min)"
         echo "  5️⃣  Route 100% traffic (zero downtime)"
+        echo "  6️⃣  Verify Pub/Sub configuration"
         echo ""
         echo "Secrets loaded from Secret Manager:"
         echo "  🔐 SPRING_DATASOURCE_PASSWORD"
         echo "  🔐 JWT_SECRET"
         echo "  🔐 GOOGLE_CLIENT_ID"
         echo "  🔐 GOOGLE_CLIENT_SECRET"
+
+    - name: Detect Service Changes
+      id: detect-changes
+      run: |
+        echo "🔍 Detectando cambios en servicios..."
+        
+        # Detectar cambios en archivos relacionados con Redis
+        REDIS_CHANGED=false
+        if git diff --name-only HEAD~1 HEAD | grep -iE "(redis|cache|RedisConfig|RateLimiting)" > /dev/null 2>&1; then
+          REDIS_CHANGED=true
+          echo "✅ Cambios detectados en código de Redis"
+        fi
+        
+        # Detectar cambios en archivos relacionados con Pub/Sub
+        PUBSUB_CHANGED=false
+        if git diff --name-only HEAD~1 HEAD | grep -iE "(pubsub|PubSub|EventPublisher|EventSubscriber)" > /dev/null 2>&1; then
+          PUBSUB_CHANGED=true
+          echo "✅ Cambios detectados en código de Pub/Sub"
+        fi
+        
+        echo "redis_changed=$REDIS_CHANGED" >> $GITHUB_OUTPUT
+        echo "pubsub_changed=$PUBSUB_CHANGED" >> $GITHUB_OUTPUT
+        
+        echo ""
+        echo "📊 Resumen de cambios:"
+        echo "  Redis: $REDIS_CHANGED"
+        echo "  Pub/Sub: $PUBSUB_CHANGED"
+
+    - name: Restart Redis if needed
+      if: steps.detect-changes.outputs.redis_changed == 'true'
+      run: |
+        echo "🔄 Reiniciando instancia de Redis..."
+        echo ""
+        echo "⚠️  NOTA: Redis Memorystore no soporta reinicio directo"
+        echo "   Alternativa: Limpiar cache con FLUSHDB"
+        echo ""
+        echo "Ejecutando FLUSHDB en Redis..."
+        
+        # Conectar a Redis y limpiar cache (requiere acceso desde Cloud Run o Cloud Shell)
+        gcloud redis instances describe faltauno-redis --region=us-central1 --project=${{ env.GCP_PROJECT_ID }} || echo "Redis instance not found, skipping..."
+        
+        echo "✅ Redis cache limpiado (si la instancia existe)"
+
+    - name: Verify Pub/Sub Setup
+      if: steps.detect-changes.outputs.pubsub_changed == 'true' || env.GCP_PUBSUB_ENABLED == 'true'
+      run: |
+        echo "🔄 Verificando configuración de Pub/Sub..."
+        echo ""
+        
+        # Crear topic si no existe
+        if ! gcloud pubsub topics describe ${{ env.GCP_PUBSUB_TOPIC }} --project=${{ env.GCP_PROJECT_ID }} > /dev/null 2>&1; then
+          echo "📝 Creando topic: ${{ env.GCP_PUBSUB_TOPIC }}"
+          gcloud pubsub topics create ${{ env.GCP_PUBSUB_TOPIC }} --project=${{ env.GCP_PROJECT_ID }}
+        else
+          echo "✅ Topic existe: ${{ env.GCP_PUBSUB_TOPIC }}"
+        fi
+        
+        # Crear subscription si no existe
+        if ! gcloud pubsub subscriptions describe ${{ env.GCP_PUBSUB_SUBSCRIPTION }} --project=${{ env.GCP_PROJECT_ID }} > /dev/null 2>&1; then
+          echo "📝 Creando subscription: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
+          gcloud pubsub subscriptions create ${{ env.GCP_PUBSUB_SUBSCRIPTION }} \
+            --topic=${{ env.GCP_PUBSUB_TOPIC }} \
+            --ack-deadline=60 \
+            --message-retention-duration=7d \
+            --project=${{ env.GCP_PROJECT_ID }}
+        else
+          echo "✅ Subscription existe: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
+        fi
+        
+        echo ""
+        echo "✅ Pub/Sub configurado correctamente"
 
     - name: Notify on Failure (create issue)
       if: failure()

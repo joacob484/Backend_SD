@@ -109,14 +109,14 @@ steps:
           echo ""
           echo "⏳ Waiting for revision to be ready..."
           
-          # Wait for revision to be ready (max 5 minutes)
-          for i in {1..60}; do
+          # Wait for revision to be ready (max 10 minutes)
+          for i in {1..120}; do
             READY=$$(gcloud run revisions describe "$$NEW_REVISION" \
               --region=us-central1 \
               --platform=managed \
               --format='value(status.conditions[?(@.type=="Ready")].status)' 2>/dev/null || echo "Unknown")
             
-            echo "[$$i/60] Revision status: $$READY"
+            echo "[$$i/120] Revision status: $$READY"
             
             if [ "$$READY" = "True" ]; then
               echo ""
@@ -124,9 +124,9 @@ steps:
               break
             fi
             
-            if [ "$$i" -eq 60 ]; then
+            if [ "$$i" -eq 120 ]; then
               echo ""
-              echo "❌ Revision did not become ready after 5 minutes"
+              echo "❌ Revision did not become ready after 10 minutes"
               gcloud run revisions describe "$$NEW_REVISION" --region=us-central1 --platform=managed
               exit 1
             fi
@@ -225,7 +225,7 @@ substitutions:
   _SPRING_DATASOURCE_DATABASE: "faltauno_db"
   _SPRING_DATASOURCE_NAME: "faltauno_db"
   _SPRING_DATASOURCE_URL: "jdbc:postgresql:///faltauno_db?cloudSqlInstance=master-might-274420:us-central1:faltauno-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
-  _GCP_PUBSUB_ENABLED: "false"
+  _GCP_PUBSUB_ENABLED: "true"
   _GCP_PUBSUB_TOPIC: "faltauno-events"
   _GCP_PUBSUB_SUBSCRIPTION: "faltauno-events-sub"
   _FRONTEND_URL: "https://faltauno-frontend-169771742214.us-central1.run.app"
