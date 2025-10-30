@@ -107,32 +107,41 @@ steps:
           echo ""
           echo "✅ New revision created: $$NEW_REVISION"
           echo ""
-          echo "⏳ Waiting for revision to be ready..."
+          echo "⏳ Waiting for revision to be ready (checking every 5 seconds)..."
           
-          # Wait for revision to be ready (max 10 minutes)
-          for i in {1..120}; do
+          # Wait for revision to be ready - poll aggressively for fast migration
+          TIMEOUT=900  # 15 minutes max (safety limit)
+          ELAPSED=0
+          READY="Unknown"
+          
+          while [ $$ELAPSED -lt $$TIMEOUT ]; do
             READY=$$(gcloud run revisions describe "$$NEW_REVISION" \
               --region=us-central1 \
               --platform=managed \
               --format='value(status.conditions[?(@.type=="Ready")].status)' 2>/dev/null || echo "Unknown")
             
-            echo "[$$i/120] Revision status: $$READY"
-            
             if [ "$$READY" = "True" ]; then
               echo ""
-              echo "✅ Revision is READY!"
+              echo "✅ Revision is READY after $$ELAPSED seconds!"
               break
             fi
             
-            if [ "$$i" -eq 120 ]; then
-              echo ""
-              echo "❌ Revision did not become ready after 10 minutes"
-              gcloud run revisions describe "$$NEW_REVISION" --region=us-central1 --platform=managed
-              exit 1
+            # Show progress every 30 seconds only
+            if [ $$((ELAPSED % 30)) -eq 0 ]; then
+              echo "[$$ELAPSED s] Revision status: $$READY (checking...)"
             fi
             
             sleep 5
+            ELAPSED=$$((ELAPSED + 5))
           done
+          
+          # Check if we timed out
+          if [ "$$READY" != "True" ]; then
+            echo ""
+            echo "❌ Revision did not become ready after $$ELAPSED seconds"
+            gcloud run revisions describe "$$NEW_REVISION" --region=us-central1 --platform=managed
+            exit 1
+          fi
           
           echo ""
           echo "🔄 Routing 100% traffic to new revision (zero downtime cutover)..."
