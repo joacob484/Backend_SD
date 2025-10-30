@@ -56,16 +56,17 @@ jobs:
     - name: Build and Deploy to Cloud Run
       run: |
         echo "════════════════════════════════════════════════════════"
-        echo "🚀 DEPLOYING WITH FULL CONFIGURATION"
+        echo "🚀 DEPLOYING WITH ZERO DOWNTIME"
         echo "════════════════════════════════════════════════════════"
         echo ""
-        echo "✅ IllegalAccessError FIXED - Spring Cloud GCP SQL autoconfigure excluded"
-        echo "✅ Deploying with ALL environment variables and secrets"
+        echo "✅ Maven build inside Docker container"
+        echo "✅ Secrets from Google Secret Manager"
+        echo "✅ Zero-downtime deployment with traffic migration"
         echo ""
         
-        # Submit Cloud Build with ALL configuration
+        # Submit Cloud Build with only necessary substitutions
         BUILD_ID=$(gcloud builds submit --config=cloudbuild-cloudrun.yaml \
-          --substitutions=_SPRING_DATASOURCE_PASSWORD="${{ secrets.SPRING_DATASOURCE_PASSWORD }}",_REDIS_HOST="${{ env.SPRING_REDIS_HOST }}",_POSTGRES_HOST="${{ env.POSTGRES_HOST }}",_CLOUDSQL_INSTANCE="${{ env.CLOUDSQL_INSTANCE }}",_SPRING_DATASOURCE_URL="${{ env.SPRING_DATASOURCE_URL }}",_GCP_PUBSUB_ENABLED="${{ env.GCP_PUBSUB_ENABLED }}",_GCP_PUBSUB_TOPIC="${{ env.GCP_PUBSUB_TOPIC }}",_GCP_PUBSUB_SUBSCRIPTION="${{ env.GCP_PUBSUB_SUBSCRIPTION }}",_FRONTEND_URL="${{ env.FRONTEND_URL }}",_JWT_SECRET="${{ secrets.JWT_SECRET }}",_GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}",_GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+          --substitutions=_CLOUDSQL_INSTANCE="${{ env.CLOUDSQL_INSTANCE }}",_SPRING_DATASOURCE_URL="${{ env.SPRING_DATASOURCE_URL }}",_SPRING_DATASOURCE_USERNAME="${{ env.SPRING_DATASOURCE_USERNAME }}",_REDIS_HOST="${{ env.SPRING_REDIS_HOST }}",_GCP_PUBSUB_ENABLED="${{ env.GCP_PUBSUB_ENABLED }}",_GCP_PUBSUB_TOPIC="${{ env.GCP_PUBSUB_TOPIC }}",_GCP_PUBSUB_SUBSCRIPTION="${{ env.GCP_PUBSUB_SUBSCRIPTION }}",_FRONTEND_URL="${{ env.FRONTEND_URL }}" \
           --format='value(id)' --async)
         
         echo ""
@@ -73,13 +74,18 @@ jobs:
         echo "📋 Build ID: $BUILD_ID"
         echo "🔗 View logs: https://console.cloud.google.com/cloud-build/builds/$BUILD_ID?project=master-might-274420"
         echo ""
-        echo "⏳ Deployment in progress (~8-10 minutes)"
+        echo "⏳ Deployment process (~12-15 minutes):"
+        echo "  1️⃣  Maven build (12 min)"
+        echo "  2️⃣  Docker image build & push (1 min)"
+        echo "  3️⃣  Deploy new revision with --no-traffic (1 min)"
+        echo "  4️⃣  Wait for health checks (up to 5 min)"
+        echo "  5️⃣  Route 100% traffic (zero downtime)"
         echo ""
-        echo "Expected outcome:"
-        echo "  ✅ No IllegalAccessError"
-        echo "  ✅ UsuarioRepository created (JPA enabled)"
-        echo "  ✅ Database connection established"
-        echo "  ✅ Container starts and listens on port 8080"
+        echo "Secrets loaded from Secret Manager:"
+        echo "  🔐 SPRING_DATASOURCE_PASSWORD"
+        echo "  🔐 JWT_SECRET"
+        echo "  🔐 GOOGLE_CLIENT_ID"
+        echo "  🔐 GOOGLE_CLIENT_SECRET"
 
     - name: Notify on Failure (create issue)
       if: failure()
