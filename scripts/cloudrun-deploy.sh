@@ -45,9 +45,8 @@ fi
 # synthesize a reasonable JDBC URL. Prefer the Cloud SQL connector form when CLOUDSQL_INSTANCE is set.
 if [ -z "${SPRING_URL}" ] || echo "${SPRING_URL}" | grep -E "REPLACE_AT_SUBMIT|\$\(_POSTGRES_HOST\)" >/dev/null 2>&1; then
   if [ -n "${CLOUDSQL_INSTANCE}" ]; then
-    # Use Cloud SQL socket factory form. Use explicit localhost:5432 host so JDBC parsers reliably
-    # detect the database name and the cloudSqlInstance parameter.
-    SPRING_URL="jdbc:postgresql://localhost:5432/faltauno_db?cloudSqlInstance=${CLOUDSQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+    # Use Cloud SQL socket factory form. Use /// (no host) for Cloud SQL Proxy
+    SPRING_URL="jdbc:postgresql:///faltauno_db?cloudSqlInstance=${CLOUDSQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
   else
     # Fall back to a host-based URL using POSTGRES_HOST (or localhost if empty)
     PHOST=${POSTGRES_HOST:-localhost}
@@ -59,13 +58,13 @@ fi
 # If a Cloud SQL instance is provided, unconditionally prefer the Cloud SQL connector URL
 # to avoid relying on potentially-mis-substituted submitted values.
 if [ -n "${CLOUDSQL_INSTANCE}" ]; then
-  SPRING_URL="jdbc:postgresql://localhost:5432/faltauno_db?cloudSqlInstance=${CLOUDSQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
-  echo "Overriding SPRING_DATASOURCE_URL to Cloud SQL connector form (localhost:5432 host)"
+  SPRING_URL="jdbc:postgresql:///faltauno_db?cloudSqlInstance=${CLOUDSQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+  echo "Overriding SPRING_DATASOURCE_URL to Cloud SQL connector form (/// no-host)"
 fi
 
 # Update SPRING_DATASOURCE_URL to use Cloud SQL socket factory
 if [ -n "${CLOUDSQL_INSTANCE}" ]; then
-  SPRING_URL="jdbc:postgresql://localhost:5432/faltauno_db?cloudSqlInstance=${CLOUDSQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+  SPRING_URL="jdbc:postgresql:///faltauno_db?cloudSqlInstance=${CLOUDSQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
   echo "Updated SPRING_DATASOURCE_URL to use Cloud SQL socket factory"
 fi
 
@@ -144,7 +143,7 @@ fi
 
 # Disable Spring Cloud GCP Cloud SQL environment post-processor so the app uses the provided
 # SPRING_DATASOURCE_URL directly and does not require additional Cloud SQL-specific properties.
-printf 'SPRING_CLOUD_GCP_SQL_ENABLED: "%s"\n' "false" >> "${ENV_FILE}"
+printf 'SPRING_CLOUD_GCP_SQL_ENABLED: "%s"\n' "true" >> "${ENV_FILE}"
 
 echo "==== Diagnostic: env file contents (password redacted) ===="
 # Print env file but redact the line containing the decoded password for logs

@@ -16,6 +16,9 @@
     <mapstruct.version>1.5.5.Final</mapstruct.version>
     <lombok.version>1.18.34</lombok.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Google Cloud versions - forzar versiones compatibles -->
+    <google-cloud-sql.version>1.21.0</google-cloud-sql.version>
+    <google-auth-library.version>1.29.0</google-auth-library.version>
   </properties>
 
   <dependencyManagement>
@@ -86,8 +89,15 @@
     <dependency>
       <groupId>com.google.cloud.sql</groupId>
       <artifactId>postgres-socket-factory</artifactId>
-      <version>1.18.1</version>
+      <version>${google-cloud-sql.version}</version>
       <scope>runtime</scope>
+    </dependency>
+
+    <!-- Forzar versión compatible de google-auth-library -->
+    <dependency>
+      <groupId>com.google.auth</groupId>
+      <artifactId>google-auth-library-oauth2-http</artifactId>
+      <version>${google-auth-library.version}</version>
     </dependency>
 
     <!-- Redis -->
