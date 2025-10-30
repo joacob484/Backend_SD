@@ -234,7 +234,7 @@ images:
   - 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID'
 
 substitutions:
-  _REDIS_HOST: "10.128.0.2"
+  _REDIS_HOST: "10.217.135.172"  # faltauno-redis instance IP
   _POSTGRES_HOST: "postgres"
   _CLOUDSQL_INSTANCE: "master-might-274420:us-central1:faltauno-db"
   _SPRING_DATASOURCE_USERNAME: "app"
