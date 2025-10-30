@@ -9,15 +9,13 @@ RUN mvn -B -DskipTests package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-# Copy final JAR and entrypoint
+# Copy final JAR
 COPY --from=builder /app/target/*.jar app.jar
-COPY cloudrun-entrypoint.sh /app/cloudrun-entrypoint.sh
-RUN chmod +x /app/cloudrun-entrypoint.sh
 
 EXPOSE 8080
 
 # Cloud Run maneja sus propios health checks, no uses HEALTHCHECK de Docker
 # El health check se hace en /actuator/health/readiness
 
-# Lightweight wrapper ensures the app reads the container PORT injected by Cloud Run
-ENTRYPOINT ["/app/cloudrun-entrypoint.sh"]
+# Ejecutar directamente Java sin entrypoint personalizado
+CMD ["java", "-jar", "/app/app.jar"]
