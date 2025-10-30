@@ -57,14 +57,14 @@ steps:
         echo "🚀 DEPLOYING TO CLOUD RUN"
         echo "=========================================="
         echo ""
-        echo "Build ID: $$BUILD_ID"
-        echo "Image: gcr.io/$$PROJECT_ID/faltauno-backend:$$BUILD_ID"
+        echo "Build ID: $BUILD_ID"
+        echo "Image: gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID"
         echo ""
         
         # Check if service exists
         if gcloud run services describe faltauno-backend \
           --region=us-central1 \
-          --project=$$PROJECT_ID \
+          --project=$PROJECT_ID \
           --format='value(metadata.name)' 2>/dev/null; then
           
           echo "✅ Service exists - deploying new revision with --no-traffic"
@@ -72,7 +72,7 @@ steps:
           
           # Deploy new revision WITHOUT traffic (zero downtime)
           NEW_REVISION=$$(gcloud run deploy faltauno-backend \
-            --image=gcr.io/$$PROJECT_ID/faltauno-backend:$$BUILD_ID \
+            --image=gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID \
             --region=us-central1 \
             --platform=managed \
             --no-traffic \
@@ -89,7 +89,7 @@ steps:
             --set-env-vars="GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}" \
             --set-env-vars="GCP_PUBSUB_TOPIC=${_GCP_PUBSUB_TOPIC}" \
             --set-env-vars="GCP_PUBSUB_SUBSCRIPTION=${_GCP_PUBSUB_SUBSCRIPTION}" \
-            --set-env-vars="GCP_PROJECT_ID=$$PROJECT_ID" \
+            --set-env-vars="GCP_PROJECT_ID=$PROJECT_ID" \
             --set-env-vars="FRONTEND_URL=${_FRONTEND_URL}" \
             --update-secrets="SPRING_DATASOURCE_PASSWORD=db-password:latest" \
             --update-secrets="JWT_SECRET=jwt-secret:latest" \
@@ -147,7 +147,7 @@ steps:
           
           # Initial deployment (will receive traffic immediately)
           gcloud run deploy faltauno-backend \
-            --image=gcr.io/$$PROJECT_ID/faltauno-backend:$$BUILD_ID \
+            --image=gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID \
             --region=us-central1 \
             --platform=managed \
             --timeout=600 \
@@ -163,7 +163,7 @@ steps:
             --set-env-vars="GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}" \
             --set-env-vars="GCP_PUBSUB_TOPIC=${_GCP_PUBSUB_TOPIC}" \
             --set-env-vars="GCP_PUBSUB_SUBSCRIPTION=${_GCP_PUBSUB_SUBSCRIPTION}" \
-            --set-env-vars="GCP_PROJECT_ID=$$PROJECT_ID" \
+            --set-env-vars="GCP_PROJECT_ID=$PROJECT_ID" \
             --set-env-vars="FRONTEND_URL=${_FRONTEND_URL}" \
             --update-secrets="SPRING_DATASOURCE_PASSWORD=db-password:latest" \
             --update-secrets="JWT_SECRET=jwt-secret:latest" \
