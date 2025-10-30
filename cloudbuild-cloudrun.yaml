@@ -1,14 +1,52 @@
 steps:
-  # Build the Docker image and tag it with the build ID (NO CACHE)
+  # ═══════════════════════════════════════════════════════════
+  # STEP 1: BUILD DOCKER IMAGE - SIN CACHE
+  # ═══════════════════════════════════════════════════════════
   - name: 'gcr.io/cloud-builders/docker'
-    args: [ 'build', '--no-cache', '-t', 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID', '-f', 'Dockerfile.cloudrun', '.' ]
+    id: 'build-image'
+    args: 
+      - 'build'
+      - '--no-cache'
+      - '--progress=plain'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/faltauno-backend:latest'
+      - '-f'
+      - 'Dockerfile.cloudrun'
+      - '.'
+    timeout: '1200s'  # 20 minutes para build completo
 
-  # Push the image to Container Registry
+  # ═══════════════════════════════════════════════════════════
+  # STEP 2: VERIFICAR QUE EL JAR EXISTE EN LA IMAGEN
+  # ═══════════════════════════════════════════════════════════
   - name: 'gcr.io/cloud-builders/docker'
-    args: [ 'push', 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID' ]
+    id: 'verify-jar'
+    args:
+      - 'run'
+      - '--rm'
+      - '--entrypoint=sh'
+      - 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID'
+      - '-c'
+      - 'ls -lah /app/app.jar && echo "JAR size:" && du -h /app/app.jar && echo "First 20 classes in JAR:" && jar tf /app/app.jar | grep "\.class$" | head -20'
+    waitFor: ['build-image']
 
-  # Deploy to Cloud Run using the full deployment script with ALL env vars
+  # ═══════════════════════════════════════════════════════════
+  # STEP 3: PUSH IMAGE TO REGISTRY
+  # ═══════════════════════════════════════════════════════════
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    args: 
+      - 'push'
+      - '--all-tags'
+      - 'gcr.io/$PROJECT_ID/faltauno-backend'
+    waitFor: ['verify-jar']
+
+  # ═══════════════════════════════════════════════════════════
+  # STEP 4: DEPLOY TO CLOUD RUN
+  # ═══════════════════════════════════════════════════════════
   - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'deploy-cloudrun'
     entrypoint: 'bash'
     args:
       - 'scripts/cloudrun-deploy.sh'
@@ -28,6 +66,18 @@ steps:
       - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
       - 'GOOGLE_CLIENT_SECRET=${_GOOGLE_CLIENT_SECRET}'
     secretEnv: ['SPRING_DATASOURCE_PASSWORD']
+    waitFor: ['push-image']
+    timeout: '600s'
+
+# ═══════════════════════════════════════════════════════════
+# TIMEOUT GLOBAL Y OPCIONES
+# ═══════════════════════════════════════════════════════════
+timeout: '2400s'  # 40 minutes total
+
+options:
+  machineType: 'E2_HIGHCPU_8'  # 8 vCPUs para build más rápido
+  logging: CLOUD_LOGGING_ONLY
+  logStreamingOption: STREAM_ON
 
 # Fetch secret from Secret Manager
 availableSecrets:

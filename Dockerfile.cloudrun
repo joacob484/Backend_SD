@@ -1,59 +1,121 @@
 # ═══════════════════════════════════════════════════════════
-# DOCKERFILE PARA CLOUD RUN - BUILD COMPLETO SIN CACHE
+# DOCKERFILE CLOUD RUN - BUILD COMPLETO GARANTIZADO
 # ═══════════════════════════════════════════════════════════
 
-# Build stage - USAR IMAGEN STANDARD (no Alpine) para mejor compatibilidad
-FROM maven:3.9-eclipse-temurin-21 AS builder
+# ────────────────────────────────────────────────────────────
+# STAGE 1: BUILD CON MAVEN
+# ────────────────────────────────────────────────────────────
+FROM maven:3.9.9-eclipse-temurin-21 AS builder
 
+# Set working directory
 WORKDIR /build
 
-# Copy project files
+# ────────────────────────────────────────────────────────────
+# PASO 1: COPIAR SOLO POM.XML Y DESCARGAR DEPENDENCIES
+# Esto permite cachear dependencies separadamente del código
+# ────────────────────────────────────────────────────────────
 COPY pom.xml .
-COPY src ./src
 
-# Build with MAXIMUM VERBOSE output
 RUN echo "════════════════════════════════════════════════════════" && \
-    echo "🔨 STARTING MAVEN BUILD" && \
+    echo "� STEP 1: DOWNLOADING MAVEN DEPENDENCIES" && \
     echo "════════════════════════════════════════════════════════" && \
+    echo "" && \
     mvn --version && \
     echo "" && \
-    echo "📦 Running: mvn clean package -DskipTests" && \
+    echo "� This will download ALL dependencies (2-4 minutes)..." && \
+    echo "" && \
+    mvn dependency:go-offline -B -X && \
+    echo "" && \
+    echo "✅ Dependencies downloaded to /root/.m2/repository" && \
+    ls -lah /root/.m2/repository/ && \
+    echo "════════════════════════════════════════════════════════"
+
+# ────────────────────────────────────────────────────────────
+# PASO 2: COPIAR CÓDIGO FUENTE Y COMPILAR
+# ────────────────────────────────────────────────────────────
+COPY src ./src
+
+RUN echo "════════════════════════════════════════════════════════" && \
+    echo "🔨 STEP 2: COMPILING JAVA SOURCE CODE" && \
+    echo "════════════════════════════════════════════════════════" && \
+    echo "" && \
+    echo "Source files to compile:" && \
+    find src/main/java -name "*.java" | wc -l && \
+    echo "" && \
+    echo "🔨 Running: mvn clean package -DskipTests" && \
     echo "" && \
     mvn clean package -DskipTests -B -X && \
     echo "" && \
     echo "════════════════════════════════════════════════════════" && \
-    echo "✅ BUILD COMPLETE - Checking target/" && \
+    echo "✅ COMPILATION COMPLETE" && \
     echo "════════════════════════════════════════════════════════" && \
+    echo "" && \
+    echo "📁 Contents of target/:" && \
     ls -lah target/ && \
     echo "" && \
-    echo "JAR files found:" && \
-    find target/ -name "*.jar" -type f && \
+    echo "📦 JAR files created:" && \
+    find target/ -name "*.jar" -type f -exec ls -lah {} \; && \
+    echo "" && \
+    echo "📊 JAR size:" && \
+    du -h target/*.jar && \
+    echo "" && \
+    echo "🔍 JAR manifest (first 50 entries):" && \
+    jar tf target/*.jar | head -50 && \
     echo "════════════════════════════════════════════════════════"
 
-# ═══════════════════════════════════════════════════════════
-# Runtime stage
-# ═══════════════════════════════════════════════════════════
-FROM eclipse-temurin:21-jre
+# ────────────────────────────────────────────────────────────
+# STAGE 2: RUNTIME - SOLO JRE
+# ────────────────────────────────────────────────────────────
+FROM eclipse-temurin:21.0.5_11-jre
+
+# Create non-root user for security
+RUN groupadd -r spring && useradd -r -g spring spring
 
 WORKDIR /app
 
-# Copy JAR with explicit naming
+# Copy JAR from builder stage
 COPY --from=builder /build/target/*.jar app.jar
 
-# Verify JAR exists and show contents
+# Verify JAR was copied correctly
 RUN echo "════════════════════════════════════════════════════════" && \
-    echo "🔍 VERIFYING JAR FILE" && \
+    echo "🔍 VERIFYING RUNTIME IMAGE" && \
     echo "════════════════════════════════════════════════════════" && \
+    echo "" && \
+    echo "Java version:" && \
+    java -version && \
+    echo "" && \
+    echo "📦 Application JAR:" && \
     ls -lah /app/app.jar && \
     echo "" && \
-    echo "JAR manifest:" && \
-    jar tf /app/app.jar | head -30 && \
+    echo "📊 JAR size: $(stat -c%s /app/app.jar 2>/dev/null || stat -f%z /app/app.jar) bytes" && \
     echo "" && \
-    echo "JAR size: $(stat -f%z /app/app.jar 2>/dev/null || stat -c%s /app/app.jar) bytes" && \
+    echo "🔍 JAR contents preview:" && \
+    jar tf /app/app.jar | head -50 && \
+    echo "" && \
+    echo "✅ Main-Class in MANIFEST.MF:" && \
+    unzip -p /app/app.jar META-INF/MANIFEST.MF | grep Main-Class && \
     echo "════════════════════════════════════════════════════════"
+
+# Change ownership to spring user
+RUN chown -R spring:spring /app
+
+# Switch to non-root user
+USER spring:spring
 
 # Expose port
 EXPOSE 8080
 
-# Run with environment-based PORT
-CMD ["sh", "-c", "java -Xmx1024m -Xms512m -Dserver.port=${PORT:-8080} -jar /app/app.jar"]
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD java -cp /app/app.jar org.springframework.boot.loader.launch.JarLauncher --spring.main.web-application-type=none || exit 1
+
+# Run the application
+# Use array form for proper signal handling
+ENTRYPOINT ["java"]
+CMD ["-Xms512m", "-Xmx1536m", \
+     "-XX:+UseContainerSupport", \
+     "-XX:MaxRAMPercentage=75.0", \
+     "-Djava.security.egd=file:/dev/./urandom", \
+     "-Dserver.port=8080", \
+     "-jar", "/app/app.jar"]
+
