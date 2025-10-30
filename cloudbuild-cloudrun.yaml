@@ -82,6 +82,8 @@ steps:
             --min-instances=0 \
             --max-instances=10 \
             --add-cloudsql-instances="${_CLOUDSQL_INSTANCE}" \
+            --vpc-connector=run-connector \
+            --vpc-egress=private-ranges-only \
             --set-env-vars="SERVER_PORT=8080" \
             --set-env-vars="SPRING_DATASOURCE_URL=${_SPRING_DATASOURCE_URL}" \
             --set-env-vars="SPRING_DATASOURCE_USERNAME=${_SPRING_DATASOURCE_USERNAME}" \
@@ -174,6 +176,8 @@ steps:
             --min-instances=0 \
             --max-instances=10 \
             --add-cloudsql-instances="${_CLOUDSQL_INSTANCE}" \
+            --vpc-connector=run-connector \
+            --vpc-egress=private-ranges-only \
             --set-env-vars="SERVER_PORT=8080" \
             --set-env-vars="SPRING_DATASOURCE_URL=${_SPRING_DATASOURCE_URL}" \
             --set-env-vars="SPRING_DATASOURCE_USERNAME=${_SPRING_DATASOURCE_USERNAME}" \
