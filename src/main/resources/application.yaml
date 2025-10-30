@@ -18,14 +18,6 @@ spring:
       auto-commit: true
       pool-name: FaltaUnoHikariCP
 
-  # Spring Cloud GCP Configuration
-  cloud:
-    gcp:
-      sql:
-        enabled: ${SPRING_CLOUD_GCP_SQL_ENABLED:true}
-        database-name: faltauno_db
-        instance-connection-name: ${SPRING_CLOUDSQL_INSTANCE:master-might-274420:us-central1:faltauno-db}
-
   jpa:
     hibernate:
       ddl-auto: none  # ✅ Flyway maneja el schema

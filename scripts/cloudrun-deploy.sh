@@ -141,10 +141,6 @@ if [ -n "${GOOGLE_CLIENT_SECRET:-}" ]; then
   printf 'GOOGLE_CLIENT_SECRET: "%s"\n' "$(escape_for_yaml "${GOOGLE_CLIENT_SECRET}")" >> "${ENV_FILE}"
 fi
 
-# Disable Spring Cloud GCP Cloud SQL environment post-processor so the app uses the provided
-# SPRING_DATASOURCE_URL directly and does not require additional Cloud SQL-specific properties.
-printf 'SPRING_CLOUD_GCP_SQL_ENABLED: "%s"\n' "true" >> "${ENV_FILE}"
-
 # Activar perfil cloudrun para debugging (deshabilita DB/Redis temporalmente)
 printf 'SPRING_PROFILES_ACTIVE: "%s"\n' "cloudrun" >> "${ENV_FILE}"
 

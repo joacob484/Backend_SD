@@ -179,11 +179,22 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- Google Cloud Pub/Sub -->
+    <!-- Google Cloud Pub/Sub - EXCLUIR Spring Cloud GCP SQL autoconfigure -->
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>spring-cloud-gcp-starter-pubsub</artifactId>
       <version>3.5.0</version>
+      <exclusions>
+        <!-- EXCLUIR: Causa IllegalAccessError con Cloud SQL Connector -->
+        <exclusion>
+          <groupId>com.google.cloud</groupId>
+          <artifactId>spring-cloud-gcp-starter-sql-postgresql</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.cloud</groupId>
+          <artifactId>spring-cloud-gcp-autoconfigure</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.google.cloud</groupId>

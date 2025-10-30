@@ -1,0 +1,32 @@
+#!/bin/bash
+
+echo "════════════════════════════════════════════════════════"
+echo "📋 LOGS REALES DE CLOUD RUN - ÚLTIMOS ERRORES"
+echo "════════════════════════════════════════════════════════"
+echo ""
+echo "🔗 Abre este link para ver los logs COMPLETOS:"
+echo ""
+echo "https://console.cloud.google.com/logs/query;query=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22faltauno-backend%22%0Aseverity%3E%3DWARNING;timeRange=PT1H?project=master-might-274420"
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "O busca manualmente:"
+echo "1. Ve a: https://console.cloud.google.com/logs"
+echo "2. En el query box pega:"
+echo ""
+echo 'resource.type="cloud_run_revision"'
+echo 'resource.labels.service_name="faltauno-backend"'
+echo 'severity>=WARNING'
+echo ""
+echo "3. Cambia el time range a 'Last 1 hour'"
+echo "════════════════════════════════════════════════════════"
+echo ""
+echo "🎯 BUSCA ESPECÍFICAMENTE:"
+echo "   - Errores de 'ClassNotFoundException'"
+echo "   - Errores de 'java.lang.NoClassDefFoundError'"
+echo "   - Errores de 'SocketFactory'"
+echo "   - Errores de 'GoogleCredentials'"
+echo "   - Cualquier línea que diga 'ERROR' o 'FATAL'"
+echo "   - Stack traces de Java"
+echo ""
+echo "📝 COPIA Y PEGA LOS ERRORES QUE VEAS"
+echo ""
