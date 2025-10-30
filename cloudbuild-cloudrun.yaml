@@ -43,7 +43,7 @@ steps:
     waitFor: ['verify-jar']
 
   # ═══════════════════════════════════════════════════════════
-  # STEP 4: DEPLOY TO CLOUD RUN
+  # STEP 4: DEPLOY TO CLOUD RUN WITH ZERO DOWNTIME
   # ═══════════════════════════════════════════════════════════
   - name: 'gcr.io/cloud-builders/gcloud'
     id: 'deploy-cloudrun'
@@ -51,19 +51,148 @@ steps:
     args:
       - '-c'
       - |
-        chmod +x ./scripts/cloudrun-deploy.sh
-        ./scripts/cloudrun-deploy.sh "${_SPRING_DATASOURCE_PASSWORD}" "${_REDIS_HOST}" "${_POSTGRES_HOST}" "${_CLOUDSQL_INSTANCE}" "${_SPRING_DATASOURCE_URL}" "${_SPRING_DATASOURCE_USERNAME}" "$BUILD_ID"
-    env:
-      - 'GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}'
-      - 'GCP_PUBSUB_TOPIC=${_GCP_PUBSUB_TOPIC}'
-      - 'GCP_PUBSUB_SUBSCRIPTION=${_GCP_PUBSUB_SUBSCRIPTION}'
-      - 'FRONTEND_URL=${_FRONTEND_URL}'
-      - 'JWT_SECRET=${_JWT_SECRET}'
-      - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
-      - 'GOOGLE_CLIENT_SECRET=${_GOOGLE_CLIENT_SECRET}'
-    secretEnv: ['SPRING_DATASOURCE_PASSWORD']
+        set -e
+        
+        echo "=========================================="
+        echo "🚀 DEPLOYING TO CLOUD RUN"
+        echo "=========================================="
+        echo ""
+        echo "Build ID: $BUILD_ID"
+        echo "Image: gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID"
+        echo ""
+        
+        # Check if service exists
+        if gcloud run services describe faltauno-backend \
+          --region=us-central1 \
+          --project=$PROJECT_ID \
+          --format='value(metadata.name)' 2>/dev/null; then
+          
+          echo "✅ Service exists - deploying new revision with --no-traffic"
+          echo ""
+          
+          # Deploy new revision WITHOUT traffic (zero downtime)
+          REVISION=$(gcloud run deploy faltauno-backend \
+            --image=gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID \
+            --region=us-central1 \
+            --platform=managed \
+            --no-traffic \
+            --timeout=600 \
+            --memory=2Gi \
+            --cpu=2 \
+            --min-instances=0 \
+            --max-instances=10 \
+            --add-cloudsql-instances="${_CLOUDSQL_INSTANCE}" \
+            --set-env-vars="SERVER_PORT=8080" \
+            --set-env-vars="SPRING_DATASOURCE_URL=${_SPRING_DATASOURCE_URL}" \
+            --set-env-vars="SPRING_DATASOURCE_USERNAME=${_SPRING_DATASOURCE_USERNAME}" \
+            --set-env-vars="SPRING_REDIS_HOST=${_REDIS_HOST}" \
+            --set-env-vars="GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}" \
+            --set-env-vars="GCP_PUBSUB_TOPIC=${_GCP_PUBSUB_TOPIC}" \
+            --set-env-vars="GCP_PUBSUB_SUBSCRIPTION=${_GCP_PUBSUB_SUBSCRIPTION}" \
+            --set-env-vars="GCP_PROJECT_ID=$PROJECT_ID" \
+            --set-env-vars="FRONTEND_URL=${_FRONTEND_URL}" \
+            --update-secrets="SPRING_DATASOURCE_PASSWORD=db-password:latest" \
+            --update-secrets="JWT_SECRET=jwt-secret:latest" \
+            --update-secrets="GOOGLE_CLIENT_ID=google-client-id:latest" \
+            --update-secrets="GOOGLE_CLIENT_SECRET=google-client-secret:latest" \
+            --service-account=169771742214-compute@developer.gserviceaccount.com \
+            --allow-unauthenticated \
+            --format='value(status.latestCreatedRevisionName)')
+          
+          echo ""
+          echo "✅ New revision created: $REVISION"
+          echo ""
+          echo "⏳ Waiting for revision to be ready..."
+          
+          # Wait for revision to be ready (max 5 minutes)
+          for i in {1..60}; do
+            READY=$(gcloud run revisions describe "$REVISION" \
+              --region=us-central1 \
+              --platform=managed \
+              --format='value(status.conditions[?(@.type=="Ready")].status)' 2>/dev/null || echo "Unknown")
+            
+            echo "[$i/60] Revision status: $READY"
+            
+            if [ "$READY" = "True" ]; then
+              echo ""
+              echo "✅ Revision is READY!"
+              break
+            fi
+            
+            if [ "$i" -eq 60 ]; then
+              echo ""
+              echo "❌ Revision did not become ready after 5 minutes"
+              gcloud run revisions describe "$REVISION" --region=us-central1 --platform=managed
+              exit 1
+            fi
+            
+            sleep 5
+          done
+          
+          echo ""
+          echo "🔄 Routing 100% traffic to new revision (zero downtime cutover)..."
+          
+          gcloud run services update-traffic faltauno-backend \
+            --to-revisions="$REVISION=100" \
+            --region=us-central1 \
+            --platform=managed
+          
+          echo ""
+          echo "✅ Traffic routed successfully!"
+          echo ""
+          
+        else
+          echo "⚠️  Service doesn't exist - creating new service"
+          echo ""
+          
+          # Initial deployment (will receive traffic immediately)
+          gcloud run deploy faltauno-backend \
+            --image=gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID \
+            --region=us-central1 \
+            --platform=managed \
+            --timeout=600 \
+            --memory=2Gi \
+            --cpu=2 \
+            --min-instances=0 \
+            --max-instances=10 \
+            --add-cloudsql-instances="${_CLOUDSQL_INSTANCE}" \
+            --set-env-vars="SERVER_PORT=8080" \
+            --set-env-vars="SPRING_DATASOURCE_URL=${_SPRING_DATASOURCE_URL}" \
+            --set-env-vars="SPRING_DATASOURCE_USERNAME=${_SPRING_DATASOURCE_USERNAME}" \
+            --set-env-vars="SPRING_REDIS_HOST=${_REDIS_HOST}" \
+            --set-env-vars="GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}" \
+            --set-env-vars="GCP_PUBSUB_TOPIC=${_GCP_PUBSUB_TOPIC}" \
+            --set-env-vars="GCP_PUBSUB_SUBSCRIPTION=${_GCP_PUBSUB_SUBSCRIPTION}" \
+            --set-env-vars="GCP_PROJECT_ID=$PROJECT_ID" \
+            --set-env-vars="FRONTEND_URL=${_FRONTEND_URL}" \
+            --update-secrets="SPRING_DATASOURCE_PASSWORD=db-password:latest" \
+            --update-secrets="JWT_SECRET=jwt-secret:latest" \
+            --update-secrets="GOOGLE_CLIENT_ID=google-client-id:latest" \
+            --update-secrets="GOOGLE_CLIENT_SECRET=google-client-secret:latest" \
+            --service-account=169771742214-compute@developer.gserviceaccount.com \
+            --allow-unauthenticated
+          
+          echo ""
+          echo "✅ Service created successfully!"
+        fi
+        
+        echo ""
+        echo "=========================================="
+        echo "✅ DEPLOYMENT COMPLETED SUCCESSFULLY"
+        echo "=========================================="
+        echo ""
+        
+        # Get service URL
+        SERVICE_URL=$(gcloud run services describe faltauno-backend \
+          --region=us-central1 \
+          --platform=managed \
+          --format='value(status.url)')
+        
+        echo "🌐 Service URL: $SERVICE_URL"
+        echo "🏥 Health Check: $SERVICE_URL/actuator/health"
+        echo ""
     waitFor: ['push-image']
-    timeout: '600s'
+    timeout: '900s'
 
 # ═══════════════════════════════════════════════════════════
 # TIMEOUT GLOBAL Y OPCIONES
