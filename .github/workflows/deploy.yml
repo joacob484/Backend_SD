@@ -3,6 +3,7 @@ name: Deploy to Google Cloud Run
 permissions:
   contents: read
   issues: write
+  id-token: write  # Required for Workload Identity Federation
 
 on:
   push:
