@@ -160,6 +160,9 @@ if gcloud run services describe faltauno-backend --region us-central1 --platform
     --region us-central1 \
     --platform managed \
     --no-traffic \
+    --timeout=600 \
+    --memory=1Gi \
+    --cpu=2 \
     $CLOUDSQL_FLAG \
     --env-vars-file "${ENV_FILE}" \
     --format='value(status.latestCreatedRevisionName)')
@@ -169,6 +172,9 @@ else
     --image gcr.io/$PROJECT_ID/faltauno-backend:${IMAGE_TAG} \
     --region us-central1 \
     --platform managed \
+    --timeout=600 \
+    --memory=1Gi \
+    --cpu=2 \
     $CLOUDSQL_FLAG \
     --env-vars-file "${ENV_FILE}" \
     --format='value(status.latestCreatedRevisionName)')
