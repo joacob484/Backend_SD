@@ -9,6 +9,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import uy.um.faltauno.config.CustomUserDetailsService.UserPrincipal;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -67,6 +68,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 filterChain.doFilter(request, response);
                 return;
             }
+            
+            if (userId == null) {
+                log.warn("❌ JWT token without userId claim for: {}", path);
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             // Si ya hay autenticación en el contexto, no sobrescribir
             if (SecurityContextHolder.getContext().getAuthentication() != null) {
@@ -81,22 +88,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
 
-            // Crear Authentication con el email como principal
+            // ✅ CRÍTICO: Crear UserPrincipal con userId como principal
+            // Esto evita consultas a la BD en cada request
+            UserPrincipal userPrincipal = new UserPrincipal(
+                    userId,
+                    email,
+                    null, // No necesitamos el password para JWT auth
+                    authorities
+            );
+            
             UsernamePasswordAuthenticationToken authentication = 
                     new UsernamePasswordAuthenticationToken(
-                            email,
+                            userPrincipal, // Principal ahora es UserPrincipal, no String
                             null,
                             authorities
                     );
             
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            
-            // ✅ CRÍTICO: Agregar userId como atributo del request para que los controladores puedan accederlo
-            if (userId != null) {
-                request.setAttribute("userId", userId);
-                log.debug("📌 UserId set in request attribute: {}", userId);
-            }
             
             log.info("✅ User authenticated via JWT: {} (userId: {}) for: {}", email, userId, path);
 
