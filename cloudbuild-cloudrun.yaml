@@ -57,22 +57,22 @@ steps:
         echo "🚀 DEPLOYING TO CLOUD RUN"
         echo "=========================================="
         echo ""
-        echo "Build ID: $BUILD_ID"
-        echo "Image: gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID"
+        echo "Build ID: $$BUILD_ID"
+        echo "Image: gcr.io/$$PROJECT_ID/faltauno-backend:$$BUILD_ID"
         echo ""
         
         # Check if service exists
         if gcloud run services describe faltauno-backend \
           --region=us-central1 \
-          --project=$PROJECT_ID \
+          --project=$$PROJECT_ID \
           --format='value(metadata.name)' 2>/dev/null; then
           
           echo "✅ Service exists - deploying new revision with --no-traffic"
           echo ""
           
           # Deploy new revision WITHOUT traffic (zero downtime)
-          REVISION=$(gcloud run deploy faltauno-backend \
-            --image=gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID \
+          NEW_REVISION=$$(gcloud run deploy faltauno-backend \
+            --image=gcr.io/$$PROJECT_ID/faltauno-backend:$$BUILD_ID \
             --region=us-central1 \
             --platform=managed \
             --no-traffic \
@@ -89,7 +89,7 @@ steps:
             --set-env-vars="GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}" \
             --set-env-vars="GCP_PUBSUB_TOPIC=${_GCP_PUBSUB_TOPIC}" \
             --set-env-vars="GCP_PUBSUB_SUBSCRIPTION=${_GCP_PUBSUB_SUBSCRIPTION}" \
-            --set-env-vars="GCP_PROJECT_ID=$PROJECT_ID" \
+            --set-env-vars="GCP_PROJECT_ID=$$PROJECT_ID" \
             --set-env-vars="FRONTEND_URL=${_FRONTEND_URL}" \
             --update-secrets="SPRING_DATASOURCE_PASSWORD=db-password:latest" \
             --update-secrets="JWT_SECRET=jwt-secret:latest" \
@@ -100,29 +100,29 @@ steps:
             --format='value(status.latestCreatedRevisionName)')
           
           echo ""
-          echo "✅ New revision created: $REVISION"
+          echo "✅ New revision created: $$NEW_REVISION"
           echo ""
           echo "⏳ Waiting for revision to be ready..."
           
           # Wait for revision to be ready (max 5 minutes)
           for i in {1..60}; do
-            READY=$(gcloud run revisions describe "$REVISION" \
+            READY=$$(gcloud run revisions describe "$$NEW_REVISION" \
               --region=us-central1 \
               --platform=managed \
               --format='value(status.conditions[?(@.type=="Ready")].status)' 2>/dev/null || echo "Unknown")
             
-            echo "[$i/60] Revision status: $READY"
+            echo "[$$i/60] Revision status: $$READY"
             
-            if [ "$READY" = "True" ]; then
+            if [ "$$READY" = "True" ]; then
               echo ""
               echo "✅ Revision is READY!"
               break
             fi
             
-            if [ "$i" -eq 60 ]; then
+            if [ "$$i" -eq 60 ]; then
               echo ""
               echo "❌ Revision did not become ready after 5 minutes"
-              gcloud run revisions describe "$REVISION" --region=us-central1 --platform=managed
+              gcloud run revisions describe "$$NEW_REVISION" --region=us-central1 --platform=managed
               exit 1
             fi
             
@@ -133,7 +133,7 @@ steps:
           echo "🔄 Routing 100% traffic to new revision (zero downtime cutover)..."
           
           gcloud run services update-traffic faltauno-backend \
-            --to-revisions="$REVISION=100" \
+            --to-revisions="$$NEW_REVISION=100" \
             --region=us-central1 \
             --platform=managed
           
@@ -147,7 +147,7 @@ steps:
           
           # Initial deployment (will receive traffic immediately)
           gcloud run deploy faltauno-backend \
-            --image=gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID \
+            --image=gcr.io/$$PROJECT_ID/faltauno-backend:$$BUILD_ID \
             --region=us-central1 \
             --platform=managed \
             --timeout=600 \
@@ -163,7 +163,7 @@ steps:
             --set-env-vars="GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}" \
             --set-env-vars="GCP_PUBSUB_TOPIC=${_GCP_PUBSUB_TOPIC}" \
             --set-env-vars="GCP_PUBSUB_SUBSCRIPTION=${_GCP_PUBSUB_SUBSCRIPTION}" \
-            --set-env-vars="GCP_PROJECT_ID=$PROJECT_ID" \
+            --set-env-vars="GCP_PROJECT_ID=$$PROJECT_ID" \
             --set-env-vars="FRONTEND_URL=${_FRONTEND_URL}" \
             --update-secrets="SPRING_DATASOURCE_PASSWORD=db-password:latest" \
             --update-secrets="JWT_SECRET=jwt-secret:latest" \
@@ -183,13 +183,13 @@ steps:
         echo ""
         
         # Get service URL
-        SERVICE_URL=$(gcloud run services describe faltauno-backend \
+        SERVICE_URL=$$(gcloud run services describe faltauno-backend \
           --region=us-central1 \
           --platform=managed \
           --format='value(status.url)')
         
-        echo "🌐 Service URL: $SERVICE_URL"
-        echo "🏥 Health Check: $SERVICE_URL/actuator/health"
+        echo "🌐 Service URL: $$SERVICE_URL"
+        echo "🏥 Health Check: $$SERVICE_URL/actuator/health"
         echo ""
     waitFor: ['push-image']
     timeout: '900s'
