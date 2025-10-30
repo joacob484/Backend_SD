@@ -214,9 +214,7 @@ images:
   - 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID'
 
 substitutions:
-  _SPRING_DATASOURCE_PASSWORD: "REPLACE_AT_SUBMIT"
   _REDIS_HOST: "10.128.0.2"
-  _POSTGRES_HOST: "postgres"
   _CLOUDSQL_INSTANCE: "master-might-274420:us-central1:faltauno-db"
   _SPRING_DATASOURCE_USERNAME: "app"
   _SPRING_DATASOURCE_URL: "jdbc:postgresql:///faltauno_db?cloudSqlInstance=master-might-274420:us-central1:faltauno-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
@@ -224,6 +222,3 @@ substitutions:
   _GCP_PUBSUB_TOPIC: "faltauno-events"
   _GCP_PUBSUB_SUBSCRIPTION: "faltauno-events-sub"
   _FRONTEND_URL: "https://faltauno-frontend-169771742214.us-central1.run.app"
-  _JWT_SECRET: "REPLACE_AT_SUBMIT"
-  _GOOGLE_CLIENT_ID: "REPLACE_AT_SUBMIT"
-  _GOOGLE_CLIENT_SECRET: "REPLACE_AT_SUBMIT"
