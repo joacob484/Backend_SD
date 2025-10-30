@@ -53,7 +53,8 @@ spring:
     table: flyway_schema_history
 
   cache:
-    type: redis
+    type: none  # Disabled until Redis is properly configured
+    # type: redis
     redis:
       cache-null-values: false
       time-to-live: 600s  # 10 minutos (con unidad)
