@@ -17,7 +17,7 @@
     <lombok.version>1.18.34</lombok.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <!-- Google Cloud versions - forzar versiones compatibles -->
-    <google-cloud-sql.version>1.21.0</google-cloud-sql.version>
+    <google-cloud-sql.version>1.22.0</google-cloud-sql.version>
     <google-auth-library.version>1.29.0</google-auth-library.version>
   </properties>
 
