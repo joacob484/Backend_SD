@@ -3,14 +3,17 @@ FROM maven:3.9.10-eclipse-temurin-21 AS builder
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
-RUN mvn -B -DskipTests package
+RUN mvn -B -DskipTests clean package && \
+    ls -lah /app/target/ && \
+    echo "JAR file:" && \
+    ls -lah /app/target/*.jar
 
 # Runtime stage (use a reliable JRE that includes shell utilities for healthcheck)
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-# Copy final JAR
-COPY --from=builder /app/target/*.jar app.jar
+# Copy final JAR with explicit name
+COPY --from=builder /app/target/falta-uno-0.0.1-SNAPSHOT.jar app.jar
 
 EXPOSE 8080
 
@@ -18,4 +21,4 @@ EXPOSE 8080
 # El health check se hace en /actuator/health/readiness
 
 # Ejecutar directamente Java sin entrypoint personalizado
-CMD ["java", "-jar", "/app/app.jar"]
+CMD ["java", "-Dserver.port=${PORT:-8080}", "-jar", "/app/app.jar"]

@@ -206,6 +206,10 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
         <version>${spring-boot.version}</version>
+        <configuration>
+          <mainClass>uy.um.faltauno.FaltaUnoApplication</mainClass>
+          <layout>JAR</layout>
+        </configuration>
         <executions>
           <execution>
             <goals>
