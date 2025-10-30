@@ -197,7 +197,7 @@ public class NotificacionService {
                 nombreSolicitante + " quiere ser tu amigo",
                 solicitanteId,
                 "USUARIO",
-                "/friends",
+                "/friend-requests",
                 Notificacion.Prioridad.NORMAL
         );
     }
