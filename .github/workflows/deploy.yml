@@ -42,6 +42,7 @@ jobs:
       with:
         workload_identity_provider: 'projects/169771742214/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
         service_account: 'deploy-cicd@master-might-274420.iam.gserviceaccount.com'
+        audience: 'https://iam.googleapis.com/projects/169771742214/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
 
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v3
@@ -69,6 +70,6 @@ jobs:
           github.rest.issues.create({
             owner: owner,
             repo: repo,
-            title: `Deployment failed: ${github.context.sha}`,
-            body: `Deployment failed for commit ${github.context.sha}. Check the Actions logs: ${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`
+            title: `Deployment failed: ${process.env.GITHUB_SHA}`,
+            body: `Deployment failed for commit ${process.env.GITHUB_SHA}. Check the Actions logs: ${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`
           });
