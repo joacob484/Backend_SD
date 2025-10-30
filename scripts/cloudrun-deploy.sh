@@ -141,8 +141,9 @@ if [ -n "${GOOGLE_CLIENT_SECRET:-}" ]; then
   printf 'GOOGLE_CLIENT_SECRET: "%s"\n' "$(escape_for_yaml "${GOOGLE_CLIENT_SECRET}")" >> "${ENV_FILE}"
 fi
 
-# Activar perfil cloudrun para debugging (deshabilita DB/Redis temporalmente)
-printf 'SPRING_PROFILES_ACTIVE: "%s"\n' "cloudrun" >> "${ENV_FILE}"
+# NO usar perfil cloudrun - habilitar TODAS las autoconfiguraciones (JPA, Redis, etc.)
+# Si hay problemas de conectividad, se verán en los logs pero al menos arrancará
+# printf 'SPRING_PROFILES_ACTIVE: "%s"\n' "prod" >> "${ENV_FILE}"
 
 echo "==== Diagnostic: env file contents (password redacted) ===="
 # Print env file but redact the line containing the decoded password for logs

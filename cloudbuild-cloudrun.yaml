@@ -7,13 +7,48 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: [ 'push', 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID' ]
 
-  # Deploy to Cloud Run using simplified script
+  # Deploy to Cloud Run using the full deployment script with ALL env vars
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
-      - 'scripts/cloudrun-deploy-simple.sh'
+      - 'scripts/cloudrun-deploy.sh'
+      - '${_SPRING_DATASOURCE_PASSWORD}'
+      - '${_REDIS_HOST}'
+      - '${_POSTGRES_HOST}'
+      - '${_CLOUDSQL_INSTANCE}'
+      - '${_SPRING_DATASOURCE_URL}'
+      - '${_SPRING_DATASOURCE_USERNAME}'
+      - '$BUILD_ID'
     env:
-      - 'BUILD_ID=$BUILD_ID'
+      - 'GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}'
+      - 'GCP_PUBSUB_TOPIC=${_GCP_PUBSUB_TOPIC}'
+      - 'GCP_PUBSUB_SUBSCRIPTION=${_GCP_PUBSUB_SUBSCRIPTION}'
+      - 'FRONTEND_URL=${_FRONTEND_URL}'
+      - 'JWT_SECRET=${_JWT_SECRET}'
+      - 'GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}'
+      - 'GOOGLE_CLIENT_SECRET=${_GOOGLE_CLIENT_SECRET}'
+    secretEnv: ['SPRING_DATASOURCE_PASSWORD']
+
+# Fetch secret from Secret Manager
+availableSecrets:
+  secretManager:
+  - versionName: projects/master-might-274420/secrets/db-password/versions/latest
+    env: 'SPRING_DATASOURCE_PASSWORD'
 
 images:
   - 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID'
+
+substitutions:
+  _SPRING_DATASOURCE_PASSWORD: "REPLACE_AT_SUBMIT"
+  _REDIS_HOST: "10.128.0.2"
+  _POSTGRES_HOST: "postgres"
+  _CLOUDSQL_INSTANCE: "master-might-274420:us-central1:faltauno-db"
+  _SPRING_DATASOURCE_USERNAME: "app"
+  _SPRING_DATASOURCE_URL: "jdbc:postgresql:///faltauno_db?cloudSqlInstance=master-might-274420:us-central1:faltauno-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+  _GCP_PUBSUB_ENABLED: "false"
+  _GCP_PUBSUB_TOPIC: "faltauno-events"
+  _GCP_PUBSUB_SUBSCRIPTION: "faltauno-events-sub"
+  _FRONTEND_URL: "https://faltauno-frontend-169771742214.us-central1.run.app"
+  _JWT_SECRET: "REPLACE_AT_SUBMIT"
+  _GOOGLE_CLIENT_ID: "REPLACE_AT_SUBMIT"
+  _GOOGLE_CLIENT_SECRET: "REPLACE_AT_SUBMIT"
