@@ -56,9 +56,16 @@ jobs:
     - name: Build and Deploy to Cloud Run
       run: |
         echo "Submitting Cloud Build — build will run in Cloud Build and deploy per cloudbuild-cloudrun.yaml"
-        # Submit Cloud Build synchronously to catch errors
-        gcloud builds submit --config=cloudbuild-cloudrun.yaml \
-          --substitutions=_SPRING_DATASOURCE_PASSWORD="${{ secrets.SPRING_DATASOURCE_PASSWORD }}",_REDIS_HOST="${{ env.SPRING_REDIS_HOST }}",_POSTGRES_HOST="${{ env.POSTGRES_HOST }}",_CLOUDSQL_INSTANCE="${{ env.CLOUDSQL_INSTANCE }}",_SPRING_DATASOURCE_URL="${{ env.SPRING_DATASOURCE_URL }}",_GCP_PUBSUB_ENABLED="${{ env.GCP_PUBSUB_ENABLED }}",_GCP_PUBSUB_TOPIC="${{ env.GCP_PUBSUB_TOPIC }}",_GCP_PUBSUB_SUBSCRIPTION="${{ env.GCP_PUBSUB_SUBSCRIPTION }}",_FRONTEND_URL="${{ env.FRONTEND_URL }}",_JWT_SECRET="${{ secrets.JWT_SECRET }}",_GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}",_GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}"
+        # Submit Cloud Build asynchronously (service account doesn't have Viewer role to stream logs)
+        BUILD_ID=$(gcloud builds submit --config=cloudbuild-cloudrun.yaml \
+          --substitutions=_SPRING_DATASOURCE_PASSWORD="${{ secrets.SPRING_DATASOURCE_PASSWORD }}",_REDIS_HOST="${{ env.SPRING_REDIS_HOST }}",_POSTGRES_HOST="${{ env.POSTGRES_HOST }}",_CLOUDSQL_INSTANCE="${{ env.CLOUDSQL_INSTANCE }}",_SPRING_DATASOURCE_URL="${{ env.SPRING_DATASOURCE_URL }}",_GCP_PUBSUB_ENABLED="${{ env.GCP_PUBSUB_ENABLED }}",_GCP_PUBSUB_TOPIC="${{ env.GCP_PUBSUB_TOPIC }}",_GCP_PUBSUB_SUBSCRIPTION="${{ env.GCP_PUBSUB_SUBSCRIPTION }}",_FRONTEND_URL="${{ env.FRONTEND_URL }}",_JWT_SECRET="${{ secrets.JWT_SECRET }}",_GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}",_GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+          --format='value(id)' --async)
+        echo "✅ Build submitted successfully!"
+        echo "📋 Build ID: $BUILD_ID"
+        echo "🔗 View logs: https://console.cloud.google.com/cloud-build/builds/$BUILD_ID?project=master-might-274420"
+        echo ""
+        echo "⏳ Build is running in Cloud Build. Check the link above for progress."
+        echo "Note: This workflow completes immediately. Check Cloud Build logs to verify deployment success."
 
     - name: Notify on Failure (create issue)
       if: failure()
