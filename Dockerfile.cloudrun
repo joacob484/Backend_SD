@@ -1,9 +1,9 @@
 # ═══════════════════════════════════════════════════════════
-# DOCKERFILE ULTRA-SIMPLIFICADO PARA CLOUD RUN
+# DOCKERFILE PARA CLOUD RUN - BUILD COMPLETO SIN CACHE
 # ═══════════════════════════════════════════════════════════
 
-# Build stage
-FROM maven:3.9-eclipse-temurin-21-alpine AS builder
+# Build stage - USAR IMAGEN STANDARD (no Alpine) para mejor compatibilidad
+FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /build
 
@@ -11,40 +11,49 @@ WORKDIR /build
 COPY pom.xml .
 COPY src ./src
 
-# Build with verbose output
-RUN echo "════════ BUILDING JAR ════════" && \
-    mvn clean package -DskipTests -B -e && \
-    echo "════════ BUILD COMPLETE ════════" && \
-    echo "Contents of target/:" && \
+# Build with MAXIMUM VERBOSE output
+RUN echo "════════════════════════════════════════════════════════" && \
+    echo "🔨 STARTING MAVEN BUILD" && \
+    echo "════════════════════════════════════════════════════════" && \
+    mvn --version && \
+    echo "" && \
+    echo "📦 Running: mvn clean package -DskipTests" && \
+    echo "" && \
+    mvn clean package -DskipTests -B -X && \
+    echo "" && \
+    echo "════════════════════════════════════════════════════════" && \
+    echo "✅ BUILD COMPLETE - Checking target/" && \
+    echo "════════════════════════════════════════════════════════" && \
     ls -lah target/ && \
-    echo "════════════════════════════════"
+    echo "" && \
+    echo "JAR files found:" && \
+    find target/ -name "*.jar" -type f && \
+    echo "════════════════════════════════════════════════════════"
 
 # ═══════════════════════════════════════════════════════════
-# Runtime stage - MINIMAL
+# Runtime stage
 # ═══════════════════════════════════════════════════════════
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
-# Copy JAR
+# Copy JAR with explicit naming
 COPY --from=builder /build/target/*.jar app.jar
 
-# Verify JAR exists and is executable
-RUN echo "════════ VERIFYING JAR ════════" && \
+# Verify JAR exists and show contents
+RUN echo "════════════════════════════════════════════════════════" && \
+    echo "🔍 VERIFYING JAR FILE" && \
+    echo "════════════════════════════════════════════════════════" && \
     ls -lah /app/app.jar && \
-    jar tf /app/app.jar | head -20 && \
-    echo "════════════════════════════════"
+    echo "" && \
+    echo "JAR manifest:" && \
+    jar tf /app/app.jar | head -30 && \
+    echo "" && \
+    echo "JAR size: $(stat -f%z /app/app.jar 2>/dev/null || stat -c%s /app/app.jar) bytes" && \
+    echo "════════════════════════════════════════════════════════"
 
 # Expose port
 EXPOSE 8080
 
-# Add healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=120s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
-
-# Run Java with explicit memory settings and PORT support
-ENV JAVA_OPTS="-Xmx512m -Xms256m"
-
-# Use shell form to allow environment variable expansion
-CMD java $JAVA_OPTS -Dserver.port=${PORT:-8080} -jar /app/app.jar
-
+# Run with environment-based PORT
+CMD ["sh", "-c", "java -Xmx1024m -Xms512m -Dserver.port=${PORT:-8080} -jar /app/app.jar"]

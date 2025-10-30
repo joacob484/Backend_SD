@@ -1,7 +1,7 @@
 steps:
-  # Build the Docker image and tag it with the build ID
+  # Build the Docker image and tag it with the build ID (NO CACHE)
   - name: 'gcr.io/cloud-builders/docker'
-    args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID', '-f', 'Dockerfile.cloudrun', '.' ]
+    args: [ 'build', '--no-cache', '-t', 'gcr.io/$PROJECT_ID/faltauno-backend:$BUILD_ID', '-f', 'Dockerfile.cloudrun', '.' ]
 
   # Push the image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
