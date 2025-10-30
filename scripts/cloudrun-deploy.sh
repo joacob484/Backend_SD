@@ -145,6 +145,9 @@ fi
 # SPRING_DATASOURCE_URL directly and does not require additional Cloud SQL-specific properties.
 printf 'SPRING_CLOUD_GCP_SQL_ENABLED: "%s"\n' "true" >> "${ENV_FILE}"
 
+# Activar perfil cloudrun para debugging (deshabilita DB/Redis temporalmente)
+printf 'SPRING_PROFILES_ACTIVE: "%s"\n' "cloudrun" >> "${ENV_FILE}"
+
 echo "==== Diagnostic: env file contents (password redacted) ===="
 # Print env file but redact the line containing the decoded password for logs
 awk '

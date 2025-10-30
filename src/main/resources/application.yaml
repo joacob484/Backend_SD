@@ -210,4 +210,28 @@ logging:
 spring:
   config:
     activate:
+      on-profile: cloudrun
+
+# Perfil especial para Cloud Run - deshabilitar todo lo que puede fallar
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: false
+
+logging:
+  level:
+    root: INFO
+    uy.um.faltauno: DEBUG
+
+---
+spring:
+  config:
+    activate:
       on-profile: prod
