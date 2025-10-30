@@ -49,14 +49,10 @@ steps:
     id: 'deploy-cloudrun'
     entrypoint: 'bash'
     args:
-      - 'scripts/cloudrun-deploy.sh'
-      - '${_SPRING_DATASOURCE_PASSWORD}'
-      - '${_REDIS_HOST}'
-      - '${_POSTGRES_HOST}'
-      - '${_CLOUDSQL_INSTANCE}'
-      - '${_SPRING_DATASOURCE_URL}'
-      - '${_SPRING_DATASOURCE_USERNAME}'
-      - '$BUILD_ID'
+      - '-c'
+      - |
+        chmod +x ./scripts/cloudrun-deploy.sh
+        ./scripts/cloudrun-deploy.sh "${_SPRING_DATASOURCE_PASSWORD}" "${_REDIS_HOST}" "${_POSTGRES_HOST}" "${_CLOUDSQL_INSTANCE}" "${_SPRING_DATASOURCE_URL}" "${_SPRING_DATASOURCE_USERNAME}" "$BUILD_ID"
     env:
       - 'GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}'
       - 'GCP_PUBSUB_TOPIC=${_GCP_PUBSUB_TOPIC}'
