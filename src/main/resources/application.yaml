@@ -212,14 +212,24 @@ spring:
 
 # Perfil especial para Cloud Run - configuración optimizada
   
-  # ❌ Redis deshabilitado (no hay VPC Connector)
-  cache:
-    type: none
+  # ✅ Redis con Memorystore
+  redis:
+    host: 10.217.135.172
+    port: 6379
+    timeout: 2000ms
+    connect-timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 2
+      shutdown-timeout: 100ms
   
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.actuate.autoconfigure.data.redis.RedisHealthContributorAutoConfiguration
+  cache:
+    type: redis
+    redis:
+      cache-null-values: false
+      time-to-live: 600s
   
   flyway:
     enabled: true
