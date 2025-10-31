@@ -83,7 +83,17 @@ public class PartidoService {
         log.info("Partido creado: id={}, tipo={}, fecha={}", 
                 guardado.getId(), guardado.getTipoPartido(), guardado.getFecha());
 
-        // 🔥 Publicar evento asíncrono
+        // � Crear inscripción automática para el organizador
+        Inscripcion inscripcionOrganizador = Inscripcion.builder()
+                .partido(guardado)
+                .usuario(organizador)
+                .estado(Inscripcion.EstadoInscripcion.ACEPTADO)
+                .build();
+        inscripcionRepository.save(inscripcionOrganizador);
+        log.info("Inscripción automática creada para organizador: partidoId={}, userId={}", 
+                guardado.getId(), organizador.getId());
+
+        // �🔥 Publicar evento asíncrono
         publicarEvento("partidos.created", Map.of(
             "event", "PARTIDO_CREADO",
             "partidoId", guardado.getId().toString(),
