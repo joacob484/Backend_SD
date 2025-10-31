@@ -8,6 +8,10 @@ public class UsuarioMinDTO {
     private String apellido;
     private byte[] fotoPerfil;
 
+    // Constructor sin parámetros para Jackson
+    public UsuarioMinDTO() {
+    }
+
     public UsuarioMinDTO(UUID id, String nombre, String apellido, byte[] fotoPerfil) {
         this.id = id.toString();
         this.nombre = nombre;
