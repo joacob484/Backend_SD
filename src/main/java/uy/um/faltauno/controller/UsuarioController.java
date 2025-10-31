@@ -23,6 +23,7 @@ import uy.um.faltauno.dto.PerfilDTO;
 import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.service.UsuarioService;
+import uy.um.faltauno.service.ReviewService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -37,6 +38,7 @@ import java.util.*;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
+    private final ReviewService reviewService;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
 
@@ -368,6 +370,32 @@ public class UsuarioController {
             log.error("Error actualizando preferencias de notificación", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(null, "Error actualizando preferencias", false));
+        }
+    }
+
+    /**
+     * Obtener reviews pendientes de un usuario específico
+     * GET /api/usuarios/{usuarioId}/pending-reviews
+     */
+    @GetMapping("/{usuarioId}/pending-reviews")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getPendingReviews(
+            @PathVariable UUID usuarioId,
+            Authentication auth) {
+        try {
+            // Verificar que el usuario autenticado sea el mismo que está consultando
+            UUID currentUserId = resolveCurrentUserId();
+            if (currentUserId == null || !currentUserId.equals(usuarioId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>(null, "No autorizado para ver estas reviews", false));
+            }
+
+            List<Map<String, Object>> pendientes = reviewService.obtenerReviewsPendientes(auth);
+            return ResponseEntity.ok(new ApiResponse<>(pendientes, "Reviews pendientes", true));
+
+        } catch (Exception e) {
+            log.error("Error obteniendo reviews pendientes del usuario {}", usuarioId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al obtener reviews pendientes", false));
         }
     }
 }

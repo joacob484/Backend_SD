@@ -66,4 +66,10 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
      */
     @Query("SELECT AVG(r.companerismo) FROM Review r WHERE r.usuarioCalificado.id = :usuarioId")
     Double calcularPromedioCompanerismo(@Param("usuarioId") UUID usuarioId);
+    
+    /**
+     * Calcular promedio global de calificación (promedio de nivel, deportividad y compañerismo)
+     */
+    @Query("SELECT AVG((r.nivel + r.deportividad + r.companerismo) / 3.0) FROM Review r")
+    Double findAverageCalificacionGlobal();
 }

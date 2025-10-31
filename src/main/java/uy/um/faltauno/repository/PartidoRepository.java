@@ -47,4 +47,15 @@ public interface PartidoRepository extends JpaRepository<Partido, UUID>, JpaSpec
     @Query("SELECT p FROM Partido p WHERE LOWER(p.nombreUbicacion) LIKE LOWER(CONCAT('%', :ubicacion, '%')) " +
            "OR LOWER(p.direccionUbicacion) LIKE LOWER(CONCAT('%', :ubicacion, '%'))")
     List<Partido> findByUbicacion(@Param("ubicacion") String ubicacion);
+    
+    /**
+     * Contar partidos por estado
+     */
+    long countByEstado(String estado);
+    
+    /**
+     * Contar partidos entre fechas
+     */
+    @Query("SELECT COUNT(p) FROM Partido p WHERE p.fecha >= :fechaInicio AND p.fecha < :fechaFin")
+    long countPartidosEntreFechas(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
 }
