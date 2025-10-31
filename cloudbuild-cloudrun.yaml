@@ -103,6 +103,8 @@ steps:
             --update-secrets="JWT_SECRET=jwt-secret:latest" \
             --update-secrets="GOOGLE_CLIENT_ID=google-client-id:latest" \
             --update-secrets="GOOGLE_CLIENT_SECRET=google-client-secret:latest" \
+            --update-secrets="MAIL_USERNAME=mail-username:latest" \
+            --update-secrets="MAIL_PASSWORD=mail-password:latest" \
             --service-account=169771742214-compute@developer.gserviceaccount.com \
             --allow-unauthenticated \
             --format='value(status.latestCreatedRevisionName)')
@@ -197,6 +199,8 @@ steps:
             --update-secrets="JWT_SECRET=jwt-secret:latest" \
             --update-secrets="GOOGLE_CLIENT_ID=google-client-id:latest" \
             --update-secrets="GOOGLE_CLIENT_SECRET=google-client-secret:latest" \
+            --update-secrets="MAIL_USERNAME=mail-username:latest" \
+            --update-secrets="MAIL_PASSWORD=mail-password:latest" \
             --service-account=169771742214-compute@developer.gserviceaccount.com \
             --allow-unauthenticated
           
