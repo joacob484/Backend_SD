@@ -100,10 +100,16 @@
       <version>${google-auth-library.version}</version>
     </dependency>
 
-    <!-- Redis -->
+    <!-- Caffeine in-memory cache -->
+    <dependency>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
+    </dependency>
+
+    <!-- Spring Cache starter (enables cache abstraction auto-config) -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-redis</artifactId>
+      <artifactId>spring-boot-starter-cache</artifactId>
     </dependency>
 
     <!-- Thymeleaf para templates HTML -->

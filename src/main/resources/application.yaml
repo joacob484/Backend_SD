@@ -35,18 +35,6 @@ spring:
     show-sql: false  # ✅ Solo en desarrollo
     open-in-view: false  # ✅ Mejor práctica
 
-  redis:
-    host: ${SPRING_REDIS_HOST:localhost}
-    port: ${SPRING_REDIS_PORT:6379}
-    timeout: 2000ms
-    connect-timeout: 2000ms
-    lettuce:
-      pool:
-        max-active: 8
-        max-idle: 8
-        min-idle: 2
-      shutdown-timeout: 100ms
-
   flyway:
     enabled: true
     baseline-on-migrate: true  # ✅ Permitir baseline en schema existente
@@ -54,16 +42,11 @@ spring:
     locations: classpath:db/migration
     table: flyway_schema_history
 
+  # ✅ Cache con Caffeine (in-memory, simple, rápido)
   cache:
-    type: redis
-    redis:
-      cache-null-values: false
-      time-to-live: 600s  # 10 minutos
-
-  data:
-    redis:
-      repositories:
-        enabled: false
+    type: caffeine
+    caffeine:
+      spec: maximumSize=10000,expireAfterWrite=10m
 
   security:
     oauth2:
@@ -138,8 +121,6 @@ management:
       exposure:
         include: health,info,metrics,prometheus
   health:
-    redis:
-      enabled: false  # ✅ Deshabilitar health check de Redis temporalmente
     livenessstate:
       enabled: true
     readinessstate:
@@ -163,7 +144,7 @@ gcp:
     topic: ${GCP_PUBSUB_TOPIC:faltauno-events}
     subscription: ${GCP_PUBSUB_SUBSCRIPTION:faltauno-events-sub}
 
-# Logging (niveles sensatos; menos ruido en Redis/Tomcat/Netty/Hibernate binder)
+# Logging (niveles sensatos para producción)
 logging:
   level:
     root: INFO
@@ -173,7 +154,6 @@ logging:
     org.hibernate: WARN
     org.hibernate.SQL: INFO
     org.hibernate.type.descriptor.sql.BasicBinder: INFO
-    io.lettuce.core: WARN
     io.netty: WARN
     org.apache.coyote.http11: WARN
     org.apache.tomcat.util.net: WARN
@@ -202,24 +182,14 @@ spring:
 
 # Perfil especial para Cloud Run - configuración optimizada
   
-  # ✅ Redis con Memorystore
-  redis:
-    host: 10.217.135.172
-    port: 6379
-    timeout: 2000ms
-    connect-timeout: 2000ms
-    lettuce:
-      pool:
-        max-active: 8
-        max-idle: 8
-        min-idle: 2
-      shutdown-timeout: 100ms
-  
+  # ✅ Cache: usar Caffeine (in-memory) en Cloud Run para evitar dependencia de memorystore
   cache:
-    type: redis
-    redis:
-      cache-null-values: false
+    type: caffeine
+    caffeine:
+      # Tiempo de expiración por defecto para entradas en cache
       time-to-live: 600s
+      # Tamaño máximo recomendado (ajustar según memoria disponible)
+      maximum-size: 10000
   
   flyway:
     enabled: true
