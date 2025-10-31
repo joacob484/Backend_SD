@@ -12,6 +12,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import uy.um.faltauno.config.CacheNames;
 import uy.um.faltauno.config.CustomUserDetailsService;
 import uy.um.faltauno.dto.PartidoDTO;
 import uy.um.faltauno.dto.UsuarioMinDTO;
@@ -51,7 +52,7 @@ public class PartidoService {
      * Crear un nuevo partido
      */
     @Transactional
-    @CacheEvict(value = "partidos-disponibles", allEntries = true)
+    @CacheEvict(value = CacheNames.PARTIDOS_DISPONIBLES, allEntries = true)
     public PartidoDTO crearPartido(PartidoDTO dto) {
         // Validaciones
         validarDatosPartido(dto);
@@ -99,7 +100,7 @@ public class PartidoService {
      * Obtener partido completo con jugadores
      */
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "partidos_v3", key = "#id")
+    @Cacheable(cacheNames = CacheNames.PARTIDOS_V2, key = "#id")
     public PartidoDTO obtenerPartidoCompleto(UUID id) {
         log.debug("[PartidoService] Obteniendo partido: {}", id);
         
@@ -112,9 +113,9 @@ public class PartidoService {
         PartidoDTO dto = entityToDtoCompleto(partido);
         log.debug("[PartidoService] DTO creado, buscando jugadores");
 
-        // jugadores aceptados
+        // ✅ PERFORMANCE: Usar query optimizada con JOIN FETCH para evitar N+1
         List<Inscripcion> inscripciones = inscripcionRepository
-            .findByPartido_IdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO);
+            .findByPartidoIdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO);
         
         log.debug("[PartidoService] Inscripciones encontradas: {}", inscripciones.size());
 
@@ -183,10 +184,14 @@ public class PartidoService {
 
             // Filtro por búsqueda en ubicación
             if (search != null && !search.isBlank()) {
-                String pattern = "%" + search.toLowerCase() + "%";
-                Predicate nombreUbicacion = cb.like(cb.lower(root.get("nombreUbicacion")), pattern);
-                Predicate direccion = cb.like(cb.lower(root.get("direccionUbicacion")), pattern);
-                predicates.add(cb.or(nombreUbicacion, direccion));
+                // ✅ SEGURIDAD: Sanitizar input para prevenir SQL injection
+                String sanitized = sanitizeSearchInput(search);
+                if (sanitized != null && !sanitized.isEmpty()) {
+                    String pattern = "%" + sanitized.toLowerCase() + "%";
+                    Predicate nombreUbicacion = cb.like(cb.lower(root.get("nombreUbicacion")), pattern);
+                    Predicate direccion = cb.like(cb.lower(root.get("direccionUbicacion")), pattern);
+                    predicates.add(cb.or(nombreUbicacion, direccion));
+                }
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -270,9 +275,9 @@ public class PartidoService {
             partido.setLongitud(dto.getLongitud());
         }
         if (dto.getCantidadJugadores() != null) {
-            // Solo permitir aumentar, no reducir por debajo de jugadores actuales
+            // ✅ PERFORMANCE: Usar COUNT query en lugar de .size()
             long jugadoresActuales = inscripcionRepository
-                    .findByPartido_IdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO).size();
+                    .countInscripcionesAceptadas(id);
             if (dto.getCantidadJugadores() < jugadoresActuales) {
                 throw new IllegalStateException(
                     "No se puede reducir la cantidad de jugadores por debajo de " + jugadoresActuales);
@@ -299,7 +304,7 @@ public class PartidoService {
      * Cancelar un partido
      */
     @Transactional
-    @CacheEvict(cacheNames = {"partidos_v2", "partidos-disponibles"}, allEntries = true)
+    @CacheEvict(cacheNames = {CacheNames.PARTIDOS_V2, CacheNames.PARTIDOS_DISPONIBLES}, allEntries = true)
     public void cancelarPartido(UUID id, String motivo, Authentication auth) {
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
@@ -381,8 +386,9 @@ public class PartidoService {
      */
     @Transactional(readOnly = true)
     public List<UsuarioMinDTO> obtenerJugadores(UUID partidoId) {
+        // ✅ PERFORMANCE: Usar query optimizada con JOIN FETCH
         List<Inscripcion> inscripciones = inscripcionRepository
-                .findByPartido_IdAndEstado(partidoId, Inscripcion.EstadoInscripcion.ACEPTADO);
+                .findByPartidoIdAndEstado(partidoId, Inscripcion.EstadoInscripcion.ACEPTADO);
 
         return inscripciones.stream()
                 .map(i -> {
@@ -471,9 +477,9 @@ public class PartidoService {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
-        // Verificar que el partido no esté completo
+        // ✅ PERFORMANCE: Usar COUNT query optimizada
         long jugadoresActuales = inscripcionRepository
-                .findByPartido_IdAndEstado(partidoId, Inscripcion.EstadoInscripcion.ACEPTADO).size();
+                .countInscripcionesAceptadas(partidoId);
         
         if (jugadoresActuales >= partido.getCantidadJugadores()) {
             throw new IllegalStateException("El partido está completo");
@@ -530,8 +536,9 @@ public class PartidoService {
                 .collect(Collectors.toList());
 
         for (Partido partido : partidosPorEmpezar) {
+            // ✅ PERFORMANCE: Usar COUNT query optimizada
             long jugadores = inscripcionRepository
-                    .findByPartido_IdAndEstado(partido.getId(), Inscripcion.EstadoInscripcion.ACEPTADO).size();
+                    .countInscripcionesAceptadas(partido.getId());
             
             // Si no alcanzó el mínimo, cancelar
             int minimo = calcularMinimoJugadores(partido.getCantidadJugadores());
@@ -559,6 +566,38 @@ public class PartidoService {
     }
 
     // ===== MÉTODOS AUXILIARES =====
+
+    /**
+     * Sanitiza el input de búsqueda para prevenir SQL injection.
+     * Permite solo caracteres alfanuméricos, espacios, tildes y caracteres especiales comunes.
+     * 
+     * @param input String a sanitizar
+     * @return String sanitizado o null si el input es inválido
+     */
+    private String sanitizeSearchInput(String input) {
+        if (input == null || input.isBlank()) {
+            return null;
+        }
+        
+        // Limitar longitud máxima a 100 caracteres
+        String trimmed = input.trim();
+        if (trimmed.length() > 100) {
+            log.warn("Input de búsqueda excede 100 caracteres, truncando");
+            trimmed = trimmed.substring(0, 100);
+        }
+        
+        // Remover caracteres peligrosos pero permitir tildes y ñ
+        // Permite: letras (a-z, A-Z), números (0-9), espacios, tildes (áéíóúÁÉÍÓÚ), ñÑ, guiones, comas
+        String sanitized = trimmed.replaceAll("[^a-zA-Z0-9\\sáéíóúÁÉÍÓÚñÑ,\\-]", "");
+        
+        // Prevenir strings vacías después de sanitización
+        if (sanitized.isBlank()) {
+            log.warn("Input de búsqueda quedó vacío después de sanitización: {}", input);
+            return null;
+        }
+        
+        return sanitized;
+    }
 
     private void publicarEvento(String topicId, Map<String, String> payload) {
         try {
@@ -635,10 +674,9 @@ public class PartidoService {
         PartidoDTO dto = partidoMapper.toDto(partido);
         log.debug("[PartidoService.entityToDtoCompleto] Mapper completado");
         
-        // Calcular jugadores actuales
+        // ✅ PERFORMANCE: Usar COUNT query optimizada
         long jugadoresActuales = inscripcionRepository
-            .findByPartido_IdAndEstado(partido.getId(), Inscripcion.EstadoInscripcion.ACEPTADO)
-            .size();
+            .countInscripcionesAceptadas(partido.getId());
         dto.setJugadoresActuales((int) jugadoresActuales);
         log.debug("[PartidoService.entityToDtoCompleto] Jugadores actuales: {}", jugadoresActuales);
         

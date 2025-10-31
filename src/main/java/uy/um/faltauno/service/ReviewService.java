@@ -54,8 +54,8 @@ public class ReviewService {
             throw new IllegalStateException("No puedes calificar un partido que aún no ha sucedido");
         }
 
-        // Validar que ambos participaron en el partido
-        List<Inscripcion> inscripciones = inscripcionRepository.findByPartido_IdAndEstado(
+        // ✅ PERFORMANCE: Usar query optimizada con JOIN FETCH
+        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoIdAndEstado(
                 dto.getPartidoId(), Inscripcion.EstadoInscripcion.ACEPTADO);
 
         boolean calificadorParticipo = inscripciones.stream()
@@ -188,9 +188,9 @@ public class ReviewService {
                 continue;
             }
 
-            // Obtener otros jugadores del partido
+            // ✅ PERFORMANCE: Usar query optimizada con JOIN FETCH
             List<Inscripcion> otrosJugadores = inscripcionRepository
-                    .findByPartido_IdAndEstado(partido.getId(), Inscripcion.EstadoInscripcion.ACEPTADO)
+                    .findByPartidoIdAndEstado(partido.getId(), Inscripcion.EstadoInscripcion.ACEPTADO)
                     .stream()
                     .filter(i -> !i.getUsuario().getId().equals(userId))
                     .collect(Collectors.toList());

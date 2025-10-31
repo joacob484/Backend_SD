@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import uy.um.faltauno.config.CacheNames;
 import uy.um.faltauno.repository.PartidoRepository;
 import uy.um.faltauno.repository.UsuarioRepository;
 import uy.um.faltauno.repository.ReviewRepository;
@@ -30,7 +31,7 @@ public class StatsService {
      * Obtener estadísticas generales de la comunidad
      * Se cachea por 5 minutos para no sobrecargar la DB
      */
-    @Cacheable(value = "community-stats", unless = "#result == null")
+    @Cacheable(value = CacheNames.COMMUNITY_STATS, unless = "#result == null")
     public Map<String, Object> obtenerEstadisticasComunidad() {
         log.debug("Calculando estadísticas de la comunidad...");
         
@@ -97,7 +98,7 @@ public class StatsService {
     /**
      * Obtener estadísticas detalladas del sistema
      */
-    @Cacheable(value = "system-stats", unless = "#result == null")
+    @Cacheable(value = CacheNames.SYSTEM_STATS, unless = "#result == null")
     public Map<String, Object> obtenerEstadisticasSistema() {
         log.debug("Calculando estadísticas del sistema...");
         
