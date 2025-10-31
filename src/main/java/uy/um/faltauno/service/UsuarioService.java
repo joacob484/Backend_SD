@@ -1,6 +1,7 @@
 package uy.um.faltauno.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -36,6 +37,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
@@ -357,9 +359,18 @@ public class UsuarioService {
             throw new IllegalArgumentException("Email de Google inválido");
         }
 
+        log.info("[OAuth] 🔍 Buscando usuario existente por email: {}", email);
         Optional<Usuario> existenteOpt = usuarioRepository.findByEmail(email);
 
-        Usuario u = existenteOpt.orElseGet(Usuario::new);
+        Usuario u = existenteOpt.orElseGet(() -> {
+            log.info("[OAuth] ✨ Usuario nuevo - creando registro para: {}", email);
+            return new Usuario();
+        });
+        
+        if (existenteOpt.isPresent()) {
+            log.info("[OAuth] ♻️ Usuario existente encontrado - actualizando datos para: {}", email);
+        }
+        
         u.setEmail(email);
         
         // IMPORTANTE: NO seteamos password - los usuarios OAuth no tienen contraseña
@@ -392,7 +403,26 @@ public class UsuarioService {
             u.setCreatedAt(LocalDateTime.now());
         }
 
-        return usuarioRepository.save(u);
+        log.info("[OAuth] 💾 Guardando usuario en DB: {}", email);
+        Usuario saved = usuarioRepository.save(u);
+        
+        // ⚡ CRÍTICO: Forzar flush para asegurar que los datos se persisten INMEDIATAMENTE
+        // Esto previene problemas de timing donde el frontend intenta leer el usuario
+        // antes de que la transacción se complete
+        usuarioRepository.flush();
+        
+        log.info("[OAuth] ✅ Usuario guardado exitosamente - ID: {}, Email: {}", saved.getId(), saved.getEmail());
+        log.info("[OAuth] 🔍 Verificando que el usuario fue guardado correctamente...");
+        
+        // Verificar que el usuario realmente existe en la DB
+        boolean exists = usuarioRepository.existsById(saved.getId());
+        if (!exists) {
+            log.error("[OAuth] ❌ ERROR CRÍTICO: Usuario NO existe en DB después de save+flush!");
+            throw new RuntimeException("Error al persistir usuario OAuth");
+        }
+        
+        log.info("[OAuth] ✓ Verificación exitosa - Usuario persiste en DB");
+        return saved;
     }
 
     /**
