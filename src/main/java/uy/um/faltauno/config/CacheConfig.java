@@ -34,10 +34,10 @@ import java.time.Duration;
 @EnableCaching
 public class CacheConfig {
 
-    @Value("${SPRING_REDIS_HOST:10.128.0.2}")
+    @Value("${spring.redis.host:localhost}")
     private String redisHost;
 
-    @Value("${SPRING_REDIS_PORT:6379}")
+    @Value("${spring.redis.port:6379}")
     private int redisPort;
 
     @Bean
