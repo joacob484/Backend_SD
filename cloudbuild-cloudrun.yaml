@@ -91,6 +91,7 @@ steps:
             --set-env-vars="SPRING_DATASOURCE_NAME=${_SPRING_DATASOURCE_NAME}" \
             --set-env-vars="SPRING_CLOUDSQL_INSTANCE=${_CLOUDSQL_INSTANCE}" \
             --set-env-vars="SPRING_REDIS_HOST=${_REDIS_HOST}" \
+            --set-env-vars="SPRING_REDIS_PORT=${_REDIS_PORT}" \
             --set-env-vars="REDIS_HOST=${_REDIS_HOST}" \
             --set-env-vars="POSTGRES_HOST=${_POSTGRES_HOST}" \
             --set-env-vars="GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}" \
@@ -184,6 +185,7 @@ steps:
             --set-env-vars="SPRING_DATASOURCE_NAME=${_SPRING_DATASOURCE_NAME}" \
             --set-env-vars="SPRING_CLOUDSQL_INSTANCE=${_CLOUDSQL_INSTANCE}" \
             --set-env-vars="SPRING_REDIS_HOST=${_REDIS_HOST}" \
+            --set-env-vars="SPRING_REDIS_PORT=${_REDIS_PORT}" \
             --set-env-vars="REDIS_HOST=${_REDIS_HOST}" \
             --set-env-vars="POSTGRES_HOST=${_POSTGRES_HOST}" \
             --set-env-vars="GCP_PUBSUB_ENABLED=${_GCP_PUBSUB_ENABLED}" \
@@ -235,6 +237,7 @@ images:
 
 substitutions:
   _REDIS_HOST: "10.217.135.172"  # faltauno-redis instance IP
+  _REDIS_PORT: "6379"
   _POSTGRES_HOST: "postgres"
   _CLOUDSQL_INSTANCE: "master-might-274420:us-central1:faltauno-db"
   _SPRING_DATASOURCE_USERNAME: "app"

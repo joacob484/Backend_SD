@@ -39,11 +39,13 @@ spring:
     host: ${SPRING_REDIS_HOST:localhost}
     port: ${SPRING_REDIS_PORT:6379}
     timeout: 2000ms
+    connect-timeout: 2000ms
     lettuce:
       pool:
         max-active: 8
         max-idle: 8
         min-idle: 2
+      shutdown-timeout: 100ms
 
   flyway:
     enabled: true
@@ -56,7 +58,7 @@ spring:
     type: redis
     redis:
       cache-null-values: false
-      time-to-live: 600s  # 10 minutos (con unidad)
+      time-to-live: 600s  # 10 minutos
 
   data:
     redis:
