@@ -88,6 +88,26 @@ public class InscripcionService {
         log.info("[InscripcionService] ✅ Inscripción creada exitosamente: id={}, estado=PENDIENTE", 
                 guardada.getId());
 
+        // Notificar al organizador sobre la nueva solicitud
+        try {
+            Usuario solicitante = usuarioRepository.findById(usuarioId)
+                    .orElseThrow(() -> new IllegalArgumentException("Usuario solicitante no encontrado"));
+            
+            notificacionService.notificarNuevaSolicitudInscripcion(
+                    partido.getOrganizador().getId(),
+                    usuarioId,
+                    solicitante.getNombre(),
+                    partidoId,
+                    partido.getNombreUbicacion()
+            );
+            
+            log.info("[InscripcionService] 📧 Notificación enviada al organizador: organizadorId={}", 
+                    partido.getOrganizador().getId());
+        } catch (Exception e) {
+            log.error("[InscripcionService] ⚠️ Error al enviar notificación al organizador", e);
+            // No fallar el flujo principal si falla la notificación
+        }
+
         return inscripcionMapper.toDTO(guardada);
     }
 

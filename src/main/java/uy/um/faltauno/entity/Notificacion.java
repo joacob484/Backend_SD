@@ -107,6 +107,7 @@ public class Notificacion {
         AMISTAD_ACEPTADA,
         INSCRIPCION_ACEPTADA,
         INSCRIPCION_RECHAZADA,
+        NUEVA_SOLICITUD,
         PARTIDO_CANCELADO,
         PARTIDO_COMPLETADO,
         JUGADOR_UNIDO,

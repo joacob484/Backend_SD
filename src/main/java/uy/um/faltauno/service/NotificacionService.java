@@ -217,6 +217,20 @@ public class NotificacionService {
     }
 
     @Transactional
+    public void notificarNuevaSolicitudInscripcion(UUID organizadorId, UUID solicitanteId, String nombreSolicitante, UUID partidoId, String nombrePartido) {
+        crearNotificacion(
+                organizadorId,
+                Notificacion.TipoNotificacion.NUEVA_SOLICITUD,
+                "Nueva solicitud de inscripción",
+                nombreSolicitante + " quiere unirse a " + nombrePartido,
+                partidoId,
+                "PARTIDO",
+                "/matches/" + partidoId + "/manage",
+                Notificacion.Prioridad.ALTA
+        );
+    }
+
+    @Transactional
     public void notificarInscripcionAceptada(UUID usuarioId, UUID partidoId, String nombrePartido) {
         crearNotificacion(
                 usuarioId,
