@@ -300,6 +300,65 @@ public class UsuarioController {
         }
     }
 
+    /**
+     * Verificar si existe un usuario eliminado recuperable (dentro de 30 días)
+     * GET /api/usuarios/check-deleted?email=user@example.com
+     * 
+     * Response: { "success": true, "data": { "canRecover": true }, "message": "..." }
+     */
+    @GetMapping(path = "/check-deleted", produces = "application/json")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Boolean>>> checkDeletedUser(
+            @RequestParam String email) {
+        
+        boolean canRecover = usuarioService.hasRecoverableDeletedUser(email);
+        
+        java.util.Map<String, Boolean> response = new java.util.HashMap<>();
+        response.put("canRecover", canRecover);
+        
+        String message = canRecover 
+            ? "Cuenta eliminada encontrada. Puede recuperarla dentro de los 30 días."
+            : "No existe cuenta eliminada recuperable con ese email.";
+        
+        return ResponseEntity.ok(new ApiResponse<>(response, message, true));
+    }
+
+    /**
+     * Recuperar usuario eliminado (dentro del plazo de 30 días)
+     * POST /api/usuarios/recover
+     * Body: { "email": "user@example.com" }
+     * 
+     * Response: { "success": true, "data": UsuarioDTO, "message": "Cuenta recuperada" }
+     */
+    @PostMapping(path = "/recover", produces = "application/json", consumes = "application/json")
+    public ResponseEntity<ApiResponse<UsuarioDTO>> recoverDeletedUser(
+            @RequestBody java.util.Map<String, String> body) {
+        
+        String email = body.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(null, "Email es requerido", false));
+        }
+        
+        try {
+            Usuario usuario = usuarioService.recoverDeletedUser(email);
+            UsuarioDTO dto = usuarioService.getUsuario(usuario.getId());
+            
+            return ResponseEntity.ok(new ApiResponse<>(dto, 
+                "Cuenta recuperada exitosamente. Puede iniciar sesión ahora.", true));
+                
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.GONE)  // 410 Gone
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("Error recuperando usuario: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al recuperar usuario", false));
+        }
+    }
+
     // ================================
     // Helpers
     // ================================

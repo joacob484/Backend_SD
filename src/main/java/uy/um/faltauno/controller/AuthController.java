@@ -56,6 +56,21 @@ public class AuthController {
                         .body(new ApiResponse<>(null, "La contraseña debe tener al menos 8 caracteres", false));
             }
 
+            // ✅ NUEVO: Verificar si existe usuario eliminado recuperable
+            if (usuarioService.hasRecoverableDeletedUser(email)) {
+                Map<String, String> deletedUserData = new java.util.HashMap<>();
+                deletedUserData.put("deletedUser", "true");
+                deletedUserData.put("canRecover", "true");
+                deletedUserData.put("email", email);
+                
+                return ResponseEntity.status(HttpStatus.CONFLICT)  // 409 Conflict
+                        .body(new ApiResponse<>(
+                                deletedUserData,
+                                "Ya existe una cuenta eliminada con este email. ¿Deseas recuperarla o esperar a que se elimine definitivamente?",
+                                false
+                        ));
+            }
+
             PendingRegistration preRegistro = verificationService.crearPreRegistro(email, password);
 
             log.info("[AuthController] Pre-registro creado para email: {}", email);

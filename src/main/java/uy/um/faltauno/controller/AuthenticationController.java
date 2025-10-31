@@ -39,6 +39,19 @@ public class AuthenticationController {
         }
 
         try {
+            // ✅ NUEVO: Verificar si existe usuario eliminado recuperable ANTES de autenticar
+            if (usuarioService.hasRecoverableDeletedUser(req.email())) {
+                Map<String, Object> deletedUserResponse = new HashMap<>();
+                deletedUserResponse.put("deletedUser", true);
+                deletedUserResponse.put("canRecover", true);
+                deletedUserResponse.put("email", req.email());
+                
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)  // 403 Forbidden
+                        .body(new ApiResponse<>(deletedUserResponse, 
+                            "Tu cuenta fue eliminada. ¿Deseas recuperarla o esperar a que se elimine definitivamente en 30 días?", 
+                            false));
+            }
+
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(req.email(), req.password());
 

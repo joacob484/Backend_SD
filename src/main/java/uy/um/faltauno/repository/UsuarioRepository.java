@@ -36,6 +36,18 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
     @Query("SELECT COUNT(u) FROM Usuario u WHERE u.lastActivityAt > :fecha AND u.deletedAt IS NULL")
     long countByLastActivityAtAfter(@Param("fecha") LocalDateTime fecha);
 
+    /**
+     * Buscar usuario eliminado por email (para recuperación de cuenta)
+     */
+    @Query("SELECT u FROM Usuario u WHERE u.email = :email AND u.deletedAt IS NOT NULL")
+    Optional<Usuario> findDeletedByEmail(@Param("email") String email);
+
+    /**
+     * Buscar usuarios eliminados hace más de 30 días (para cleanup físico)
+     */
+    @Query("SELECT u FROM Usuario u WHERE u.deletedAt IS NOT NULL AND u.deletedAt < :cutoffDate")
+    java.util.List<Usuario> findExpiredDeletedUsers(@Param("cutoffDate") LocalDateTime cutoffDate);
+
     interface AuthProjection {
         UUID getId();
         String getEmail();

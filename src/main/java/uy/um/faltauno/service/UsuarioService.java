@@ -354,6 +354,84 @@ public class UsuarioService {
         log.info("✅ Usuario soft-deleted: id={}, email={}", id, usuario.getEmail());
     }
 
+    /**
+     * Recuperar usuario eliminado (dentro del plazo de 30 días)
+     * 
+     * @param email Email del usuario a recuperar
+     * @throws IllegalArgumentException si no existe usuario eliminado con ese email
+     * @throws IllegalStateException si ya pasaron 30 días desde la eliminación
+     */
+    @Transactional
+    public Usuario recoverDeletedUser(String email) {
+        Usuario usuario = usuarioRepository.findDeletedByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("No existe usuario eliminado con ese email"));
+        
+        // Verificar que no hayan pasado 30 días
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
+        if (usuario.getDeletedAt().isBefore(cutoffDate)) {
+            throw new IllegalStateException("El plazo de recuperación (30 días) ha expirado. Debe crear una cuenta nueva.");
+        }
+        
+        // Restaurar cuenta: quitar marca de eliminación
+        usuario.setDeletedAt(null);
+        usuarioRepository.save(usuario);
+        
+        log.info("✅ Usuario recuperado: id={}, email={}", usuario.getId(), email);
+        return usuario;
+    }
+
+    /**
+     * Verificar si existe un usuario eliminado recuperable
+     * 
+     * @param email Email a verificar
+     * @return true si existe y está dentro del plazo de 30 días
+     */
+    @Transactional(readOnly = true)
+    public boolean hasRecoverableDeletedUser(String email) {
+        Optional<Usuario> deletedUser = usuarioRepository.findDeletedByEmail(email);
+        if (deletedUser.isEmpty()) {
+            return false;
+        }
+        
+        // Verificar que no hayan pasado 30 días
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
+        return deletedUser.get().getDeletedAt().isAfter(cutoffDate);
+    }
+
+    /**
+     * Cleanup: eliminar físicamente usuarios eliminados hace más de 30 días.
+     * Ejecutado automáticamente por scheduled task.
+     * 
+     * @return Cantidad de usuarios eliminados físicamente
+     */
+    @Transactional
+    public int cleanupExpiredDeletedUsers() {
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
+        java.util.List<Usuario> expiredUsers = usuarioRepository.findExpiredDeletedUsers(cutoffDate);
+        
+        if (expiredUsers.isEmpty()) {
+            log.debug("🧹 Cleanup: No hay usuarios eliminados expirados");
+            return 0;
+        }
+        
+        log.info("🧹 Cleanup: Eliminando físicamente {} usuarios expirados (eliminados hace >30 días)", expiredUsers.size());
+        
+        // Eliminar físicamente cada usuario
+        for (Usuario user : expiredUsers) {
+            try {
+                log.info("🗑️ Eliminando físicamente: id={}, email={}, deletedAt={}", 
+                         user.getId(), user.getEmail(), user.getDeletedAt());
+                usuarioRepository.delete(user);
+            } catch (Exception e) {
+                // Si falla por foreign keys, loggear pero continuar
+                log.warn("⚠️ No se pudo eliminar usuario {}: {}", user.getId(), e.getMessage());
+            }
+        }
+        
+        log.info("✅ Cleanup completado: {} usuarios eliminados físicamente", expiredUsers.size());
+        return expiredUsers.size();
+    }
+
     @Transactional
     /**
      * Crea o actualiza un usuario desde Google OAuth.
