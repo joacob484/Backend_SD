@@ -21,6 +21,11 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
      * Contar usuarios registrados después de una fecha
      */
     long countByCreatedAtAfter(LocalDateTime fecha);
+    
+    /**
+     * Contar usuarios activos después de una fecha (para calcular "Usuarios activos ahora")
+     */
+    long countByLastActivityAtAfter(LocalDateTime fecha);
 
     interface AuthProjection {
         UUID getId();

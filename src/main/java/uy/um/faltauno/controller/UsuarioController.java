@@ -22,6 +22,8 @@ import uy.um.faltauno.dto.ApiResponse;
 import uy.um.faltauno.dto.PerfilDTO;
 import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.entity.Usuario;
+import uy.um.faltauno.repository.UsuarioRepository;
+import uy.um.faltauno.repository.PartidoRepository;
 import uy.um.faltauno.service.UsuarioService;
 import uy.um.faltauno.service.ReviewService;
 
@@ -41,6 +43,8 @@ public class UsuarioController {
     private final ReviewService reviewService;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final UsuarioRepository usuarioRepository;
+    private final PartidoRepository partidoRepository;
 
     // ================================
     // Registro con auto-login y JWT
@@ -398,4 +402,36 @@ public class UsuarioController {
                     .body(new ApiResponse<>(null, "Error al obtener reviews pendientes", false));
         }
     }
+    
+    /**
+     * Obtener estadísticas de la plataforma
+     * GET /api/usuarios/stats
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getStats() {
+        try {
+            Map<String, Object> stats = new java.util.HashMap<>();
+            
+            // Total de usuarios registrados
+            long totalUsers = usuarioRepository.count();
+            stats.put("totalUsuarios", totalUsers);
+            
+            // Usuarios activos en los últimos 15 minutos
+            java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().minusMinutes(15);
+            long activeUsers = usuarioRepository.countByLastActivityAtAfter(cutoff);
+            stats.put("usuariosActivos", activeUsers);
+            
+            // Total de partidos
+            long totalMatches = partidoRepository.count();
+            stats.put("totalPartidos", totalMatches);
+            
+            return ResponseEntity.ok(new ApiResponse<>(stats, "Estadísticas de la plataforma", true));
+            
+        } catch (Exception e) {
+            log.error("Error obteniendo estadísticas", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al obtener estadísticas", false));
+        }
+    }
+}
 }

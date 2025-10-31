@@ -86,6 +86,13 @@ public class Usuario {
     @Column(name = "verification_code_expires_at")
     private LocalDateTime verificationCodeExpiresAt;
 
+    /**
+     * Última actividad del usuario (actualizada en cada request autenticado)
+     * Permite calcular "Usuarios activos ahora" en tiempo real
+     */
+    @Column(name = "last_activity_at")
+    private LocalDateTime lastActivityAt;
+
     // Preferencias de notificaciones por email
     @Column(name = "notif_email_invitaciones")
     @Builder.Default
