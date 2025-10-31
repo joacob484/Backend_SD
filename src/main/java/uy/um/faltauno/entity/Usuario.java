@@ -57,6 +57,16 @@ public class Usuario {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Versión del token JWT para invalidación masiva.
+     * Se incrementa cada vez que se necesita invalidar todos los tokens del usuario
+     * (cambio de contraseña, compromiso de seguridad, etc.)
+     * Estándar de la industria para token management.
+     */
+    @Column(name = "token_version", nullable = false)
+    @Builder.Default
+    private Integer tokenVersion = 1;
+
     // Preferencias de notificaciones por email
     @Column(name = "notif_email_invitaciones")
     @Builder.Default

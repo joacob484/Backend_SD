@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final uy.um.faltauno.repository.UsuarioRepository usuarioRepository;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -62,6 +63,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Extraer información del token
             String email = jwtUtil.extractEmail(token);
             UUID userId = jwtUtil.extractUserId(token);
+            Integer tokenVersion = jwtUtil.extractTokenVersion(token);
             
             if (email == null) {
                 log.warn("❌ JWT token without email (subject) for: {}", path);
@@ -73,6 +75,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.warn("❌ JWT token without userId claim for: {}", path);
                 filterChain.doFilter(request, response);
                 return;
+            }
+            
+            // ✅ ESTÁNDAR INDUSTRIA: Validar tokenVersion contra DB
+            if (tokenVersion != null) {
+                var userOpt = usuarioRepository.findById(userId);
+                if (userOpt.isPresent()) {
+                    var user = userOpt.get();
+                    if (!tokenVersion.equals(user.getTokenVersion())) {
+                        log.warn("❌ Token version mismatch for user {}: token={}, db={}", 
+                                userId, tokenVersion, user.getTokenVersion());
+                        log.warn("   Token was invalidated (password change, security issue, etc.)");
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+                } else {
+                    log.warn("❌ User {} not found in database", userId);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+            } else {
+                // Tokens viejos sin tokenVersion: permitir pero loggear warning
+                log.warn("⚠️ Token without version for user {} - consider refreshing", userId);
             }
 
             // Si ya hay autenticación en el contexto, no sobrescribir

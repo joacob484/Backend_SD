@@ -61,8 +61,8 @@ public class UsuarioController {
 
                 Usuario usuario = usuarioService.findByEmail(dto.getEmail());
                 if (usuario != null) {
-                    token = jwtUtil.generateToken(usuario.getId(), usuario.getEmail());
-                    log.info("Usuario {} registrado y autenticado con JWT", dto.getEmail());
+                    token = jwtUtil.generateToken(usuario.getId(), usuario.getEmail(), usuario.getTokenVersion());
+                    log.info("Usuario {} registrado y autenticado con JWT (tokenVersion: {})", dto.getEmail(), usuario.getTokenVersion());
                 }
             } catch (Exception authEx) {
                 log.warn("Auto-login falló para {}: {}", dto.getEmail(), authEx.getMessage());
@@ -223,7 +223,7 @@ public class UsuarioController {
         }
 
         Usuario updated = usuarioService.marcarCedula(usuarioId, cedula);
-        String newToken = jwtUtil.generateToken(updated.getId(), updated.getEmail());
+        String newToken = jwtUtil.generateToken(updated.getId(), updated.getEmail(), updated.getTokenVersion());
 
         // Actualizar Authentication
         try {

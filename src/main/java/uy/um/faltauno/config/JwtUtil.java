@@ -35,21 +35,36 @@ public class JwtUtil {
     }
 
     /**
-     * Genera un token JWT para un usuario.
-     * @param userId UUID del usuario (se convierte a String internamente)
+     * Genera un token JWT para un usuario con token versioning.
+     * @param userId UUID del usuario
      * @param email Email del usuario (usado como subject)
+     * @param tokenVersion Versión actual del token del usuario
      * @return Token JWT firmado
      */
-    public String generateToken(UUID userId, String email) {
+    public String generateToken(UUID userId, String email, Integer tokenVersion) {
         Date now = new Date();
+        String jti = UUID.randomUUID().toString(); // JWT ID único por token
+        
         return Jwts.builder()
                 .subject(email) // Subject es el email (username)
                 .claim("userId", userId.toString()) // UUID como claim separado
+                .claim("tokenVersion", tokenVersion) // Versión del token (CRÍTICO)
+                .claim("jti", jti) // ID único del token
                 .claim("roles", List.of("ROLE_USER"))
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + EXPIRATION_TIME))
                 .signWith(getSigningKey())
                 .compact();
+    }
+    
+    /**
+     * Genera un token JWT para un usuario (backwards compatible).
+     * @param userId UUID del usuario (se convierte a String internamente)
+     * @param email Email del usuario (usado como subject)
+     * @return Token JWT firmado
+     */
+    public String generateToken(UUID userId, String email) {
+        return generateToken(userId, email, 1); // Default version 1
     }
 
     /**
@@ -88,6 +103,34 @@ public class JwtUtil {
             }
         }
         return null;
+    }
+    
+    /**
+     * Extrae la versión del token (CRÍTICO para invalidación).
+     * @param token Token JWT
+     * @return Versión del token, o null si no existe
+     */
+    public Integer extractTokenVersion(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            return claims.get("tokenVersion", Integer.class);
+        } catch (Exception e) {
+            return null; // Tokens viejos sin versión
+        }
+    }
+    
+    /**
+     * Extrae el JWT ID único del token.
+     * @param token Token JWT
+     * @return JTI (JWT ID), o null si no existe
+     */
+    public String extractJti(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            return claims.get("jti", String.class);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
