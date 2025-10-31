@@ -93,6 +93,14 @@ public class Usuario {
     @Column(name = "last_activity_at")
     private LocalDateTime lastActivityAt;
 
+    /**
+     * Soft delete: fecha y hora de eliminación lógica del usuario.
+     * NULL = usuario activo, NOT NULL = usuario eliminado.
+     * Permite preservar integridad referencial y auditoría.
+     */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     // Preferencias de notificaciones por email
     @Column(name = "notif_email_invitaciones")
     @Builder.Default

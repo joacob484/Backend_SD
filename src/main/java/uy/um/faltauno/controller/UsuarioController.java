@@ -284,8 +284,20 @@ public class UsuarioController {
 
     @DeleteMapping(path = "/{id}", produces = "application/json")
     public ResponseEntity<ApiResponse<Void>> deleteUsuario(@PathVariable UUID id) {
-        usuarioService.deleteUsuario(id);
-        return ResponseEntity.ok(new ApiResponse<>(null, "Usuario eliminado", true));
+        try {
+            usuarioService.deleteUsuario(id);
+            return ResponseEntity.ok(new ApiResponse<>(null, "Usuario eliminado correctamente", true));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("Error eliminando usuario: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al eliminar usuario", false));
+        }
     }
 
     // ================================

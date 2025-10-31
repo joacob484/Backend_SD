@@ -340,7 +340,18 @@ public class UsuarioService {
 
     @Transactional
     public void deleteUsuario(UUID id) {
-        usuarioRepository.deleteById(id);
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        if (usuario.getDeletedAt() != null) {
+            throw new IllegalStateException("Usuario ya eliminado");
+        }
+        
+        // Soft delete: marcar como eliminado sin borrar físicamente
+        usuario.setDeletedAt(LocalDateTime.now());
+        usuarioRepository.save(usuario);
+        
+        log.info("✅ Usuario soft-deleted: id={}, email={}", id, usuario.getEmail());
     }
 
     @Transactional
