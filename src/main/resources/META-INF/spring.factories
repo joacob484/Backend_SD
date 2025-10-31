@@ -1,0 +1,7 @@
+# Deshabilitar CloudSqlEnvironmentPostProcessor que causa IllegalAccessError
+# con Cloud SQL Socket Factory 1.22.0
+# Usamos configuración manual en application.yaml con socketFactory en JDBC URL
+org.springframework.boot.env.EnvironmentPostProcessor=
+
+# Nota: Línea vacía intencional para deshabilitar TODOS los EnvironmentPostProcessors
+# de spring-cloud-gcp-autoconfigure (si estuvieran presentes)
