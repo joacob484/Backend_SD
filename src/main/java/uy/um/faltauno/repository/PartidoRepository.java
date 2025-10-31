@@ -58,4 +58,10 @@ public interface PartidoRepository extends JpaRepository<Partido, UUID>, JpaSpec
      */
     @Query("SELECT COUNT(p) FROM Partido p WHERE p.fecha >= :fechaInicio AND p.fecha < :fechaFin")
     long countPartidosEntreFechas(@Param("fechaInicio") LocalDate fechaInicio, @Param("fechaFin") LocalDate fechaFin);
+    
+    /**
+     * Contar usuarios distintos que organizaron partidos desde una fecha
+     */
+    @Query("SELECT COUNT(DISTINCT p.organizador.id) FROM Partido p WHERE p.fecha >= :fechaDesde")
+    long countDistinctOrganizadorByFechaGreaterThanEqual(@Param("fechaDesde") LocalDate fechaDesde);
 }

@@ -20,18 +20,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
     /**
      * Contar usuarios registrados después de una fecha
      */
-    long countByFechaRegistroAfter(LocalDateTime fecha);
-    
-    /**
-     * Contar usuarios activos (que participaron en al menos un partido desde una fecha)
-     */
-    @Query("""
-        SELECT COUNT(DISTINCT u.id) 
-        FROM Usuario u 
-        JOIN u.partidosJugados p 
-        WHERE p.fecha >= :fechaDesde
-    """)
-    long countUsuariosActivosDesde(@Param("fechaDesde") LocalDateTime fechaDesde);
+    long countByCreatedAtAfter(LocalDateTime fecha);
 
     interface AuthProjection {
         UUID getId();

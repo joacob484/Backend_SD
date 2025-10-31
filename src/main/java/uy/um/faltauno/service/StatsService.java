@@ -43,12 +43,13 @@ public class StatsService {
 
             // Usuarios activos (con al menos 1 partido en los últimos 30 días)
             LocalDateTime hace30Dias = LocalDateTime.now().minus(30, ChronoUnit.DAYS);
-            long usuariosActivos = usuarioRepository.countUsuariosActivosDesde(hace30Dias);
+            // Contar usuarios que organizaron partidos recientes
+            long usuariosActivos = partidoRepository.countDistinctOrganizadorByFechaGreaterThanEqual(hace30Dias.toLocalDate());
             stats.put("activeUsers", usuariosActivos);
 
             // Nuevos miembros (registrados en los últimos 7 días)
             LocalDateTime hace7Dias = LocalDateTime.now().minus(7, ChronoUnit.DAYS);
-            long nuevosMiembros = usuarioRepository.countByFechaRegistroAfter(hace7Dias);
+            long nuevosMiembros = usuarioRepository.countByCreatedAtAfter(hace7Dias);
             stats.put("newMembers", nuevosMiembros);
 
             // Total de partidos
