@@ -116,7 +116,8 @@ public class EmailService {
             
             case PARTIDO_CANCELADO, PARTIDO_COMPLETADO, INSCRIPCION_ACEPTADA, 
                  INSCRIPCION_RECHAZADA, JUGADOR_SALIO, PARTIDO_PROXIMO, 
-                 INVITACION_ACEPTADA, INVITACION_RECHAZADA -> 
+                 INVITACION_ACEPTADA, INVITACION_RECHAZADA, JUGADOR_UNIDO,
+                 NUEVA_SOLICITUD -> 
                 usuario.getNotifEmailActualizacionesPartido() != null && usuario.getNotifEmailActualizacionesPartido();
             
             case REVIEW_PENDIENTE -> 
@@ -125,7 +126,7 @@ public class EmailService {
             case NUEVO_MENSAJE -> 
                 usuario.getNotifEmailNuevosMensajes() != null && usuario.getNotifEmailNuevosMensajes();
             
-            case JUGADOR_UNIDO -> 
+            default -> 
                 usuario.getNotifEmailGenerales() != null && usuario.getNotifEmailGenerales();
         };
     }
@@ -257,6 +258,8 @@ public class EmailService {
             case NUEVO_MENSAJE -> "💬";
             case PARTIDO_PROXIMO -> "⏰";
             case INVITACION_ACEPTADA, INVITACION_RECHAZADA -> "📩";
+            case NUEVA_SOLICITUD -> "🔔";
+            default -> "ℹ️";
         };
     }
 
@@ -271,7 +274,8 @@ public class EmailService {
             case INSCRIPCION_RECHAZADA, INVITACION_RECHAZADA, PARTIDO_CANCELADO, JUGADOR_SALIO -> "#ef4444"; // Rojo
             case PARTIDO_COMPLETADO, REVIEW_PENDIENTE -> "#f59e0b"; // Naranja
             case NUEVO_MENSAJE -> "#8b5cf6"; // Púrpura
-            case JUGADOR_UNIDO -> "#06b6d4"; // Cyan
+            case JUGADOR_UNIDO, NUEVA_SOLICITUD -> "#06b6d4"; // Cyan
+            default -> "#6b7280"; // Gris
         };
     }
 
@@ -286,7 +290,8 @@ public class EmailService {
             case INSCRIPCION_RECHAZADA, INVITACION_RECHAZADA, PARTIDO_CANCELADO, JUGADOR_SALIO -> "#dc2626";
             case PARTIDO_COMPLETADO, REVIEW_PENDIENTE -> "#d97706";
             case NUEVO_MENSAJE -> "#7c3aed";
-            case JUGADOR_UNIDO -> "#0891b2";
+            case JUGADOR_UNIDO, NUEVA_SOLICITUD -> "#0891b2";
+            default -> "#4b5563";
         };
     }
 
@@ -391,5 +396,125 @@ public class EmailService {
             </body>
             </html>
             """.formatted(usuario.getNombre(), frontendUrl, frontendUrl);
+    }
+
+    /**
+     * Enviar código de verificación de email
+     */
+    @Async
+    public void enviarCodigoVerificacion(
+            String email,
+            String nombre,
+            String codigo,
+            int minutosExpiracion
+    ) {
+        // Verificar si el email está configurado
+        if (!isEmailConfigured()) {
+            log.debug("[EmailService] Email no configurado. Saltando envío.");
+            return;
+        }
+
+        try {
+            String asunto = "[Falta Uno] Código de verificación";
+            String cuerpoHtml = construirEmailVerificacion(nombre, codigo, minutosExpiracion);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom(fromEmail, "Falta Uno");
+            helper.setTo(email);
+            helper.setSubject(asunto);
+            helper.setText(cuerpoHtml, true);
+
+            mailSender.send(mimeMessage);
+            
+            log.info("[EmailService] ✅ Código de verificación enviado a {}", email);
+
+        } catch (MessagingException e) {
+            log.error("[EmailService] ❌ Error enviando código de verificación a {}: {}", email, e.getMessage());
+            throw new RuntimeException("Error al enviar el código de verificación", e);
+        } catch (Exception e) {
+            log.error("[EmailService] ❌ Error inesperado enviando código: {}", e.getMessage(), e);
+            throw new RuntimeException("Error al enviar el código de verificación", e);
+        }
+    }
+
+    /**
+     * Construir HTML para email de verificación
+     */
+    private String construirEmailVerificacion(String nombre, String codigo, int minutosExpiracion) {
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+                <table width="100%%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+                    <tr>
+                        <td align="center">
+                            <table width="600" cellpadding="0" cellspacing="0" style="background-color: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden;">
+                                <!-- Header -->
+                                <tr>
+                                    <td style="background: linear-gradient(135deg, #16a34a 0%%, #15803d 100%%); padding: 40px 32px; text-align: center;">
+                                        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">
+                                            ⚽ Falta Uno
+                                        </h1>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Body -->
+                                <tr>
+                                    <td style="padding: 40px 32px;">
+                                        <h2 style="color: #111; margin: 0 0 16px 0; font-size: 24px;">
+                                            ¡Hola %s! 👋
+                                        </h2>
+                                        <p style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+                                            Gracias por registrarte en <strong>Falta Uno</strong>. Para completar tu registro, 
+                                            por favor verifica tu email ingresando el siguiente código:
+                                        </p>
+                                        
+                                        <!-- Código de verificación -->
+                                        <div style="background-color: #f8f9fa; border-radius: 12px; padding: 32px; text-align: center; margin: 24px 0;">
+                                            <p style="color: #666; font-size: 14px; margin: 0 0 12px 0; text-transform: uppercase; letter-spacing: 1px;">
+                                                Tu código de verificación
+                                            </p>
+                                            <div style="font-size: 42px; font-weight: 700; color: #16a34a; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                                                %s
+                                            </div>
+                                            <p style="color: #999; font-size: 13px; margin: 12px 0 0 0;">
+                                                ⏱️ Válido por %d minutos
+                                            </p>
+                                        </div>
+
+                                        <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 24px 0 0 0;">
+                                            Si no solicitaste este código, puedes ignorar este email de forma segura.
+                                        </p>
+
+                                        <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
+                                            <p style="color: #999; font-size: 13px; margin: 0; line-height: 1.5;">
+                                                <strong>Consejo de seguridad:</strong> Nunca compartas este código con nadie. 
+                                                Nuestro equipo jamás te pedirá tu código de verificación.
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Footer -->
+                                <tr>
+                                    <td style="background-color: #f8f9fa; padding: 24px; text-align: center; border-radius: 0 0 12px 12px;">
+                                        <p style="color: #999; font-size: 13px; margin: 0;">
+                                            © 2025 Falta Uno. Nos vemos en la cancha! ⚽
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+            """.formatted(nombre, codigo, minutosExpiracion);
     }
 }

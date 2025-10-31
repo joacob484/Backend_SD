@@ -91,4 +91,13 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, UUID> 
     // Métodos derivados de Spring Data JPA - usan el enum directamente
     List<Inscripcion> findByUsuario_IdAndEstado(UUID usuarioId, Inscripcion.EstadoInscripcion estado);
     List<Inscripcion> findByPartido_IdAndEstado(UUID partidoId, Inscripcion.EstadoInscripcion estado);
+    
+    /**
+     * Contar usuarios únicos que participaron en partidos desde una fecha
+     * Incluye tanto organizadores como jugadores ACEPTADOS
+     */
+    @Query("SELECT COUNT(DISTINCT i.usuario.id) FROM Inscripcion i " +
+           "WHERE i.partido.fecha >= :fechaDesde " +
+           "AND i.estado = 'ACEPTADO'")
+    long countDistinctUsuariosActivosDesde(@Param("fechaDesde") java.time.LocalDate fechaDesde);
 }

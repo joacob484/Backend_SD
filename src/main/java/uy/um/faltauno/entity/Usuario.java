@@ -67,6 +67,25 @@ public class Usuario {
     @Builder.Default
     private Integer tokenVersion = 1;
 
+    /**
+     * Indicador de si el email ha sido verificado
+     */
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private Boolean emailVerified = false;
+
+    /**
+     * Código de verificación de email (6 dígitos)
+     */
+    @Column(name = "verification_code", length = 6)
+    private String verificationCode;
+
+    /**
+     * Fecha de expiración del código de verificación
+     */
+    @Column(name = "verification_code_expires_at")
+    private LocalDateTime verificationCodeExpiresAt;
+
     // Preferencias de notificaciones por email
     @Column(name = "notif_email_invitaciones")
     @Builder.Default

@@ -42,10 +42,10 @@ public class StatsService {
             long totalUsuarios = usuarioRepository.count();
             stats.put("totalUsers", totalUsuarios);
 
-            // Usuarios activos (con al menos 1 partido en los últimos 30 días)
+            // Usuarios activos (registrados en los últimos 30 días como proxy de actividad)
+            // En el futuro: implementar tracking de last_activity_at para métrica más precisa
             LocalDateTime hace30Dias = LocalDateTime.now().minus(30, ChronoUnit.DAYS);
-            // Contar usuarios que organizaron partidos recientes
-            long usuariosActivos = partidoRepository.countDistinctOrganizadorByFechaGreaterThanEqual(hace30Dias.toLocalDate());
+            long usuariosActivos = usuarioRepository.countByCreatedAtAfter(hace30Dias);
             stats.put("activeUsers", usuariosActivos);
 
             // Nuevos miembros (registrados en los últimos 7 días)

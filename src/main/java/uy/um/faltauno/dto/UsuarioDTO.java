@@ -28,12 +28,22 @@ public class UsuarioDTO {
     @JsonProperty("perfilCompleto")
     private Boolean perfilCompleto;
     
+    @JsonProperty("emailVerified")
+    private Boolean emailVerified;
+    
     /**
      * Password solo para recepción en registro/login.
      * WRITE_ONLY previene que sea serializado en respuestas JSON.
      */
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
+
+    /**
+     * Código de verificación de email (solo para recepción).
+     * WRITE_ONLY previene que sea serializado en respuestas JSON.
+     */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String verificationCode;
 
      /**
      * Calcula si el perfil está completo basándose en los campos requeridos.
