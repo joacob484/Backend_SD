@@ -211,6 +211,21 @@ spring:
       on-profile: cloudrun
 
 # Perfil especial para Cloud Run - configuración optimizada
+  
+  # ✅ Deshabilitar Redis en Cloud Run (no hay instancia configurada)
+  cache:
+    type: none  # Deshabilitar cache Redis
+  
+  data:
+    redis:
+      repositories:
+        enabled: false
+  
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  
   flyway:
     enabled: true
     baseline-on-migrate: true
