@@ -106,6 +106,12 @@
       <artifactId>spring-boot-starter-data-redis</artifactId>
     </dependency>
 
+    <!-- Thymeleaf para templates HTML -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-thymeleaf</artifactId>
+    </dependency>
+
     <!-- WebSocket/STOMP -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

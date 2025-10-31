@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - Falta Uno</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .error-container {
+            background: white;
+            border-radius: 16px;
+            padding: 48px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        
+        .error-icon {
+            font-size: 72px;
+            margin-bottom: 24px;
+        }
+        
+        h1 {
+            color: #1a202c;
+            font-size: 28px;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+        
+        .error-message {
+            color: #4a5568;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        
+        .error-details {
+            color: #718096;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 32px;
+        }
+        
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 32px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        @media (max-width: 640px) {
+            .error-container {
+                padding: 32px 24px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .error-icon {
+                font-size: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <h1>Oops! Algo salió mal</h1>
+        <p class="error-message" th:text="${errorMessage}">Ha ocurrido un error</p>
+        <p class="error-details" th:text="${errorDetails}">Por favor, intenta nuevamente</p>
+        <a href="https://faltauno-frontend-169771742214.us-central1.run.app/login" class="button">
+            Volver al inicio
+        </a>
+    </div>
+</body>
+</html>
