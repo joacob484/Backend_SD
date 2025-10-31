@@ -347,11 +347,26 @@ public class UsuarioService {
             throw new IllegalStateException("Usuario ya eliminado");
         }
         
-        // Soft delete: marcar como eliminado sin borrar físicamente
+        // 1️⃣ Cancelar todos los partidos que organiza el usuario
+        java.util.List<Partido> partidosOrganizados = partidoRepository.findByOrganizador_Id(id);
+        int partidosCancelados = 0;
+        for (Partido partido : partidosOrganizados) {
+            // Solo cancelar partidos activos o abiertos
+            if ("ABIERTO".equals(partido.getEstado()) || "ACTIVO".equals(partido.getEstado())) {
+                partido.setEstado("CANCELADO");
+                partidoRepository.save(partido);
+                partidosCancelados++;
+                log.info("🔴 Partido cancelado (usuario eliminado): partidoId={}, tipo={}", 
+                    partido.getId(), partido.getTipoPartido());
+            }
+        }
+        
+        // 2️⃣ Soft delete: marcar usuario como eliminado
         usuario.setDeletedAt(LocalDateTime.now());
         usuarioRepository.save(usuario);
         
-        log.info("✅ Usuario soft-deleted: id={}, email={}", id, usuario.getEmail());
+        log.info("✅ Usuario soft-deleted: id={}, email={}, partidosCancelados={}", 
+            id, usuario.getEmail(), partidosCancelados);
     }
 
     /**
