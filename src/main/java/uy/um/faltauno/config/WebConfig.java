@@ -5,11 +5,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
+import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import uy.um.faltauno.interceptor.ActivityTrackingInterceptor;
 
 @Configuration
 @RequiredArgsConstructor
@@ -18,7 +18,9 @@ public class WebConfig {
     @Value("${FRONTEND_URL:http://localhost:3000}")
     private String frontendUrl;
     
-    private final ActivityTrackingInterceptor activityTrackingInterceptor;
+    // ✅ Inyectar como interfaz HandlerInterceptor (no como clase concreta)
+    // Esto permite que Spring use proxies JDK para @Async sin problemas
+    private final HandlerInterceptor activityTrackingInterceptor;
 
     @Bean
     public WebMvcConfigurer webMvcConfigurer() {

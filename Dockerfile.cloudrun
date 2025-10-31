@@ -51,16 +51,16 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 EXPOSE 8080
 
 # Optimized JVM flags for Cloud Run
-# - Xms512m/Xmx1536m: Memory limits for Cloud Run
-# - UseContainerSupport: Respect container memory limits
-# - MaxRAMPercentage: Use up to 75% of container RAM
+# - InitialRAMPercentage/MaxRAMPercentage: Auto-size based on container memory
+# - UseContainerSupport: Respect container limits
+# - Faster startup flags
 CMD ["sh", "-c", "exec java \
-    -Xms512m \
-    -Xmx1536m \
     -XX:+UseContainerSupport \
+    -XX:InitialRAMPercentage=50.0 \
     -XX:MaxRAMPercentage=75.0 \
     -XX:+UseG1GC \
-    -XX:+OptimizeStringConcat \
+    -XX:+TieredCompilation \
+    -XX:TieredStopAtLevel=1 \
     -Djava.security.egd=file:/dev/./urandom \
-    -jar /app/app.jar \
-    --server.port=${PORT:-8080}"]
+    -Dspring.profiles.active=cloudrun \
+    -jar /app/app.jar"]

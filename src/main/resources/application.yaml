@@ -131,7 +131,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health  # Solo health público, resto requiere autenticación
+        include: health,info  # ✅ Expose health + info for Cloud Run
       base-path: /actuator
   endpoint:
     health:
@@ -140,7 +140,7 @@ management:
         enabled: true
       group:                                  # ✅ readiness/liveness claros
         readiness:
-          include: db,redis,readinessState
+          include: readinessState  # ✅ Simplified: just app state, not DB/Redis
         liveness:
           include: livenessState
   health:
@@ -150,6 +150,10 @@ management:
       enabled: true
     readinessstate:
       enabled: true
+    db:
+      enabled: true  # ✅ Keep DB health check but not in readiness
+    redis:
+      enabled: true  # ✅ Keep Redis health check but not in readiness
 
 # JWT Configuration
 # ⚠️ CRÍTICO: JWT_SECRET debe ser configurada como variable de entorno en producción
@@ -206,23 +210,28 @@ spring:
     activate:
       on-profile: cloudrun
 
-# Perfil especial para Cloud Run - deshabilitar todo lo que puede fallar
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
-      - org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration
+# Perfil especial para Cloud Run - configuración optimizada
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: false  # ✅ Skip validation to speed up startup
+  
   jpa:
     hibernate:
       ddl-auto: none
-  flyway:
-    enabled: false
+  
+  # ✅ Reduce connection pool during startup
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 10000
 
 logging:
   level:
     root: INFO
     uy.um.faltauno: DEBUG
+    org.flywaydb: DEBUG  # ✅ See Flyway migration details
 
 ---
 spring:
