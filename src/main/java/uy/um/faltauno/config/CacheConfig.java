@@ -1,4 +1,4 @@
-﻿package uy.um.faltauno.config;
+package uy.um.faltauno.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.cache.annotation.CachingConfigurer;
