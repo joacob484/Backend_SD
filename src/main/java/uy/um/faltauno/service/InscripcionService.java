@@ -230,11 +230,18 @@ public class InscripcionService {
                 nombrePartido
         );
 
+        // ⚠️ YA NO SE CONFIRMA AUTOMÁTICAMENTE
+        // El organizador debe confirmar manualmente aunque se llenen los cupos
         long nuevosJugadores = jugadoresAceptados + 1;
         if (nuevosJugadores >= partido.getCantidadJugadores()) {
-            log.info("[InscripcionService] Partido completo, cambiando estado a CONFIRMADO");
-            partido.setEstado("CONFIRMADO");
-            partidoRepository.save(partido);
+            log.info("[InscripcionService] ⚽ Partido completo ({}/{}), esperando confirmación del organizador", 
+                    nuevosJugadores, partido.getCantidadJugadores());
+            // Notificar al organizador que puede confirmar
+            notificacionService.notificarPartidoListo(
+                    partido.getOrganizador().getId(),
+                    partido.getId(),
+                    nombrePartido
+            );
         }
 
         return inscripcionMapper.toDTO(aceptada);

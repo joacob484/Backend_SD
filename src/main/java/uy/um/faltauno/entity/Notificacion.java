@@ -110,6 +110,7 @@ public class Notificacion {
         NUEVA_SOLICITUD,
         PARTIDO_CANCELADO,
         PARTIDO_CONFIRMADO,
+        PARTIDO_LISTO,
         PARTIDO_COMPLETADO,
         JUGADOR_UNIDO,
         JUGADOR_SALIO,

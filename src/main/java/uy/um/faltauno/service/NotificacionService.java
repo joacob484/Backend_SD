@@ -307,6 +307,20 @@ public class NotificacionService {
     }
 
     @Transactional
+    public void notificarPartidoListo(UUID organizadorId, UUID partidoId, String nombrePartido) {
+        crearNotificacion(
+                organizadorId,
+                Notificacion.TipoNotificacion.PARTIDO_LISTO,
+                "Partido listo para confirmar",
+                "El partido " + nombrePartido + " completó todos los cupos. ¡Confírmalo para que se concrete!",
+                partidoId,
+                "PARTIDO",
+                "/my-matches/" + partidoId,
+                Notificacion.Prioridad.ALTA
+        );
+    }
+
+    @Transactional
     public void notificarJugadorEliminado(UUID usuarioId, UUID partidoId, String nombrePartido) {
         crearNotificacion(
                 usuarioId,
