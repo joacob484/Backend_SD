@@ -259,6 +259,17 @@ public class PartidoService {
             throw new SecurityException("Solo el organizador puede modificar el partido");
         }
 
+        // ✅ No permitir edición de partidos CONFIRMADOS, COMPLETADOS o CANCELADOS
+        if ("CONFIRMADO".equals(partido.getEstado())) {
+            throw new IllegalStateException("No se puede modificar un partido confirmado");
+        }
+        if ("COMPLETADO".equals(partido.getEstado())) {
+            throw new IllegalStateException("No se puede modificar un partido completado");
+        }
+        if ("CANCELADO".equals(partido.getEstado())) {
+            throw new IllegalStateException("No se puede modificar un partido cancelado");
+        }
+
         // No permitir edición si el partido ya pasó
         if (LocalDateTime.of(partido.getFecha(), partido.getHora()).isBefore(LocalDateTime.now())) {
             throw new IllegalStateException("No se puede modificar un partido que ya pasó");
@@ -322,6 +333,17 @@ public class PartidoService {
         UUID userId = getUserIdFromAuth(auth);
         if (!partido.getOrganizador().getId().equals(userId)) {
             throw new SecurityException("Solo el organizador puede cancelar el partido");
+        }
+
+        // ✅ No permitir cancelar partidos CONFIRMADOS, COMPLETADOS o ya CANCELADOS
+        if ("CONFIRMADO".equals(partido.getEstado())) {
+            throw new IllegalStateException("No se puede cancelar un partido confirmado");
+        }
+        if ("COMPLETADO".equals(partido.getEstado())) {
+            throw new IllegalStateException("No se puede cancelar un partido completado");
+        }
+        if ("CANCELADO".equals(partido.getEstado())) {
+            throw new IllegalStateException("El partido ya está cancelado");
         }
 
         // Cambiar estado a CANCELADO
@@ -388,6 +410,56 @@ public class PartidoService {
             "partidoId", id.toString(),
             "organizadorId", userId.toString(),
             "jugadoresParticipantes", String.valueOf(usuariosIds.size())
+        ));
+    }
+
+    /**
+     * Confirmar un partido manualmente (solo organizador)
+     * Permite al organizador confirmar el partido antes de que se llenen todos los cupos
+     */
+    @Transactional
+    public void confirmarPartido(UUID id, Authentication auth) {
+        Partido partido = partidoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+
+        UUID userId = getUserIdFromAuth(auth);
+        
+        // Verificar que es el organizador
+        if (!partido.getOrganizador().getId().equals(userId)) {
+            throw new SecurityException("Solo el organizador puede confirmar el partido");
+        }
+
+        // Verificar que el partido está en estado PENDIENTE
+        if (!"PENDIENTE".equals(partido.getEstado())) {
+            throw new IllegalStateException("Solo se pueden confirmar partidos pendientes");
+        }
+
+        // Cambiar estado a CONFIRMADO
+        partido.setEstado("CONFIRMADO");
+        partidoRepository.save(partido);
+        
+        log.info("Partido {} confirmado manualmente por organizador {}", id, userId);
+
+        // Notificar a todos los inscritos
+        List<Inscripcion> inscripciones = inscripcionRepository
+                .findByPartidoIdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO);
+        
+        List<UUID> usuariosIds = inscripciones.stream()
+                .map(i -> i.getUsuario().getId())
+                .collect(Collectors.toList());
+        
+        if (!usuariosIds.isEmpty()) {
+            String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
+            notificacionService.notificarPartidoConfirmado(usuariosIds, id, nombrePartido);
+            log.info("Notificaciones de confirmación enviadas a {} jugadores", usuariosIds.size());
+        }
+
+        // Publicar evento
+        publicarEvento("partidos.confirmado", Map.of(
+            "event", "PARTIDO_CONFIRMADO",
+            "partidoId", id.toString(),
+            "organizadorId", userId.toString(),
+            "jugadoresInscritos", String.valueOf(usuariosIds.size())
         ));
     }
 

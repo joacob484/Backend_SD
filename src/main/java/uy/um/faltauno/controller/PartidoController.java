@@ -206,6 +206,26 @@ public class PartidoController {
     }
 
     /**
+     * Confirmar un partido manualmente (solo organizador)
+     * Permite confirmar antes de que se llenen todos los cupos
+     */
+    @PostMapping("/{id}/confirmar")
+    public ResponseEntity<ApiResponse<Void>> confirmar(
+            @PathVariable("id") UUID id,
+            Authentication auth) {
+        try {
+            partidoService.confirmarPartido(id, auth);
+            return ResponseEntity.ok(new ApiResponse<>(null, "Partido confirmado", true));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        }
+    }
+
+    /**
      * Obtener jugadores de un partido
      */
     @GetMapping("/{id}/jugadores")

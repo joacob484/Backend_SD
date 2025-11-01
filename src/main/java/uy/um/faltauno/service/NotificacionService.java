@@ -291,6 +291,22 @@ public class NotificacionService {
     }
 
     @Transactional
+    public void notificarPartidoConfirmado(List<UUID> usuariosIds, UUID partidoId, String nombrePartido) {
+        for (UUID usuarioId : usuariosIds) {
+            crearNotificacion(
+                    usuarioId,
+                    Notificacion.TipoNotificacion.PARTIDO_CONFIRMADO,
+                    "Partido confirmado",
+                    "El partido " + nombrePartido + " ha sido confirmado por el organizador",
+                    partidoId,
+                    "PARTIDO",
+                    "/matches/" + partidoId,
+                    Notificacion.Prioridad.ALTA
+            );
+        }
+    }
+
+    @Transactional
     public void notificarJugadorEliminado(UUID usuarioId, UUID partidoId, String nombrePartido) {
         crearNotificacion(
                 usuarioId,

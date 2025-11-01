@@ -100,4 +100,10 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, UUID> 
            "WHERE i.partido.fecha >= :fechaDesde " +
            "AND i.estado = 'ACEPTADO'")
     long countDistinctUsuariosActivosDesde(@Param("fechaDesde") java.time.LocalDate fechaDesde);
+    
+    /**
+     * Contar inscripciones por partido y estado (usando String para flexibilidad)
+     */
+    @Query("SELECT COUNT(i) FROM Inscripcion i WHERE i.partido.id = :partidoId AND CAST(i.estado AS string) = :estado")
+    long countByPartidoIdAndEstado(@Param("partidoId") UUID partidoId, @Param("estado") String estado);
 }

@@ -296,6 +296,17 @@ public class InscripcionService {
 
         Partido partido = inscripcion.getPartido();
 
+        // ✅ No permitir cancelar inscripciones en partidos CONFIRMADOS, COMPLETADOS o CANCELADOS
+        if ("CONFIRMADO".equals(partido.getEstado())) {
+            throw new IllegalStateException("No puedes cancelar tu inscripción a un partido confirmado. Contacta al organizador.");
+        }
+        if ("COMPLETADO".equals(partido.getEstado())) {
+            throw new IllegalStateException("No puedes cancelar tu inscripción a un partido completado");
+        }
+        if ("CANCELADO".equals(partido.getEstado())) {
+            throw new IllegalStateException("El partido fue cancelado");
+        }
+
         LocalDateTime inicioPartido = LocalDateTime.of(partido.getFecha(), partido.getHora());
         if (inicioPartido.isBefore(LocalDateTime.now())) {
             log.warn("[InscripcionService] Partido ya pasó: fecha={} hora={}", 

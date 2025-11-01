@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import uy.um.faltauno.entity.Partido;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -64,4 +65,12 @@ public interface PartidoRepository extends JpaRepository<Partido, UUID>, JpaSpec
      */
     @Query("SELECT COUNT(DISTINCT p.organizador.id) FROM Partido p WHERE p.fecha >= :fechaDesde")
     long countDistinctOrganizadorByFechaGreaterThanEqual(@Param("fechaDesde") LocalDate fechaDesde);
+    
+    /**
+     * Buscar partidos por estado cuya fecha/hora ya pasó
+     */
+    @Query("SELECT p FROM Partido p WHERE p.estado = :estado AND " +
+           "FUNCTION('TIMESTAMP', p.fecha, p.hora) < :fechaHora")
+    List<Partido> findByEstadoAndFechaHoraBefore(@Param("estado") String estado, 
+                                                   @Param("fechaHora") LocalDateTime fechaHora);
 }
