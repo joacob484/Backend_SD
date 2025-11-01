@@ -98,6 +98,8 @@ public class DevSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowCredentials(true); // Set BEFORE patterns (workaround Spring 6.2.7 bug)
+        
         configuration.setAllowedOriginPatterns(Arrays.asList(
             "http://localhost:3000",
             "http://localhost:*",
@@ -109,7 +111,6 @@ public class DevSecurityConfig {
             "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
         ));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
         configuration.setExposedHeaders(Arrays.asList(
             "Authorization",
             "Content-Type",

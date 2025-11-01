@@ -110,6 +110,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowCredentials(true); // Set BEFORE patterns (workaround Spring 6.2.7 bug)
 
         configuration.setAllowedOriginPatterns(List.of(
             "http://localhost:*",
@@ -128,7 +129,6 @@ public class SecurityConfig {
             "Content-Type",
             "X-Requested-With"
         ));
-        configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
