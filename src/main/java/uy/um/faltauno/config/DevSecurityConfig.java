@@ -67,6 +67,7 @@ public class DevSecurityConfig {
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
+                .requestMatchers("/api/novedades").permitAll()
                 
                 // ⚠️ DEV ONLY: H2 Console y Actuator completo
                 .requestMatchers("/h2-console/**").permitAll()
