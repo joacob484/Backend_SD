@@ -301,6 +301,34 @@ public class UsuarioController {
     }
 
     /**
+     * Eliminar cuenta del usuario actual
+     * DELETE /api/usuarios/me
+     */
+    @DeleteMapping(path = "/me", produces = "application/json")
+    public ResponseEntity<ApiResponse<Void>> deleteMe() {
+        try {
+            UUID currentUserId = resolveCurrentUserId();
+            if (currentUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(null, "No autenticado", false));
+            }
+            
+            usuarioService.deleteUsuario(currentUserId);
+            return ResponseEntity.ok(new ApiResponse<>(null, "Tu cuenta ha sido eliminada correctamente", true));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("Error eliminando cuenta: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al eliminar cuenta", false));
+        }
+    }
+
+    /**
      * Verificar si existe un usuario eliminado recuperable (dentro de 30 días)
      * GET /api/usuarios/check-deleted?email=user@example.com
      * 
