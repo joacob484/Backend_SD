@@ -3,6 +3,9 @@
 # ======================================
 FROM maven:3.9.10-eclipse-temurin-21 AS builder
 
+# Set Maven options for Cloud Run build environment
+ENV MAVEN_OPTS="-Xmx3072m -XX:ReservedCodeCacheSize=512m -XX:+UseG1GC"
+
 WORKDIR /build
 
 # Copy pom.xml first (better caching)
