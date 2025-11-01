@@ -23,8 +23,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
   private final UsuarioService usuarioService;
   private final JwtUtil jwtUtil;
 
-  // Provide a sensible default so bean creation doesn't fail if the env var is missing
-  @Value("${FRONTEND_URL:http://localhost:3000}")
+  // Default a la URL de producción del frontend
+  @Value("${FRONTEND_URL:https://faltauno-frontend-169771742214.us-central1.run.app}")
   private String frontend;
 
   @Override
