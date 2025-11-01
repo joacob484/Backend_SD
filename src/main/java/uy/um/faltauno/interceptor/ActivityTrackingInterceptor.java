@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import uy.um.faltauno.config.CustomUserDetailsService.UserPrincipal;
 import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.repository.UsuarioRepository;
 
@@ -39,14 +40,12 @@ public class ActivityTrackingInterceptor implements HandlerInterceptor {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         
         // Solo para requests autenticados
-        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof String) {
-            String userId = (String) auth.getPrincipal();
+        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof UserPrincipal) {
+            UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
+            UUID userId = userPrincipal.getId();
             
-            try {
-                UUID userUuid = UUID.fromString(userId);
-                updateUserActivity(userUuid);
-            } catch (IllegalArgumentException e) {
-                log.trace("[ActivityTracking] Principal no es UUID válido: {}", userId);
+            if (userId != null) {
+                updateUserActivity(userId);
             }
         }
         
