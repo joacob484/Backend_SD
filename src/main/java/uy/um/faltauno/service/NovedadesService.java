@@ -16,8 +16,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class NovedadesService {
@@ -37,10 +35,10 @@ public class NovedadesService {
             // Obtener commits del backend con deploys exitosos
             novedades.addAll(getCommitsFromRepo("joacob484", "Backend_SD", limit, "backend"));
             
-            // Si no hay suficientes, agregar del frontend
+            // Si no hay suficientes, agregar del frontend (repo actualizado)
             if (novedades.size() < limit) {
                 int remaining = limit - novedades.size();
-                novedades.addAll(getCommitsFromRepo("joacob484", "FaltaUnoFront", remaining, "frontend"));
+                novedades.addAll(getCommitsFromRepo("augusto-leborgne", "FaltaUnoFront", remaining, "frontend"));
             }
             
         } catch (Exception e) {
