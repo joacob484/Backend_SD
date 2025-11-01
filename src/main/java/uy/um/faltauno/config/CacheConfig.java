@@ -1,4 +1,4 @@
-package uy.um.faltauno.config;
+﻿package uy.um.faltauno.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.cache.annotation.CachingConfigurer;
@@ -11,9 +11,9 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Duration;
 
 /**
- * Configuración de cache usando Caffeine (in-memory).
- * Caffeine es rápido, simple y no requiere infraestructura externa.
- * Ideal para Cloud Run donde las instancias son efímeras.
+ * ConfiguraciÃ³n de cache usando Caffeine (in-memory).
+ * Caffeine es rÃ¡pido, simple y no requiere infraestructura externa.
+ * Ideal para Cloud Run donde las instancias son efÃ­meras.
  */
 @Configuration
 @EnableCaching
@@ -26,8 +26,8 @@ public class CacheConfig implements CachingConfigurer {
     }
 
     /**
-     * Configuración de Caffeine cache manager.
-     * - maximumSize: 10,000 entradas (ajustar según memoria disponible)
+     * ConfiguraciÃ³n de Caffeine cache manager.
+     * - maximumSize: 10,000 entradas (ajustar segÃºn memoria disponible)
      * - expireAfterWrite: 10 minutos de TTL
      * - allowNullValues: false (no cachear nulls)
      */
@@ -37,14 +37,14 @@ public class CacheConfig implements CachingConfigurer {
         cacheManager.setCaffeine(Caffeine.newBuilder()
             .maximumSize(10_000)
             .expireAfterWrite(Duration.ofMinutes(10))
-            .recordStats()); // Habilitar estadísticas para monitoreo
+            .recordStats()); // Habilitar estadÃ­sticas para monitoreo
         cacheManager.setAllowNullValues(false);
         return cacheManager;
     }
 
     /**
-     * Error handler para degradación graceful.
-     * Si hay errores de cache, loguea warning pero continúa sin fallar.
+     * Error handler para degradaciÃ³n graceful.
+     * Si hay errores de cache, loguea warning pero continÃºa sin fallar.
      */
     @Override
     public CacheErrorHandler errorHandler() {
