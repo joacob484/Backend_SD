@@ -4,30 +4,29 @@
 FROM maven:3.9.10-eclipse-temurin-21 AS builder
 
 # Set Maven options for Cloud Run build environment
-ENV MAVEN_OPTS="-Xmx3072m -XX:ReservedCodeCacheSize=512m -XX:+UseG1GC"
+ENV MAVEN_OPTS="-Xmx3072m -XX:ReservedCodeCacheSize=512m -XX:+UseG1GC -Dmaven.artifact.threads=8"
 
 WORKDIR /build
 
 # Copy pom.xml first (better caching)
 COPY pom.xml .
 
-# Download dependencies only once (cached layer)
+# Download dependencies with retry and parallel downloads
 RUN echo "=== Downloading Maven dependencies ===" && \
-    mvn dependency:go-offline -B -U
+    mvn dependency:resolve dependency:resolve-plugins -B -T 2C || \
+    mvn dependency:resolve dependency:resolve-plugins -B
 
 # Copy source code
 COPY src ./src
 
-# Build application with optimizations
+# Build application with optimizations and parallel compilation
 RUN echo "=== Building application ===" && \
-    mvn clean package -DskipTests -B \
+    mvn clean package -DskipTests -B -T 2C \
     -Dproject.build.sourceEncoding=UTF-8 \
-    -Dmaven.compiler.release=21 && \
+    -Dmaven.compiler.release=21 \
+    -Dmaven.test.skip=true && \
     echo "=== Build completed ===" && \
     ls -lh target/*.jar
-
-# Verify JAR content
-RUN jar tf target/*.jar | head -20
 
 # ======================================
 # Runtime Stage - Minimal JRE for Cloud Run
