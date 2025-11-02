@@ -206,9 +206,10 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:app}
     password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
-      maximum-pool-size: 5
-      minimum-idle: 1
-      connection-timeout: 10000
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      initialization-fail-timeout: -1
 
 logging:
   level:
