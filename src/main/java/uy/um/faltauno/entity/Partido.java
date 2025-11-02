@@ -73,7 +73,7 @@ public class Partido {
 
     @Column(name = "estado", nullable = false, length = 20)
     @Builder.Default
-    private String estado = "PENDIENTE";
+    private String estado = "DISPONIBLE";
 
     @Column(name = "nivel", length = 20)
     @Builder.Default

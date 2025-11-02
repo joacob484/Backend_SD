@@ -111,7 +111,7 @@ public class StatsService {
 
             // Partidos por estado
             Map<String, Long> partidosPorEstado = new HashMap<>();
-            partidosPorEstado.put("PENDIENTE", partidoRepository.countByEstado("PENDIENTE"));
+            partidosPorEstado.put("DISPONIBLE", partidoRepository.countByEstado("DISPONIBLE"));
             partidosPorEstado.put("CONFIRMADO", partidoRepository.countByEstado("CONFIRMADO"));
             partidosPorEstado.put("EN_CURSO", partidoRepository.countByEstado("EN_CURSO"));
             partidosPorEstado.put("COMPLETADO", partidoRepository.countByEstado("COMPLETADO"));

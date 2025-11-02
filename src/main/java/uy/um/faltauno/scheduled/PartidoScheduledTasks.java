@@ -25,7 +25,7 @@ public class PartidoScheduledTasks {
 
     /**
      * Ejecuta cada 5 minutos para:
-     * 1. Cancelar partidos PENDIENTES que llegaron a su fecha/hora (independiente de cupos)
+     * 1. Cancelar partidos DISPONIBLES que llegaron a su fecha/hora (independiente de cupos)
      * 2. Completar partidos CONFIRMADOS que ya pasaron su fecha/hora
      */
     @Scheduled(fixedRate = 300000) // 5 minutos
@@ -33,12 +33,12 @@ public class PartidoScheduledTasks {
     public void procesarPartidosVencidos() {
         LocalDateTime ahora = LocalDateTime.now();
         
-        // 1. Cancelar TODOS los partidos PENDIENTES que llegaron a su fecha/hora
+        // 1. Cancelar TODOS los partidos DISPONIBLES que llegaron a su fecha/hora
         // (incluso si tienen cupos llenos pero no fueron confirmados)
-        List<Partido> pendientesVencidos = partidoRepository
-                .findByEstadoAndFechaHoraBefore("PENDIENTE", ahora);
+        List<Partido> disponiblesVencidos = partidoRepository
+                .findByEstadoAndFechaHoraBefore("DISPONIBLE", ahora);
         
-        for (Partido partido : pendientesVencidos) {
+        for (Partido partido : disponiblesVencidos) {
             long inscritos = inscripcionRepository.countByPartidoIdAndEstado(
                     partido.getId(), "ACEPTADO");
             
@@ -64,10 +64,10 @@ public class PartidoScheduledTasks {
             partidoRepository.save(partido);
         }
         
-        if (!pendientesVencidos.isEmpty() || !confirmadosVencidos.isEmpty()) {
+        if (!disponiblesVencidos.isEmpty() || !confirmadosVencidos.isEmpty()) {
             log.info("Procesados {} partidos: {} cancelados, {} completados",
-                    pendientesVencidos.size() + confirmadosVencidos.size(),
-                    pendientesVencidos.size(),
+                    disponiblesVencidos.size() + confirmadosVencidos.size(),
+                    disponiblesVencidos.size(),
                     confirmadosVencidos.size());
         }
     }

@@ -362,8 +362,8 @@ public class UsuarioService {
         java.util.List<Partido> partidosOrganizados = partidoRepository.findByOrganizador_Id(id);
         int partidosCancelados = 0;
         for (Partido partido : partidosOrganizados) {
-            // Solo cancelar partidos activos o abiertos
-            if ("ABIERTO".equals(partido.getEstado()) || "ACTIVO".equals(partido.getEstado())) {
+            // Solo cancelar partidos disponibles
+            if ("DISPONIBLE".equals(partido.getEstado())) {
                 partido.setEstado("CANCELADO");
                 partidoRepository.save(partido);
                 partidosCancelados++;

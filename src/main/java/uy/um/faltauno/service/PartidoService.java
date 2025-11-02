@@ -77,7 +77,7 @@ public class PartidoService {
         partido.setPrecioTotal(dto.getPrecioTotal());
         partido.setDescripcion(dto.getDescripcion());
         partido.setOrganizador(organizador);
-        partido.setEstado("PENDIENTE");
+        partido.setEstado("DISPONIBLE");
 
         Partido guardado = partidoRepository.save(partido);
         log.info("Partido creado: id={}, tipo={}, fecha={}", 
@@ -180,8 +180,8 @@ public class PartidoService {
             if (estado != null && !estado.isBlank()) {
                 predicates.add(cb.equal(root.get("estado"), estado));
             } else {
-                // Por defecto, solo partidos activos
-                predicates.add(cb.equal(root.get("estado"), "PENDIENTE"));
+                // Por defecto, solo partidos disponibles
+                predicates.add(cb.equal(root.get("estado"), "DISPONIBLE"));
             }
 
             // Filtro por fecha
@@ -429,9 +429,9 @@ public class PartidoService {
             throw new SecurityException("Solo el organizador puede confirmar el partido");
         }
 
-        // Verificar que el partido está en estado PENDIENTE
-        if (!"PENDIENTE".equals(partido.getEstado())) {
-            throw new IllegalStateException("Solo se pueden confirmar partidos pendientes");
+        // Verificar que el partido está en estado DISPONIBLE
+        if (!"DISPONIBLE".equals(partido.getEstado())) {
+            throw new IllegalStateException("Solo se pueden confirmar partidos disponibles");
         }
 
         // Cambiar estado a CONFIRMADO
@@ -613,7 +613,7 @@ public class PartidoService {
                     LocalDateTime inicio = LocalDateTime.of(p.getFecha(), p.getHora());
                     return inicio.isAfter(ahora) && 
                            inicio.isBefore(ahora.plusHours(2)) &&
-                           "PENDIENTE".equals(p.getEstado());
+                           "DISPONIBLE".equals(p.getEstado());
                 })
                 .collect(Collectors.toList());
 
