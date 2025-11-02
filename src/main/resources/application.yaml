@@ -195,14 +195,20 @@ spring:
     enabled: true
     baseline-on-migrate: true
     validate-on-migrate: false  # ✅ Skip validation to speed up startup
+    connect-retries: 3
+    connect-retries-interval: 10
   
   jpa:
     hibernate:
       ddl-auto: none
+    properties:
+      hibernate:
+        temp:
+          use_jdbc_metadata_defaults: false
   
   # ✅ Cloud SQL connection
   datasource:
-    url: jdbc:postgresql://localhost:5432/faltauno_db?cloudSqlInstance=master-might-274420:us-central1:faltauno-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory&ipTypes=PUBLIC
+    url: jdbc:postgresql://localhost:5432/faltauno_db?cloudSqlInstance=master-might-274420:us-central1:faltauno-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory&ipTypes=PUBLIC&connectTimeout=30&socketTimeout=30
     username: ${SPRING_DATASOURCE_USERNAME:app}
     password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
@@ -210,6 +216,7 @@ spring:
       minimum-idle: 2
       connection-timeout: 30000
       initialization-fail-timeout: -1
+      leak-detection-threshold: 60000
 
 logging:
   level:
