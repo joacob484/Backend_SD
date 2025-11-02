@@ -38,8 +38,9 @@ public class StatsService {
         Map<String, Object> stats = new HashMap<>();
 
         try {
-            // Total de usuarios registrados
-            long totalUsuarios = usuarioRepository.count();
+            // Total de usuarios registrados (excluyendo soft-deleted)
+            // ⚡ IMPORTANTE: No usar count() porque incluye usuarios con deletedAt != NULL
+            long totalUsuarios = usuarioRepository.countActiveUsers();
             stats.put("totalUsers", totalUsuarios);
 
             // Usuarios activos (registrados en los últimos 30 días como proxy de actividad)

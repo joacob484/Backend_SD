@@ -37,6 +37,13 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
     long countByLastActivityAtAfter(@Param("fecha") LocalDateTime fecha);
     
     /**
+     * Contar usuarios activos (excluyendo soft-deleted)
+     * ⚡ IMPORTANTE: No usar count() porque incluye soft-deleted
+     */
+    @Query("SELECT COUNT(u) FROM Usuario u WHERE u.deletedAt IS NULL")
+    long countActiveUsers();
+    
+    /**
      * Obtener todos los usuarios activos (no eliminados)
      */
     @Query("SELECT u FROM Usuario u WHERE u.deletedAt IS NULL")

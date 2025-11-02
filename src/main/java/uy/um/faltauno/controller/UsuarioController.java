@@ -516,8 +516,9 @@ public class UsuarioController {
         try {
             Map<String, Object> stats = new java.util.HashMap<>();
             
-            // Total de usuarios registrados
-            long totalUsers = usuarioRepository.count();
+            // Total de usuarios registrados (excluyendo soft-deleted)
+            // ⚡ IMPORTANTE: No usar count() porque incluye usuarios con deletedAt != NULL
+            long totalUsers = usuarioRepository.countActiveUsers();
             stats.put("totalUsuarios", totalUsers);
             
             // Usuarios activos en los últimos 15 minutos
