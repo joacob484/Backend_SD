@@ -334,26 +334,31 @@ public class NotificacionService {
         );
     }
 
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void notificarNuevoMensaje(UUID usuarioId, UUID partidoId, String nombrePartido, String remitente) {
-        // Evitar spam: no notificar si ya existe una notificación reciente de mensaje
-        boolean existe = notificacionRepository.existeNotificacion(
-                usuarioId, 
-                partidoId, 
-                Notificacion.TipoNotificacion.NUEVO_MENSAJE.name()
-        );
-        
-        if (!existe) {
-            crearNotificacion(
-                    usuarioId,
-                    Notificacion.TipoNotificacion.NUEVO_MENSAJE,
-                    "Nuevo mensaje",
-                    remitente + " escribió en " + nombrePartido,
-                    partidoId,
-                    "PARTIDO",
-                    "/matches/" + partidoId,
-                    Notificacion.Prioridad.BAJA
+        try {
+            // Evitar spam: no notificar si ya existe una notificación reciente de mensaje
+            boolean existe = notificacionRepository.existeNotificacion(
+                    usuarioId, 
+                    partidoId, 
+                    Notificacion.TipoNotificacion.NUEVO_MENSAJE.name()
             );
+            
+            if (!existe) {
+                crearNotificacion(
+                        usuarioId,
+                        Notificacion.TipoNotificacion.NUEVO_MENSAJE,
+                        "Nuevo mensaje",
+                        remitente + " escribió en " + nombrePartido,
+                        partidoId,
+                        "PARTIDO",
+                        "/matches/" + partidoId,
+                        Notificacion.Prioridad.BAJA
+                );
+            }
+        } catch (Exception e) {
+            log.error("[NotificacionService] Error creando notificación de mensaje: {}", e.getMessage());
+            // No propagar la excepción para evitar rollback de la transacción principal
         }
     }
 
