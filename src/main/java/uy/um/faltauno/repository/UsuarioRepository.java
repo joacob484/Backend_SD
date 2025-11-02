@@ -35,12 +35,24 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
      */
     @Query("SELECT COUNT(u) FROM Usuario u WHERE u.lastActivityAt > :fecha AND u.deletedAt IS NULL")
     long countByLastActivityAtAfter(@Param("fecha") LocalDateTime fecha);
+    
+    /**
+     * Obtener todos los usuarios activos (no eliminados)
+     */
+    @Query("SELECT u FROM Usuario u WHERE u.deletedAt IS NULL")
+    java.util.List<Usuario> findAllActive();
 
     /**
      * Buscar usuario eliminado por email (para recuperación de cuenta)
      */
     @Query("SELECT u FROM Usuario u WHERE u.email = :email AND u.deletedAt IS NOT NULL")
     Optional<Usuario> findDeletedByEmail(@Param("email") String email);
+    
+    /**
+     * Verificar si un usuario existe (incluyendo soft-deleted) - para manejo de errores
+     */
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM Usuario u WHERE u.id = :id")
+    boolean existsByIdIncludingDeleted(@Param("id") UUID id);
 
     /**
      * Buscar usuarios eliminados hace más de 30 días (para cleanup físico)

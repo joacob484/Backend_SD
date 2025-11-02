@@ -135,15 +135,25 @@ public class UsuarioService {
     @Transactional(readOnly = true)
     @Cacheable(value = "usuarios", key = "#id")
     public UsuarioDTO getUsuario(UUID id) {
-        UsuarioDTO dto = usuarioRepository.findById(id)
-                .map(usuarioMapper::toDTO)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        // Primero verificar si el usuario existe (incluyendo soft-deleted)
+        if (usuarioRepository.existsByIdIncludingDeleted(id)) {
+            // Si existe pero no lo encuentra en findById, significa que está soft-deleted
+            Optional<Usuario> usuarioOpt = usuarioRepository.findById(id);
+            if (usuarioOpt.isEmpty()) {
+                throw new RuntimeException("Usuario eliminado");
+            }
+            
+            UsuarioDTO dto = usuarioMapper.toDTO(usuarioOpt.get());
+            
+            // Asegurar que los campos calculados están correctos
+            dto.setPerfilCompleto(dto.getPerfilCompleto());
+            dto.setCedulaVerificada(dto.getCedulaVerificada());
+            
+            return dto;
+        }
         
-        // Asegurar que los campos calculados están correctos
-        dto.setPerfilCompleto(dto.getPerfilCompleto());
-        dto.setCedulaVerificada(dto.getCedulaVerificada());
-        
-        return dto;
+        // Si no existe en absoluto
+        throw new RuntimeException("Usuario no encontrado");
     }
 
     @Transactional
@@ -205,7 +215,8 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public List<UsuarioDTO> getAllUsuarios() {
-        return usuarioRepository.findAll()
+        // Usar findAllActive en lugar de findAll para excluir usuarios eliminados
+        return usuarioRepository.findAllActive()
                 .stream()
                 .map(usuarioMapper::toDTO)
                 .collect(Collectors.toList());
@@ -578,8 +589,8 @@ public class UsuarioService {
         // FUTURO: Implementar filtrado inteligente usando nivel, ubicación, historial de partidos, etc.
         // Por ahora, recomendaciones básicas son suficientes para el MVP
 
-        // Obtener todos los usuarios activos (excepto el actual)
-        List<Usuario> candidatos = usuarioRepository.findAll().stream()
+        // Obtener todos los usuarios ACTIVOS (excluye soft-deleted automáticamente)
+        List<Usuario> candidatos = usuarioRepository.findAllActive().stream()
                 .filter(u -> !u.getId().equals(usuarioId))
                 .filter(u -> u.getNombre() != null && u.getEmail() != null)
                 .collect(Collectors.toList());

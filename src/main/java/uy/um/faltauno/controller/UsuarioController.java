@@ -277,6 +277,11 @@ public class UsuarioController {
             dto.setPassword(null);
             return ResponseEntity.ok(new ApiResponse<>(dto, "Usuario encontrado", true));
         } catch (RuntimeException e) {
+            // Distinguir entre "eliminado" y "no encontrado"
+            if (e.getMessage().equals("Usuario eliminado")) {
+                return ResponseEntity.status(HttpStatus.GONE) // 410 Gone
+                        .body(new ApiResponse<>(null, "Usuario eliminado", false));
+            }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         }
