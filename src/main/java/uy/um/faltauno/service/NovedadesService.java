@@ -1,5 +1,6 @@
 package uy.um.faltauno.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -18,6 +19,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
+@RequiredArgsConstructor
 public class NovedadesService {
 
     private static final Logger logger = LoggerFactory.getLogger(NovedadesService.class);
@@ -25,7 +27,7 @@ public class NovedadesService {
     @Value("${GITHUB_TOKEN:}")
     private String githubToken;
     
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<Map<String, Object>> getUltimosCommits(int limit) {

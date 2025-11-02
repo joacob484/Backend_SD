@@ -34,6 +34,9 @@ public final class CacheNames {
     // ===== AMISTADES =====
     public static final String AMISTADES = "amistades";
     
+    // ===== NOVEDADES =====
+    public static final String NOVEDADES_GITHUB = "novedades-github";
+    
     /**
      * Array con todos los nombres de caché para configuración.
      * Usar en CacheConfig para crear todos los cachés al iniciar.
@@ -46,6 +49,7 @@ public final class CacheNames {
         SYSTEM_STATS,
         NOTIFICACIONES,
         REVIEWS,
-        AMISTADES
+        AMISTADES,
+        NOVEDADES_GITHUB
     };
 }
