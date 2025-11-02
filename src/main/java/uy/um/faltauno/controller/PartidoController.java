@@ -320,6 +320,11 @@ public class PartidoController {
             log.error("Error de validación al invitar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (IllegalStateException e) {
+            // ✅ MEJORADO: Usar 409 Conflict para solicitudes duplicadas
+            log.warn("Conflicto al invitar jugador: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (RuntimeException e) {
             log.error("Error invitando jugador", e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
