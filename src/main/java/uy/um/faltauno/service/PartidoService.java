@@ -665,12 +665,20 @@ public class PartidoService {
     public void procesarCancelacionesAutomaticas() {
         LocalDateTime ahora = LocalDateTime.now();
         LocalDateTime dentroDeHoras = ahora.plusHours(2);
+        LocalDate hoy = ahora.toLocalDate();
+        LocalTime ahoraHora = ahora.toLocalTime();
+        LocalTime dentroDeHorasTime = dentroDeHoras.toLocalTime();
         
-        // ✅ OPTIMIZACIÓN: Query optimizada en DB en lugar de findAll().stream()
-        // Antes: partidoRepository.findAll().stream() cargaba TODOS los partidos en memoria
-        // Ahora: Solo trae los partidos próximos disponibles con filtro SQL
+        // Traemos partidos DISPONIBLES de hoy y filtramos por hora en memoria
         List<Partido> partidosPorEmpezar = partidoRepository
-                .findPartidosProximosDisponibles(ahora, dentroDeHoras);
+                .findByEstadoAndFecha("DISPONIBLE", hoy)
+                .stream()
+                .filter(p -> {
+                    LocalTime hora = p.getHora();
+                    // Debe estar entre ahora y dentro de 2 horas
+                    return hora.isAfter(ahoraHora) && hora.isBefore(dentroDeHorasTime);
+                })
+                .toList();
 
         for (Partido partido : partidosPorEmpezar) {
             // ✅ PERFORMANCE: Usar COUNT query optimizada

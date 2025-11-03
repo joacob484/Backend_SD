@@ -32,11 +32,20 @@ public class PartidoScheduledTasks {
     @Transactional
     public void procesarPartidosVencidos() {
         LocalDateTime ahora = LocalDateTime.now();
+        LocalDate hoy = ahora.toLocalDate();
+        LocalTime ahoraHora = ahora.toLocalTime();
         
         // 1. Cancelar TODOS los partidos DISPONIBLES que llegaron a su fecha/hora
-        // (incluso si tienen cupos llenos pero no fueron confirmados)
         List<Partido> disponiblesVencidos = partidoRepository
-                .findByEstadoAndFechaHoraBefore("DISPONIBLE", ahora);
+                .findByEstadoAndFechaLessThanEqual("DISPONIBLE", hoy)
+                .stream()
+                .filter(p -> {
+                    // Si es de antes de hoy, ya venció
+                    if (p.getFecha().isBefore(hoy)) return true;
+                    // Si es hoy, verificar que la hora ya pasó
+                    return p.getFecha().isEqual(hoy) && p.getHora().isBefore(ahoraHora);
+                })
+                .toList();
         
         for (Partido partido : disponiblesVencidos) {
             long inscritos = inscripcionRepository.countByPartidoIdAndEstado(
@@ -56,7 +65,13 @@ public class PartidoScheduledTasks {
         
         // 2. Completar partidos CONFIRMADOS que ya pasaron
         List<Partido> confirmadosVencidos = partidoRepository
-                .findByEstadoAndFechaHoraBefore("CONFIRMADO", ahora);
+                .findByEstadoAndFechaLessThanEqual("CONFIRMADO", hoy)
+                .stream()
+                .filter(p -> {
+                    if (p.getFecha().isBefore(hoy)) return true;
+                    return p.getFecha().isEqual(hoy) && p.getHora().isBefore(ahoraHora);
+                })
+                .toList();
         
         for (Partido partido : confirmadosVencidos) {
             log.info("Completando partido {} automáticamente", partido.getId());
