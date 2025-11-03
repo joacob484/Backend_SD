@@ -60,15 +60,39 @@ public class UsuarioService {
                 .orElse(null);
     }
 
+    /**
+     * Verifica la validez de una cédula de identidad uruguaya usando el algoritmo oficial.
+     * 
+     * Algoritmo:
+     * - Las cédulas tienen 7 u 8 dígitos numéricos
+     * - El último dígito es un dígito verificador calculado con módulo 10
+     * - Se multiplican los primeros 7 dígitos por pesos [2,9,8,7,6,3,4]
+     * - Se suma y se calcula módulo 10
+     * - El dígito verificador es (10 - resto) % 10
+     * 
+     * @param cedula Cédula a verificar (puede incluir puntos, guiones, etc.)
+     * @return true si la cédula es válida, false en caso contrario
+     */
     public boolean verificarCedula(String cedula) {
         if (cedula == null || cedula.isBlank()) {
             return false;
         }
 
+        // ⚡ NUEVO: Validar longitud antes de limpiar (prevenir inputs maliciosos)
+        // Una cédula válida debe tener entre 7 y 20 caracteres (permitiendo puntos/guiones)
+        if (cedula.length() < 7 || cedula.length() > 20) {
+            return false;
+        }
+
+        // Limpiar: solo dígitos
         String clean = cedula.replaceAll("[^\\d]", "");
+        
+        // ⚡ Validar longitud después de limpiar
         if (clean.length() < 7 || clean.length() > 8) {
             return false;
         }
+        
+        // Completar con ceros a la izquierda si tiene 7 dígitos
         while (clean.length() < 8) {
             clean = "0" + clean;
         }

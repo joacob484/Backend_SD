@@ -1,7 +1,9 @@
 package uy.um.faltauno.util;
 
+import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.Named;
 import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.entity.Usuario;
@@ -23,6 +25,21 @@ public interface UsuarioMapper {
     @Mapping(target = "cedulaVerificada", ignore = true) // Calculated in DTO getter
     @Mapping(target = "perfilCompleto", ignore = true) // Calculated in DTO getter
     UsuarioDTO toDTO(Usuario usuario);
+
+    /**
+     * ⚡ CRÍTICO: Post-procesamiento para setear campos calculados explícitamente
+     * 
+     * Esto previene inconsistencias donde el backend envía perfilCompleto=null
+     * y el frontend lo interpreta como false, causando loops de "completar perfil".
+     * 
+     * Al forzar el cálculo aquí, garantizamos que SIEMPRE se envíe un valor booleano real.
+     */
+    @AfterMapping
+    default void setCalculatedFields(@MappingTarget UsuarioDTO dto) {
+        // ✅ Forzar cálculo de campos calculados para que NUNCA sean null
+        dto.setPerfilCompleto(dto.getPerfilCompleto());
+        dto.setCedulaVerificada(dto.getCedulaVerificada());
+    }
 
     // ----------------------
     // DTO → ENTITY
