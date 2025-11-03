@@ -263,7 +263,7 @@ public class PartidoService {
    @Transactional
     public PartidoDTO actualizarPartido(UUID id, PartidoDTO dto, Authentication auth) {
         Partido partido = partidoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
         // Verificar que sea el organizador
         UUID userId = getUserIdFromAuth(auth);
@@ -340,7 +340,7 @@ public class PartidoService {
     @CacheEvict(cacheNames = {CacheNames.PARTIDOS_V2, CacheNames.PARTIDOS_DISPONIBLES}, allEntries = true)
     public void cancelarPartido(UUID id, String motivo, Authentication auth) {
         Partido partido = partidoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
         UUID userId = getUserIdFromAuth(auth);
         if (!partido.getOrganizador().getId().equals(userId)) {
@@ -392,7 +392,7 @@ public class PartidoService {
     @Transactional
     public void completarPartido(UUID id, Authentication auth) {
         Partido partido = partidoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
         UUID userId = getUserIdFromAuth(auth);
         if (!partido.getOrganizador().getId().equals(userId)) {
@@ -432,7 +432,7 @@ public class PartidoService {
     @Transactional
     public void confirmarPartido(UUID id, Authentication auth) {
         Partido partido = partidoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
         UUID userId = getUserIdFromAuth(auth);
         
@@ -503,7 +503,7 @@ public class PartidoService {
     @Transactional
     public void removerJugador(UUID partidoId, UUID jugadorId, Authentication auth) {
         Partido partido = partidoRepository.findById(partidoId)
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
         UUID userId = getUserIdFromAuth(auth);
         if (!partido.getOrganizador().getId().equals(userId)) {
@@ -520,7 +520,7 @@ public class PartidoService {
         Inscripcion inscripcion = inscripciones.stream()
                 .filter(i -> i.getUsuario().getId().equals(jugadorId))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("El jugador no está inscrito en este partido"));
+                .orElseThrow(() -> new IllegalArgumentException("El jugador no está inscrito en este partido"));
 
         inscripcionRepository.delete(inscripcion);
         log.info("Jugador removido del partido: partidoId={}, jugadorId={}", partidoId, jugadorId);

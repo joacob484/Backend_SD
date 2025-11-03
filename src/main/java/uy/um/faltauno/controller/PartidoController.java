@@ -157,12 +157,21 @@ public class PartidoController {
         try {
             PartidoDTO actualizado = partidoService.actualizarPartido(id, dto, auth);
             return ResponseEntity.ok(new ApiResponse<>(actualizado, "Partido actualizado", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("[PartidoController] Recurso no encontrado al actualizar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (IllegalStateException e) {
+            log.warn("[PartidoController] Estado inválido al actualizar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[PartidoController] Error inesperado actualizando partido", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al actualizar partido", false));
         }
     }
 
@@ -177,12 +186,21 @@ public class PartidoController {
         try {
             partidoService.cancelarPartido(id, motivo, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Partido cancelado", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("[PartidoController] Recurso no encontrado al cancelar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (IllegalStateException e) {
+            log.warn("[PartidoController] Estado inválido al cancelar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[PartidoController] Error inesperado cancelando partido", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al cancelar partido", false));
         }
     }
 
@@ -196,12 +214,17 @@ public class PartidoController {
         try {
             partidoService.completarPartido(id, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Partido completado", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("[PartidoController] Recurso no encontrado al completar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[PartidoController] Error inesperado completando partido", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al completar partido", false));
         }
     }
 
@@ -216,12 +239,21 @@ public class PartidoController {
         try {
             partidoService.confirmarPartido(id, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Partido confirmado", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("[PartidoController] Recurso no encontrado al confirmar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (IllegalStateException e) {
+            log.warn("[PartidoController] Estado inválido al confirmar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[PartidoController] Error inesperado confirmando partido", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al confirmar partido", false));
         }
     }
 
@@ -251,15 +283,20 @@ public class PartidoController {
         try {
             partidoService.removerJugador(partidoId, jugadorId, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Jugador removido", true));
-        } catch (SecurityException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        } catch (IllegalArgumentException e) {
+            log.warn("[PartidoController] Recurso no encontrado al remover jugador: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[PartidoController] Error inesperado removiendo jugador", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al remover jugador", false));
         }
     }
 
