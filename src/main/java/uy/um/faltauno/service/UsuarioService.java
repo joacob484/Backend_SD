@@ -189,14 +189,48 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+        // ✅ Validaciones de campos
+        if (perfilDTO.getNombre() != null && perfilDTO.getNombre().length() > 100) {
+            throw new IllegalArgumentException("Nombre demasiado largo (máx 100 caracteres)");
+        }
+        if (perfilDTO.getApellido() != null && perfilDTO.getApellido().length() > 100) {
+            throw new IllegalArgumentException("Apellido demasiado largo (máx 100 caracteres)");
+        }
+
         usuario.setNombre(perfilDTO.getNombre());
         usuario.setApellido(perfilDTO.getApellido());
         usuario.setCelular(perfilDTO.getCelular());
         usuario.setPosicion(perfilDTO.getPosicion());
-        usuario.setAltura(perfilDTO.getAltura() != null && !perfilDTO.getAltura().isEmpty()
-                ? Double.valueOf(perfilDTO.getAltura()) : null);
-        usuario.setPeso(perfilDTO.getPeso() != null && !perfilDTO.getPeso().isEmpty()
-                ? Double.valueOf(perfilDTO.getPeso()) : null);
+        
+        // ✅ Validar altura (1.0m - 2.5m razonable)
+        if (perfilDTO.getAltura() != null && !perfilDTO.getAltura().isEmpty()) {
+            try {
+                Double altura = Double.valueOf(perfilDTO.getAltura());
+                if (altura < 1.0 || altura > 2.5) {
+                    throw new IllegalArgumentException("Altura debe estar entre 1.0m y 2.5m");
+                }
+                usuario.setAltura(altura);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Altura inválida");
+            }
+        } else {
+            usuario.setAltura(null);
+        }
+        
+        // ✅ Validar peso (30kg - 200kg razonable)
+        if (perfilDTO.getPeso() != null && !perfilDTO.getPeso().isEmpty()) {
+            try {
+                Double peso = Double.valueOf(perfilDTO.getPeso());
+                if (peso < 30.0 || peso > 200.0) {
+                    throw new IllegalArgumentException("Peso debe estar entre 30kg y 200kg");
+                }
+                usuario.setPeso(peso);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Peso inválido");
+            }
+        } else {
+            usuario.setPeso(null);
+        }
         
         // Mapear género si está presente
         if (perfilDTO.getGenero() != null && !perfilDTO.getGenero().isBlank()) {
@@ -207,10 +241,20 @@ public class UsuarioService {
             String fechaStr = perfilDTO.getFechaNacimiento();
             if (fechaStr != null && !fechaStr.isBlank()) {
                 LocalDate ld = LocalDate.parse(fechaStr);
+                // ✅ Validar edad razonable (13-120 años)
+                LocalDate hoy = LocalDate.now();
+                if (ld.isAfter(hoy.minusYears(13))) {
+                    throw new IllegalArgumentException("Debes tener al menos 13 años");
+                }
+                if (ld.isBefore(hoy.minusYears(120))) {
+                    throw new IllegalArgumentException("Fecha de nacimiento inválida");
+                }
                 usuario.setFechaNacimiento(ld);
             }
         } catch (DateTimeParseException dtpe) {
-            throw new RuntimeException("Formato de fecha_nacimiento inválido. Use yyyy-MM-dd");
+            throw new IllegalArgumentException("Formato de fecha_nacimiento inválido. Use yyyy-MM-dd");
+        } catch (IllegalArgumentException e) {
+            throw e; // Re-lanzar validaciones de edad
         } catch (Exception ignore) {
             // si PerfilDTO no contiene fechaNacimiento, se ignora
         }
@@ -223,6 +267,24 @@ public class UsuarioService {
     public void subirFoto(UUID usuarioId, MultipartFile file) throws IOException {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        // ✅ FIX: Validar tamaño de archivo (máx 5MB para evitar OOM)
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("El archivo está vacío");
+        }
+        
+        long maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.getSize() > maxSize) {
+            throw new IllegalArgumentException("La foto no puede superar 5MB");
+        }
+        
+        // ✅ Validar tipo de archivo
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.startsWith("image/jpeg") && 
+                                    !contentType.startsWith("image/png") && 
+                                    !contentType.startsWith("image/jpg"))) {
+            throw new IllegalArgumentException("Solo se permiten imágenes JPEG o PNG");
+        }
 
         usuario.setFotoPerfil(file.getBytes());
         usuarioRepository.save(usuario);
@@ -272,7 +334,9 @@ public class UsuarioService {
 
                 if (!yaReseñado) {
                     Usuario u = inscOtro.getUsuario();
-                    UsuarioMinDTO um = new UsuarioMinDTO(u.getId(), u.getNombre(), u.getApellido(), u.getFotoPerfil());
+                    // ✅ FIX: No acceder a fotoPerfil LAZY aquí - causa LazyInitializationException
+                    // Solo pasar null, el frontend cargará la foto con endpoint separado
+                    UsuarioMinDTO um = new UsuarioMinDTO(u.getId(), u.getNombre(), u.getApellido(), null);
                     pendientesPorPartido.computeIfAbsent(partidoId, k -> new ArrayList<>()).add(um);
                 }
             }

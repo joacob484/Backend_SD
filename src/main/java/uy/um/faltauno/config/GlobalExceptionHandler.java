@@ -111,20 +111,46 @@ public class GlobalExceptionHandler {
      * Recurso no encontrado
      * Status: 404 NOT FOUND
      */
-    @ExceptionHandler({NoSuchElementException.class, RuntimeException.class})
+    @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(
+            NoSuchElementException ex,
+            WebRequest request) {
+        
+        log.warn("[GlobalExceptionHandler] NoSuchElementException: {}", ex.getMessage());
+        
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_FOUND.value())
+                .error("Not Found")
+                .message(ex.getMessage() != null ? ex.getMessage() : "Recurso no encontrado")
+                .path(request.getDescription(false).replace("uri=", ""))
+                .build();
+        
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    /**
+     * ✅ NUEVO: RuntimeException genérica - analizar mensaje
+     * Status: 500 INTERNAL SERVER ERROR (o 404 si el mensaje indica "no encontrado")
+     */
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> handleRuntimeException(
             RuntimeException ex,
             WebRequest request) {
         
-        // Distinguir entre "no encontrado" y otros RuntimeExceptions
-        HttpStatus status = ex.getMessage() != null && 
-                           (ex.getMessage().contains("no encontrado") || 
-                            ex.getMessage().contains("not found"))
-                ? HttpStatus.NOT_FOUND
-                : HttpStatus.INTERNAL_SERVER_ERROR;
+        // ✅ Distinguir entre "no encontrado" y errores reales
+        boolean isNotFound = ex.getMessage() != null && 
+                            (ex.getMessage().toLowerCase().contains("no encontrado") || 
+                             ex.getMessage().toLowerCase().contains("not found") ||
+                             ex.getMessage().toLowerCase().contains("eliminado"));
         
-        log.warn("[GlobalExceptionHandler] RuntimeException ({}): {}", 
-                status.value(), ex.getMessage());
+        HttpStatus status = isNotFound ? HttpStatus.NOT_FOUND : HttpStatus.INTERNAL_SERVER_ERROR;
+        
+        if (status == HttpStatus.INTERNAL_SERVER_ERROR) {
+            log.error("[GlobalExceptionHandler] RuntimeException 500: {}", ex.getMessage(), ex);
+        } else {
+            log.warn("[GlobalExceptionHandler] RuntimeException 404: {}", ex.getMessage());
+        }
         
         ErrorResponse response = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
