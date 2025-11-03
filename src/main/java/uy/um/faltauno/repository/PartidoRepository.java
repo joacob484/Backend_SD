@@ -81,27 +81,32 @@ public interface PartidoRepository extends JpaRepository<Partido, UUID>, JpaSpec
     
     /**
      * Buscar partidos por estado cuya fecha/hora ya pasó
+     * ✅ FIX: Usar concatenación nativa de PostgreSQL (fecha + hora)
      */
-    @Query("SELECT p FROM Partido p WHERE p.estado = :estado AND " +
-           "FUNCTION('TIMESTAMP', p.fecha, p.hora) < :fechaHora")
+    @Query(value = """
+           SELECT * FROM public.partido p 
+           WHERE p.estado = :estado 
+           AND (p.fecha + p.hora) < :fechaHora
+           """, nativeQuery = true)
     List<Partido> findByEstadoAndFechaHoraBefore(@Param("estado") String estado, 
                                                    @Param("fechaHora") LocalDateTime fechaHora);
     
     /**
      * ✅ OPTIMIZACIÓN: Buscar partidos próximos a empezar que estén disponibles
      * Reemplaza el findAll().stream() en procesarCancelacionesAutomaticas
+     * ✅ FIX: Usar concatenación nativa de PostgreSQL (fecha + hora)
      * 
      * @param ahora Fecha/hora actual
      * @param dentroDeHoras Fecha/hora límite (ej: ahora + 2 horas)
      * @return Lista de partidos próximos a iniciar que aún están disponibles
      */
-    @Query("""
-        SELECT p FROM Partido p 
+    @Query(value = """
+        SELECT * FROM public.partido p 
         WHERE p.estado = 'DISPONIBLE'
-        AND FUNCTION('TIMESTAMP', p.fecha, p.hora) > :ahora
-        AND FUNCTION('TIMESTAMP', p.fecha, p.hora) < :dentroDeHoras
+        AND (p.fecha + p.hora) > :ahora
+        AND (p.fecha + p.hora) < :dentroDeHoras
         ORDER BY p.fecha, p.hora
-    """)
+        """, nativeQuery = true)
     List<Partido> findPartidosProximosDisponibles(
         @Param("ahora") LocalDateTime ahora,
         @Param("dentroDeHoras") LocalDateTime dentroDeHoras
