@@ -726,8 +726,12 @@ public class PartidoService {
         if (dto.getCantidadJugadores() == null || dto.getCantidadJugadores() < 6 || dto.getCantidadJugadores() > 22) {
             throw new IllegalArgumentException("La cantidad de jugadores debe estar entre 6 y 22");
         }
+        // ✅ Validar precio (no negativo y máx 100,000 para prevenir overflow/errores)
         if (dto.getPrecioTotal() == null || dto.getPrecioTotal().doubleValue() < 0) {
             throw new IllegalArgumentException("El precio no puede ser negativo");
+        }
+        if (dto.getPrecioTotal().doubleValue() > 100000) {
+            throw new IllegalArgumentException("El precio no puede superar $100,000");
         }
         if (dto.getOrganizadorId() == null) {
             throw new IllegalArgumentException("El organizador es requerido");
