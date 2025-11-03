@@ -17,7 +17,7 @@ public class FaltaUnoApplication {
     private final JdbcTemplate jdbcTemplate;
     
     public static void main(String[] args) {
-        System.out.println("🚀 Falta Uno Backend - v3.0 - PRODUCTION READY 🎉");
+        log.info("🚀 Falta Uno Backend - v3.0 - PRODUCTION READY 🎉");
         SpringApplication.run(FaltaUnoApplication.class, args);
     }
     

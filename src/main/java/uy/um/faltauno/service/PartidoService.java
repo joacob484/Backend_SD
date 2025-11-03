@@ -144,8 +144,17 @@ public class PartidoService {
 
     /**
      * Listar partidos con filtros
+     * ✅ OPTIMIZACIÓN: Cache con clave compuesta por parámetros de búsqueda
+     * - Reduce queries repetitivas (usuarios buscando mismos filtros)
+     * - TTL de 10 minutos (configurado en application.yaml)
+     * - Se invalida automáticamente cuando se crea/modifica un partido
      */
     @Transactional(readOnly = true)
+    @Cacheable(
+        cacheNames = CacheNames.PARTIDOS_DISPONIBLES,
+        key = "#tipoPartido + '_' + #nivel + '_' + #genero + '_' + #fecha + '_' + #estado + '_' + #search",
+        unless = "#result.isEmpty()"
+    )
     public List<PartidoDTO> listarPartidos(
             String tipoPartido,
             String nivel,
@@ -157,6 +166,9 @@ public class PartidoService {
             Double longitud,
             Double radioKm,
             Pageable pageable) {
+
+        log.debug("[PartidoService] Listando partidos: tipo={}, nivel={}, genero={}, fecha={}, estado={}, search={}", 
+                tipoPartido, nivel, genero, fecha, estado, search);
 
         Specification<Partido> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -606,16 +618,13 @@ public class PartidoService {
     @Transactional
     public void procesarCancelacionesAutomaticas() {
         LocalDateTime ahora = LocalDateTime.now();
+        LocalDateTime dentroDeHoras = ahora.plusHours(2);
         
-        // Buscar partidos que empiezan en las próximas 2 horas y no están completos
-        List<Partido> partidosPorEmpezar = partidoRepository.findAll().stream()
-                .filter(p -> {
-                    LocalDateTime inicio = LocalDateTime.of(p.getFecha(), p.getHora());
-                    return inicio.isAfter(ahora) && 
-                           inicio.isBefore(ahora.plusHours(2)) &&
-                           "DISPONIBLE".equals(p.getEstado());
-                })
-                .collect(Collectors.toList());
+        // ✅ OPTIMIZACIÓN: Query optimizada en DB en lugar de findAll().stream()
+        // Antes: partidoRepository.findAll().stream() cargaba TODOS los partidos en memoria
+        // Ahora: Solo trae los partidos próximos disponibles con filtro SQL
+        List<Partido> partidosPorEmpezar = partidoRepository
+                .findPartidosProximosDisponibles(ahora, dentroDeHoras);
 
         for (Partido partido : partidosPorEmpezar) {
             // ✅ PERFORMANCE: Usar COUNT query optimizada

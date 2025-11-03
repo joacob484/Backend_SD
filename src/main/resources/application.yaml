@@ -161,6 +161,11 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
+# ✅ Performance Monitoring (deshabilitado por defecto)
+performance:
+  monitoring:
+    enabled: ${PERFORMANCE_MONITORING_ENABLED:false}
+
 # ✅ Profiles
 ---
 spring:

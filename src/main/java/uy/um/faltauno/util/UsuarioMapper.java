@@ -30,6 +30,10 @@ public interface UsuarioMapper {
     @Mapping(source = "fotoPerfil", target = "fotoPerfil", qualifiedByName = "base64ToBytes")
     @Mapping(source = "fechaNacimiento", target = "fechaNacimiento", qualifiedByName = "stringToLocalDate")
     @Mapping(target = "createdAt", ignore = true) // Gestionado por @CreationTimestamp
+    @Mapping(target = "deletedAt", ignore = true) // Gestionado por el servicio
+    @Mapping(target = "lastActivityAt", ignore = true) // Gestionado automáticamente
+    @Mapping(target = "tokenVersion", ignore = true) // Gestionado por el servicio
+    @Mapping(target = "verificationCodeExpiresAt", ignore = true) // Gestionado por el servicio
     @Mapping(target = "provider", ignore = true) // No viene del DTO, se gestiona en el servicio
     @Mapping(target = "notifEmailGenerales", ignore = true) // Valores por defecto en la entidad
     @Mapping(target = "notifEmailSolicitudesAmistad", ignore = true)

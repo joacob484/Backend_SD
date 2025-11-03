@@ -79,6 +79,15 @@ public class Partido {
     @Builder.Default
     private String nivel = "INTERMEDIO";
 
+    /**
+     * ✅ OPTIMIZACIÓN: Control de concurrencia optimista
+     * Previene race conditions cuando múltiples usuarios intentan inscribirse simultáneamente
+     * Si hay conflicto, Hibernate lanza OptimisticLockException que debe ser manejada
+     */
+    @Version
+    @Column(name = "version")
+    private Long version;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

@@ -116,6 +116,14 @@ public class Inscripcion {
     private Instant fechaRechazo;
 
     /**
+     * ✅ OPTIMIZACIÓN: Control de concurrencia optimista
+     * Previene race conditions al aceptar/rechazar inscripciones simultáneas
+     */
+    @Version
+    @Column(name = "version")
+    private Long version;
+
+    /**
      * Fecha de cancelación (si fue cancelada)
      */
     @Column(name = "fecha_cancelacion")

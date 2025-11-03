@@ -73,4 +73,24 @@ public interface PartidoRepository extends JpaRepository<Partido, UUID>, JpaSpec
            "FUNCTION('TIMESTAMP', p.fecha, p.hora) < :fechaHora")
     List<Partido> findByEstadoAndFechaHoraBefore(@Param("estado") String estado, 
                                                    @Param("fechaHora") LocalDateTime fechaHora);
+    
+    /**
+     * ✅ OPTIMIZACIÓN: Buscar partidos próximos a empezar que estén disponibles
+     * Reemplaza el findAll().stream() en procesarCancelacionesAutomaticas
+     * 
+     * @param ahora Fecha/hora actual
+     * @param dentroDeHoras Fecha/hora límite (ej: ahora + 2 horas)
+     * @return Lista de partidos próximos a iniciar que aún están disponibles
+     */
+    @Query("""
+        SELECT p FROM Partido p 
+        WHERE p.estado = 'DISPONIBLE'
+        AND FUNCTION('TIMESTAMP', p.fecha, p.hora) > :ahora
+        AND FUNCTION('TIMESTAMP', p.fecha, p.hora) < :dentroDeHoras
+        ORDER BY p.fecha, p.hora
+    """)
+    List<Partido> findPartidosProximosDisponibles(
+        @Param("ahora") LocalDateTime ahora,
+        @Param("dentroDeHoras") LocalDateTime dentroDeHoras
+    );
 }

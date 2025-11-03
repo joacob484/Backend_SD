@@ -53,34 +53,37 @@ public class NotificationListener implements MessageReceiver {
 
     @Override
     public void receiveMessage(PubsubMessage message, AckReplyConsumer consumer) {
-        String type = message.getAttributesOrDefault("event", "unknown");
-        System.out.printf("\u2705 Event received: %s - Payload: %s%n", type, message.getData().toStringUtf8());
-
-        switch (type) {
-            case "PARTIDO_CREADO":
-                procesarPartidoCreado(message);
-                break;
-            case "PARTIDO_CANCELADO":
-                procesarPartidoCancelado(message);
-                break;
-            case "PARTIDO_COMPLETADO":
-                procesarPartidoCompletado(message);
-                break;
-            default:
-                System.out.printf("Unknown event type: %s%n", type);
-        }
+        // Acknowledge immediately to prevent redelivery
         consumer.ack();
+
+        String type = message.getAttributesOrDefault("type", "unknown");
+        log.info("✅ Event received: {} - Payload: {}", type, message.getData().toStringUtf8());
+
+        try {
+            // ✅ Procesar según tipo
+            switch (type) {
+                case "partido.creado" -> onPartidoCreado(message);
+                case "partido.cancelado" -> onPartidoCancelado(message);
+                case "partido.completado" -> onPartidoCompletado(message);
+                // Más eventos...
+                default -> {
+                    log.warn("Unknown event type: {}", type);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error processing Pub/Sub message: {}", message, e);
+        }
     }
 
-    private void procesarPartidoCreado(PubsubMessage message) {
-        System.out.printf("\u2705 Partido creado: %s%n", message.getData().toStringUtf8());
+    private void onPartidoCreado(PubsubMessage message) {
+        log.info("✅ Partido creado: {}", message.getData().toStringUtf8());
     }
 
-    private void procesarPartidoCancelado(PubsubMessage message) {
-        System.out.printf("\u274c Partido cancelado: %s%n", message.getData().toStringUtf8());
+    private void onPartidoCancelado(PubsubMessage message) {
+        log.warn("❌ Partido cancelado: {}", message.getData().toStringUtf8());
     }
 
-    private void procesarPartidoCompletado(PubsubMessage message) {
-        System.out.printf("\u2705 Partido completado: %s%n", message.getData().toStringUtf8());
+    private void onPartidoCompletado(PubsubMessage message) {
+        log.info("✅ Partido completado: {}", message.getData().toStringUtf8());
     }
 }
