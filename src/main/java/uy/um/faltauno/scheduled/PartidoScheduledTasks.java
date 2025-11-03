@@ -9,7 +9,9 @@ import uy.um.faltauno.entity.Partido;
 import uy.um.faltauno.repository.InscripcionRepository;
 import uy.um.faltauno.repository.PartidoRepository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 /**
