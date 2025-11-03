@@ -64,15 +64,58 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Argumento inválido (datos incorrectos)
-     * Status: 400 BAD REQUEST
+     * ✅ MEJORADO: Argumento inválido - distinguir entre NOT FOUND (404) y BAD REQUEST (400)
+     * 
+     * IllegalArgumentException se usa para:
+     * 1. Recurso no encontrado (Usuario/Partido/etc no encontrado) → 404
+     * 2. Datos inválidos (formato incorrecto, validación fallida) → 400
      */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(
             IllegalArgumentException ex,
             WebRequest request) {
         
-        log.warn("[GlobalExceptionHandler] IllegalArgumentException: {}", ex.getMessage());
+        // ✅ Distinguir entre "no encontrado" (404) y "datos inválidos" (400)
+        boolean isNotFound = ex.getMessage() != null && 
+                            (ex.getMessage().toLowerCase().contains("no encontrado") || 
+                             ex.getMessage().toLowerCase().contains("not found") ||
+                             ex.getMessage().toLowerCase().contains("eliminado") ||
+                             ex.getMessage().toLowerCase().contains("no existe"));
+        
+        HttpStatus status = isNotFound ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+        
+        if (isNotFound) {
+            log.warn("[GlobalExceptionHandler] IllegalArgumentException → 404: {}", ex.getMessage());
+        } else {
+            log.warn("[GlobalExceptionHandler] IllegalArgumentException → 400: {}", ex.getMessage());
+        }
+        
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(status.value())
+                .error(isNotFound ? "Not Found" : "Bad Request")
+                .message(ex.getMessage())
+                .path(request.getDescription(false).replace("uri=", ""))
+                .build();
+        
+        return ResponseEntity.status(status).body(response);
+    }
+
+    /**
+     * ✅ MEJORADO: Estado inválido (operación no permitida en estado actual)
+     * Status: 400 BAD REQUEST (antes era 409 CONFLICT)
+     * 
+     * IllegalStateException se usa para validaciones de reglas de negocio:
+     * - Partido completo, ya confirmado, ya cancelado
+     * - Usuario ya inscrito, solicitud duplicada
+     * - Estado inválido para la operación solicitada
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalState(
+            IllegalStateException ex,
+            WebRequest request) {
+        
+        log.warn("[GlobalExceptionHandler] IllegalStateException → 400: {}", ex.getMessage());
         
         ErrorResponse response = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
@@ -83,28 +126,6 @@ public class GlobalExceptionHandler {
                 .build();
         
         return ResponseEntity.badRequest().body(response);
-    }
-
-    /**
-     * Estado inválido (operación no permitida en estado actual)
-     * Status: 409 CONFLICT
-     */
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalState(
-            IllegalStateException ex,
-            WebRequest request) {
-        
-        log.warn("[GlobalExceptionHandler] IllegalStateException: {}", ex.getMessage());
-        
-        ErrorResponse response = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.CONFLICT.value())
-                .error("Conflict")
-                .message(ex.getMessage())
-                .path(request.getDescription(false).replace("uri=", ""))
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     /**

@@ -113,9 +113,9 @@ public class UsuarioService {
 
     @Transactional
     public UsuarioDTO saveCedulaForUser(UUID usuarioId, String cedula) {
-        if (usuarioId == null) throw new RuntimeException("Usuario no encontrado");
+        if (usuarioId == null) throw new IllegalArgumentException("Usuario no encontrado");
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
         usuario.setCedula(cedula);
         usuario = usuarioRepository.save(usuario);
@@ -164,7 +164,7 @@ public class UsuarioService {
             // Si existe pero no lo encuentra en findById, significa que está soft-deleted
             Optional<Usuario> usuarioOpt = usuarioRepository.findById(id);
             if (usuarioOpt.isEmpty()) {
-                throw new RuntimeException("Usuario eliminado");
+                throw new IllegalArgumentException("Usuario eliminado");
             }
             
             UsuarioDTO dto = usuarioMapper.toDTO(usuarioOpt.get());
@@ -177,7 +177,7 @@ public class UsuarioService {
         }
         
         // Si no existe en absoluto
-        throw new RuntimeException("Usuario no encontrado");
+        throw new IllegalArgumentException("Usuario no encontrado");
     }
 
     @Transactional
@@ -187,7 +187,7 @@ public class UsuarioService {
     })
     public Usuario actualizarPerfil(UUID usuarioId, PerfilDTO perfilDTO) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
         // ✅ Validaciones de campos
         if (perfilDTO.getNombre() != null && perfilDTO.getNombre().length() > 100) {
@@ -267,7 +267,7 @@ public class UsuarioService {
     @CacheEvict(value = "usuarios", key = "#usuarioId")
     public void subirFoto(UUID usuarioId, MultipartFile file) throws IOException {
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
         // ✅ FIX: Validar tamaño de archivo (máx 5MB para evitar OOM)
         if (file.isEmpty()) {
@@ -295,7 +295,7 @@ public class UsuarioService {
     @CacheEvict(value = "usuarios", key = "#usuarioId")
     public Usuario marcarCedula(UUID usuarioId, String cedula) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
         usuario.setCedula(cedula);
         return usuarioRepository.save(usuario);
     }
@@ -622,7 +622,7 @@ public class UsuarioService {
         boolean exists = usuarioRepository.existsById(saved.getId());
         if (!exists) {
             log.error("[OAuth] ❌ ERROR CRÍTICO: Usuario NO existe en DB después de save+flush!");
-            throw new RuntimeException("Error al persistir usuario OAuth");
+            throw new IllegalStateException("Error al persistir usuario OAuth");
         }
         
         log.info("[OAuth] ✓ Verificación exitosa - Usuario persiste en DB");
@@ -762,7 +762,7 @@ public class UsuarioService {
     @Transactional(readOnly = true)
     public Map<String, Object> getNotificationPreferences(UUID usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
         Map<String, Object> preferences = new HashMap<>();
         preferences.put("matchInvitations", usuario.getNotifEmailInvitaciones() != null ? usuario.getNotifEmailInvitaciones() : true);
@@ -782,7 +782,7 @@ public class UsuarioService {
     @CacheEvict(value = "usuarios", key = "#usuarioId")
     public Map<String, Object> updateNotificationPreferences(UUID usuarioId, Map<String, Boolean> preferences) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
         if (preferences.containsKey("matchInvitations")) {
             usuario.setNotifEmailInvitaciones(preferences.get("matchInvitations"));

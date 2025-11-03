@@ -368,7 +368,7 @@ public class NotificacionService {
 
     private UUID getUserIdFromAuth(Authentication auth) {
         if (auth == null || auth.getPrincipal() == null) {
-            throw new RuntimeException("Usuario no autenticado");
+            throw new SecurityException("Usuario no autenticado");
         }
         
         String principal = auth.getName(); // Puede ser email o UUID string
@@ -381,7 +381,7 @@ public class NotificacionService {
             log.debug("[NotificacionService] Principal no es UUID, buscando por email: {}", principal);
             Usuario usuario = usuarioService.findByEmail(principal);
             if (usuario == null) {
-                throw new RuntimeException("Usuario no encontrado con email: " + principal);
+                throw new IllegalArgumentException("Usuario no encontrado con email: " + principal);
             }
             return usuario.getId();
         }

@@ -75,7 +75,7 @@ public class VerificationService {
             log.error("[VerificationService] ❌ Error enviando email", e);
             // Eliminar pre-registro si falla el email
             pendingRegistrationRepository.delete(saved);
-            throw new RuntimeException("Error al enviar el código de verificación");
+            throw new IllegalStateException("Error al enviar el código de verificación");
         }
 
         return saved;
@@ -136,7 +136,7 @@ public class VerificationService {
             log.info("[VerificationService] ✅ Código reenviado a: {}", email);
         } catch (Exception e) {
             log.error("[VerificationService] ❌ Error reenviando email", e);
-            throw new RuntimeException("Error al reenviar el código");
+            throw new IllegalStateException("Error al reenviar el código");
         }
     }
 

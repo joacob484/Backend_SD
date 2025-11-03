@@ -153,10 +153,14 @@ public class UsuarioController {
             dto.setPassword(null);
             
             return ResponseEntity.ok(new ApiResponse<>(dto, "Perfil actualizado", true));
-        } catch (RuntimeException e) {
-            log.error("Error actualizando perfil", e);
+        } catch (IllegalArgumentException e) {
+            log.warn("Recurso no encontrado al actualizar perfil: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (RuntimeException e) {
+            log.error("Error actualizando perfil", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error interno", false));
         }
     }
 
@@ -276,7 +280,7 @@ public class UsuarioController {
             UsuarioDTO dto = usuarioService.getUsuario(id);
             dto.setPassword(null);
             return ResponseEntity.ok(new ApiResponse<>(dto, "Usuario encontrado", true));
-        } catch (RuntimeException e) {
+        } catch (IllegalArgumentException e) {
             // Distinguir entre "eliminado" y "no encontrado"
             if (e.getMessage().equals("Usuario eliminado")) {
                 return ResponseEntity.status(HttpStatus.GONE) // 410 Gone
@@ -284,6 +288,10 @@ public class UsuarioController {
             }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (RuntimeException e) {
+            log.error("Error obteniendo usuario", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error interno", false));
         }
     }
 

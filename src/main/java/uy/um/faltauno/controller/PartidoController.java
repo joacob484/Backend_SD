@@ -310,15 +310,20 @@ public class PartidoController {
         try {
             partidoService.eliminarPartido(id, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Partido eliminado", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("Partido no encontrado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("Error inesperado eliminando partido", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error interno del servidor", false));
         }
     }
 
@@ -349,23 +354,23 @@ public class PartidoController {
 
             partidoService.invitarJugador(partidoId, usuarioUuid, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Invitación enviada exitosamente", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("Recurso no encontrado al invitar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (SecurityException e) {
             log.warn("Acceso denegado al invitar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (IllegalArgumentException e) {
-            log.error("Error de validación al invitar: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (IllegalStateException e) {
             // ✅ MEJORADO: Usar 409 Conflict para solicitudes duplicadas
             log.warn("Conflicto al invitar jugador: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (RuntimeException e) {
-            log.error("Error invitando jugador", e);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("Error inesperado invitando jugador", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error interno del servidor", false));
         }
     }
 }

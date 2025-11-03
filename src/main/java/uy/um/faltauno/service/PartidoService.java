@@ -536,7 +536,7 @@ public class PartidoService {
     @Transactional
     public void eliminarPartido(UUID id, Authentication auth) {
         Partido partido = partidoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
         UUID userId = getUserIdFromAuth(auth);
         if (!partido.getOrganizador().getId().equals(userId)) {
@@ -561,7 +561,7 @@ public class PartidoService {
         log.info("Invitando jugador al partido: partidoId={}, usuarioId={}", partidoId, usuarioId);
         
         Partido partido = partidoRepository.findById(partidoId)
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
         UUID organizadorId = getUserIdFromAuth(auth);
         if (!partido.getOrganizador().getId().equals(organizadorId)) {
@@ -779,11 +779,13 @@ public class PartidoService {
         if (partido.getOrganizador() != null) {
             Usuario org = partido.getOrganizador();
             log.debug("[PartidoService.entityToDtoCompleto] Procesando organizador: {}", org.getId());
+            // ✅ FIX: No acceder a fotoPerfil LAZY - causa LazyInitializationException
+            // Solo pasar null, el frontend cargará la foto con endpoint separado
             UsuarioMinDTO orgMin = new UsuarioMinDTO(
                 org.getId(),
                 org.getNombre(),
                 org.getApellido(),
-                org.getFotoPerfil()
+                null  // ✅ No usar org.getFotoPerfil() - es LAZY
             );
             dto.setOrganizador(orgMin);
         } else {
