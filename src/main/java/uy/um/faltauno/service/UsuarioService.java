@@ -202,14 +202,16 @@ public class UsuarioService {
         usuario.setCelular(perfilDTO.getCelular());
         usuario.setPosicion(perfilDTO.getPosicion());
         
-        // ✅ Validar altura (1.0m - 2.5m razonable)
+        // ✅ Validar altura (frontend envía en cm, convertir a metros)
         if (perfilDTO.getAltura() != null && !perfilDTO.getAltura().isEmpty()) {
             try {
-                Double altura = Double.valueOf(perfilDTO.getAltura());
-                if (altura < 1.0 || altura > 2.5) {
-                    throw new IllegalArgumentException("Altura debe estar entre 1.0m y 2.5m");
+                Double alturaCm = Double.valueOf(perfilDTO.getAltura());
+                // Validar rango en cm (100-250 cm razonable)
+                if (alturaCm < 100.0 || alturaCm > 250.0) {
+                    throw new IllegalArgumentException("Altura debe estar entre 100cm y 250cm");
                 }
-                usuario.setAltura(altura);
+                // Convertir cm → metros para almacenar
+                usuario.setAltura(alturaCm / 100.0);
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Altura inválida");
             }
