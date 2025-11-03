@@ -24,6 +24,7 @@ import uy.um.faltauno.repository.PartidoRepository;
 import uy.um.faltauno.repository.UsuarioRepository;
 import uy.um.faltauno.util.PartidoMapper;
 
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 
 import java.math.BigDecimal;
@@ -173,6 +174,12 @@ public class PartidoService {
         Specification<Partido> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
+            // ✅ FIX: JOIN FETCH del organizador para evitar LazyInitializationException
+            if (query != null) {
+                query.distinct(true);
+                root.fetch("organizador", JoinType.LEFT);
+            }
+
             // Filtro por tipo
             if (tipoPartido != null && !tipoPartido.isBlank()) {
                 predicates.add(cb.equal(root.get("tipoPartido"), tipoPartido));
@@ -231,8 +238,8 @@ public class PartidoService {
      */
     @Transactional(readOnly = true)
     public List<PartidoDTO> listarPartidosPorUsuario(UUID usuarioId) {
-        // Partidos creados
-        List<Partido> creados = partidoRepository.findByOrganizador_Id(usuarioId);
+        // ✅ FIX: Usar método con JOIN FETCH para evitar LazyInitializationException
+        List<Partido> creados = partidoRepository.findByOrganizadorIdWithOrganizador(usuarioId);
 
         // Partidos inscritos (ACEPTADO)
         List<Inscripcion> inscripciones = inscripcionRepository
@@ -779,13 +786,14 @@ public class PartidoService {
         if (partido.getOrganizador() != null) {
             Usuario org = partido.getOrganizador();
             log.debug("[PartidoService.entityToDtoCompleto] Procesando organizador: {}", org.getId());
-            // ✅ FIX: No acceder a fotoPerfil LAZY - causa LazyInitializationException
-            // Solo pasar null, el frontend cargará la foto con endpoint separado
+            // ✅ FIX: Ahora el organizador SE CARGA con JOIN FETCH en los repository methods
+            // Por lo tanto podemos acceder a nombre/apellido sin LazyInitializationException
+            // Foto de perfil sigue siendo null porque es BLOB y se carga por endpoint separado
             UsuarioMinDTO orgMin = new UsuarioMinDTO(
                 org.getId(),
                 org.getNombre(),
                 org.getApellido(),
-                null  // ✅ No usar org.getFotoPerfil() - es LAZY
+                null  // ✅ fotoPerfil es BLOB, frontend lo carga con /api/usuarios/{id}/foto
             );
             dto.setOrganizador(orgMin);
         } else {

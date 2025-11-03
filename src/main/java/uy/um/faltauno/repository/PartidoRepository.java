@@ -27,6 +27,19 @@ public interface PartidoRepository extends JpaRepository<Partido, UUID>, JpaSpec
     List<Partido> findByOrganizador_Id(UUID organizadorId);
     
     /**
+     * ✅ OPTIMIZACIÓN: Buscar partidos por organizador con JOIN FETCH
+     * Evita LazyInitializationException al acceder a organizador.nombre/apellido
+     */
+    @Query("""
+           SELECT p
+           FROM Partido p
+           LEFT JOIN FETCH p.organizador
+           WHERE p.organizador.id = :organizadorId
+           ORDER BY p.fecha DESC, p.hora DESC
+           """)
+    List<Partido> findByOrganizadorIdWithOrganizador(@Param("organizadorId") UUID organizadorId);
+    
+    /**
      * Buscar partidos por fecha
      */
     List<Partido> findByFecha(LocalDate fecha);
@@ -93,4 +106,17 @@ public interface PartidoRepository extends JpaRepository<Partido, UUID>, JpaSpec
         @Param("ahora") LocalDateTime ahora,
         @Param("dentroDeHoras") LocalDateTime dentroDeHoras
     );
+    
+    /**
+     * ✅ OPTIMIZACIÓN: Buscar TODOS los partidos con JOIN FETCH del organizador
+     * Evita N+1 queries y LazyInitializationException
+     * Usar en listarPartidos() cuando se necesita el organizador
+     */
+    @Query("""
+           SELECT DISTINCT p
+           FROM Partido p
+           LEFT JOIN FETCH p.organizador
+           ORDER BY p.fecha DESC, p.hora DESC
+           """)
+    List<Partido> findAllWithOrganizador();
 }
