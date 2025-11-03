@@ -216,24 +216,35 @@ public class MensajeService {
      * Validar que el usuario tenga acceso al chat del partido
      */
     private void validarAccesoChat(Partido partido, UUID userId) {
+        log.debug("[MensajeService] Validando acceso: partidoId={}, userId={}, organizadorId={}", 
+                partido.getId(), userId, partido.getOrganizador().getId());
+        
         // Organizador siempre tiene acceso
         if (partido.getOrganizador().getId().equals(userId)) {
-            log.debug("[MensajeService] Acceso concedido: usuario es organizador");
+            log.debug("[MensajeService] ✅ Acceso concedido: usuario es organizador");
             return;
         }
 
         // Verificar inscripción aceptada
         List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(partido.getId());
+        log.debug("[MensajeService] Total inscripciones encontradas: {}", inscripciones.size());
+        
+        // Log de cada inscripción para debug
+        inscripciones.forEach(i -> 
+            log.debug("[MensajeService] Inscripción: usuarioId={}, estado={}", 
+                    i.getUsuario().getId(), i.getEstado())
+        );
+        
         boolean estaInscrito = inscripciones.stream()
                 .anyMatch(i -> i.getUsuario().getId().equals(userId) && 
                               i.getEstado() == Inscripcion.EstadoInscripcion.ACEPTADO);
 
         if (!estaInscrito) {
-            log.warn("[MensajeService] Acceso denegado: usuario no inscrito o no aceptado");
+            log.warn("[MensajeService] ❌ Acceso denegado: usuario no inscrito o no aceptado. UserId buscado: {}", userId);
             throw new SecurityException("No tienes acceso al chat de este partido");
         }
         
-        log.debug("[MensajeService] Acceso concedido: usuario inscrito y aceptado");
+        log.debug("[MensajeService] ✅ Acceso concedido: usuario inscrito y aceptado");
     }
 
     /**
