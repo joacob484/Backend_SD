@@ -39,10 +39,10 @@ public class AmistadService {
         }
 
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
         
         Usuario amigo = usuarioRepository.findById(amigoId)
-                .orElseThrow(() -> new RuntimeException("Usuario amigo no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario amigo no encontrado"));
 
         if (amistadRepository.sonAmigos(usuarioId, amigoId)) {
             log.warn("[AmistadService] Los usuarios ya son amigos");
@@ -79,7 +79,7 @@ public class AmistadService {
         Amistad amistad = amistadRepository.findById(solicitudId)
                 .orElseThrow(() -> {
                     log.error("[AmistadService] Solicitud no encontrada: {}", solicitudId);
-                    return new RuntimeException("Solicitud de amistad no encontrada");
+                    return new IllegalArgumentException("Solicitud de amistad no encontrada");
                 });
 
         if (!amistad.getAmigoId().equals(usuarioId)) {
@@ -118,7 +118,7 @@ public class AmistadService {
         Amistad amistad = amistadRepository.findById(solicitudId)
                 .orElseThrow(() -> {
                     log.error("[AmistadService] Solicitud no encontrada: {}", solicitudId);
-                    return new RuntimeException("Solicitud de amistad no encontrada");
+                    return new IllegalArgumentException("Solicitud de amistad no encontrada");
                 });
 
         if (!amistad.getAmigoId().equals(usuarioId)) {
@@ -144,7 +144,7 @@ public class AmistadService {
         Amistad amistad = amistadRepository.findById(solicitudId)
                 .orElseThrow(() -> {
                     log.error("[AmistadService] Solicitud no encontrada: {}", solicitudId);
-                    return new RuntimeException("Solicitud de amistad no encontrada");
+                    return new IllegalArgumentException("Solicitud de amistad no encontrada");
                 });
 
         if (!amistad.getUsuarioId().equals(usuarioId)) {
@@ -170,7 +170,7 @@ public class AmistadService {
         Amistad amistad = amistadRepository.findAmistadEntreUsuarios(usuarioId, amigoId)
                 .orElseThrow(() -> {
                     log.error("[AmistadService] Amistad no encontrada");
-                    return new RuntimeException("No existe una amistad entre estos usuarios");
+                    return new IllegalArgumentException("No existe una amistad entre estos usuarios");
                 });
 
         if (!"ACEPTADO".equals(amistad.getEstado())) {

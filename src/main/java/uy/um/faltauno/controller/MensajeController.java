@@ -34,6 +34,10 @@ public class MensajeController {
         try {
             List<MensajeDTO> mensajes = mensajeService.obtenerMensajesPartido(partidoId, limit, auth);
             return ResponseEntity.ok(new ApiResponse<>(mensajes, "Mensajes del partido", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("[MensajeController] Recurso no encontrado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
@@ -56,11 +60,18 @@ public class MensajeController {
             MensajeDTO mensaje = mensajeService.enviarMensaje(partidoId, mensajeDTO, auth);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponse<>(mensaje, "Mensaje enviado", true));
+        } catch (IllegalArgumentException e) {
+            // Distinguir 404 (no encontrado) vs 400 (validación)
+            if (e.getMessage().contains("no encontrado") || e.getMessage().contains("no encontrada")) {
+                log.warn("[MensajeController] Recurso no encontrado: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiResponse<>(null, e.getMessage(), false));
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiResponse<>(null, e.getMessage(), false));
+            }
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (Exception e) {
             log.error("Error enviando mensaje", e);
@@ -97,12 +108,17 @@ public class MensajeController {
         try {
             mensajeService.eliminarMensaje(mensajeId, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Mensaje eliminado", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("[MensajeController] Recurso no encontrado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("Error eliminando mensaje", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al eliminar mensaje", false));
         }
     }
 }

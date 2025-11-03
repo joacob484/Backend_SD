@@ -58,9 +58,16 @@ public class AmistadController {
                     .body(new ApiResponse<>(amistad, "Solicitud de amistad enviada", true));
                     
         } catch (IllegalArgumentException e) {
-            log.warn("[AmistadController] IllegalArgumentException: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+            // Distinguir 404 (usuario no encontrado) vs 400 (auto-solicitud)
+            if (e.getMessage().contains("no encontrado") || e.getMessage().contains("no encontrada")) {
+                log.warn("[AmistadController] Recurso no encontrado: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiResponse<>(null, e.getMessage(), false));
+            } else {
+                log.warn("[AmistadController] Validación fallida: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiResponse<>(null, e.getMessage(), false));
+            }
                     
         } catch (IllegalStateException e) {
             log.warn("[AmistadController] IllegalStateException: {}", e.getMessage());
@@ -185,6 +192,11 @@ public class AmistadController {
             return ResponseEntity.ok(
                     new ApiResponse<>(amistad, "Solicitud aceptada", true));
                     
+        } catch (IllegalArgumentException e) {
+            log.warn("[AmistadController] Recurso no encontrado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (SecurityException e) {
             log.warn("[AmistadController] Acceso denegado al aceptar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -195,10 +207,10 @@ public class AmistadController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
                     
-        } catch (RuntimeException e) {
-            log.error("[AmistadController] Error aceptando solicitud", e);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[AmistadController] Error inesperado aceptando solicitud", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al aceptar solicitud", false));
         }
     }
 
@@ -221,6 +233,11 @@ public class AmistadController {
             return ResponseEntity.ok(
                     new ApiResponse<>(null, "Solicitud rechazada", true));
                     
+        } catch (IllegalArgumentException e) {
+            log.warn("[AmistadController] Recurso no encontrado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (SecurityException e) {
             log.warn("[AmistadController] Acceso denegado al rechazar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -231,10 +248,10 @@ public class AmistadController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
                     
-        } catch (RuntimeException e) {
-            log.error("[AmistadController] Error rechazando solicitud", e);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[AmistadController] Error inesperado rechazando solicitud", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al rechazar solicitud", false));
         }
     }
 
@@ -257,6 +274,11 @@ public class AmistadController {
             return ResponseEntity.ok(
                     new ApiResponse<>(null, "Solicitud cancelada", true));
                     
+        } catch (IllegalArgumentException e) {
+            log.warn("[AmistadController] Recurso no encontrado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (SecurityException e) {
             log.warn("[AmistadController] Acceso denegado al cancelar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -267,10 +289,10 @@ public class AmistadController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
                     
-        } catch (RuntimeException e) {
-            log.error("[AmistadController] Error cancelando solicitud", e);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[AmistadController] Error inesperado cancelando solicitud", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al cancelar solicitud", false));
         }
     }
 
@@ -293,6 +315,11 @@ public class AmistadController {
             return ResponseEntity.ok(
                     new ApiResponse<>(null, "Amistad eliminada", true));
                     
+        } catch (IllegalArgumentException e) {
+            log.warn("[AmistadController] Recurso no encontrado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (SecurityException e) {
             log.warn("[AmistadController] Acceso denegado al eliminar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -303,10 +330,10 @@ public class AmistadController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
                     
-        } catch (RuntimeException e) {
-            log.error("[AmistadController] Error eliminando amistad", e);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[AmistadController] Error inesperado eliminando amistad", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al eliminar amistad", false));
         }
     }
 

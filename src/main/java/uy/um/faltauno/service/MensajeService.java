@@ -46,7 +46,7 @@ public class MensajeService {
         Partido partido = partidoRepository.findById(partidoId)
                 .orElseThrow(() -> {
                     log.error("[MensajeService] Partido no encontrado: {}", partidoId);
-                    return new RuntimeException("Partido no encontrado");
+                    return new IllegalArgumentException("Partido no encontrado");
                 });
 
         UUID userId = getUserIdFromAuth(auth);
@@ -78,7 +78,7 @@ public class MensajeService {
         Partido partido = partidoRepository.findById(partidoId)
                 .orElseThrow(() -> {
                     log.error("[MensajeService] Partido no encontrado: {}", partidoId);
-                    return new RuntimeException("Partido no encontrado");
+                    return new IllegalArgumentException("Partido no encontrado");
                 });
 
         UUID userId = getUserIdFromAuth(auth);
@@ -87,7 +87,7 @@ public class MensajeService {
         // Validar que el usuario existe
         if (!usuarioRepository.existsById(userId)) {
             log.error("[MensajeService] Usuario no encontrado: {}", userId);
-            throw new RuntimeException("Usuario no encontrado");
+            throw new IllegalArgumentException("Usuario no encontrado");
         }
 
         // Validar contenido
@@ -146,13 +146,13 @@ public class MensajeService {
         Mensaje mensaje = mensajeRepository.findById(mensajeId)
                 .orElseThrow(() -> {
                     log.error("[MensajeService] Mensaje no encontrado: {}", mensajeId);
-                    return new RuntimeException("Mensaje no encontrado");
+                    return new IllegalArgumentException("Mensaje no encontrado");
                 });
 
         UUID userId = getUserIdFromAuth(auth);
 
         Partido partido = partidoRepository.findById(mensaje.getPartidoId())
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
         boolean esAutor = mensaje.getRemitenteId().equals(userId);
         boolean esOrganizador = partido.getOrganizador().getId().equals(userId);
