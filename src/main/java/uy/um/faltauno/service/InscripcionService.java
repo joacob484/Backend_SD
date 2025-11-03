@@ -161,7 +161,7 @@ public class InscripcionService {
         Partido partido = partidoRepository.findById(partidoId)
                 .orElseThrow(() -> {
                     log.error("[InscripcionService] Partido no encontrado: {}", partidoId);
-                    return new RuntimeException("Partido no encontrado");
+                    return new IllegalArgumentException("Partido no encontrado");
                 });
 
         UUID userId = getUserIdFromAuth(auth);
@@ -188,7 +188,7 @@ public class InscripcionService {
         Inscripcion inscripcion = inscripcionRepository.findById(inscripcionId)
                 .orElseThrow(() -> {
                     log.error("[InscripcionService] Inscripción no encontrada: {}", inscripcionId);
-                    return new RuntimeException("Inscripción no encontrada");
+                    return new IllegalArgumentException("Inscripción no encontrada");
                 });
 
         Partido partido = inscripcion.getPartido();
@@ -254,7 +254,7 @@ public class InscripcionService {
         Inscripcion inscripcion = inscripcionRepository.findById(inscripcionId)
                 .orElseThrow(() -> {
                     log.error("[InscripcionService] Inscripción no encontrada: {}", inscripcionId);
-                    return new RuntimeException("Inscripción no encontrada");
+                    return new IllegalArgumentException("Inscripción no encontrada");
                 });
 
         Partido partido = inscripcion.getPartido();
@@ -292,7 +292,7 @@ public class InscripcionService {
         Inscripcion inscripcion = inscripcionRepository.findById(inscripcionId)
                 .orElseThrow(() -> {
                     log.error("[InscripcionService] Inscripción no encontrada: {}", inscripcionId);
-                    return new RuntimeException("Inscripción no encontrada");
+                    return new IllegalArgumentException("Inscripción no encontrada");
                 });
 
         UUID userId = getUserIdFromAuth(auth);

@@ -109,6 +109,11 @@ public class InscripcionController {
             InscripcionDTO aceptada = inscripcionService.aceptarInscripcion(inscripcionId, auth);
             return ResponseEntity.ok(new ApiResponse<>(aceptada, "Solicitud aceptada", true));
             
+        } catch (IllegalArgumentException e) {
+            log.warn("[InscripcionController] Recurso no encontrado al aceptar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (SecurityException e) {
             log.warn("[InscripcionController] Acceso denegado al aceptar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -119,10 +124,10 @@ public class InscripcionController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
                     
-        } catch (RuntimeException e) {
-            log.error("[InscripcionController] Error aceptando inscripción", e);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[InscripcionController] Error inesperado aceptando inscripción", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al aceptar inscripción", false));
         }
     }
 
@@ -139,6 +144,11 @@ public class InscripcionController {
             inscripcionService.rechazarInscripcion(inscripcionId, motivo, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Solicitud rechazada", true));
             
+        } catch (IllegalArgumentException e) {
+            log.warn("[InscripcionController] Recurso no encontrado al rechazar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (SecurityException e) {
             log.warn("[InscripcionController] Acceso denegado al rechazar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -149,10 +159,10 @@ public class InscripcionController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
                     
-        } catch (RuntimeException e) {
-            log.error("[InscripcionController] Error rechazando inscripción", e);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[InscripcionController] Error inesperado rechazando inscripción", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al rechazar inscripción", false));
         }
     }
 
@@ -166,6 +176,11 @@ public class InscripcionController {
             inscripcionService.cancelarInscripcion(inscripcionId, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Te has retirado del partido", true));
             
+        } catch (IllegalArgumentException e) {
+            log.warn("[InscripcionController] Recurso no encontrado al cancelar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
         } catch (SecurityException e) {
             log.warn("[InscripcionController] Acceso denegado al cancelar: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -176,10 +191,10 @@ public class InscripcionController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
                     
-        } catch (RuntimeException e) {
-            log.error("[InscripcionController] Error cancelando inscripción", e);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[InscripcionController] Error inesperado cancelando inscripción", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al cancelar inscripción", false));
         }
     }
 
