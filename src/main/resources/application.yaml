@@ -10,12 +10,13 @@ spring:
 
     # ✅ Pool Hikari (estable)
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+      maximum-pool-size: 10  # ✅ Reducido para Cloud Run (menos recursos)
+      minimum-idle: 2  # ✅ Mínimo de conexiones idle
+      connection-timeout: 20000  # ✅ 20 segundos timeout
+      idle-timeout: 300000  # ✅ 5 minutos idle
+      max-lifetime: 1200000  # ✅ 20 minutos max lifetime (renovar conexiones)
       auto-commit: true
+      leak-detection-threshold: 60000  # ✅ Detectar leaks después de 60 segundos
       pool-name: FaltaUnoHikariCP
 
   jpa:

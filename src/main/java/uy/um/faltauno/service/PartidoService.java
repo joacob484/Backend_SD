@@ -228,9 +228,21 @@ public class PartidoService {
 
         List<Partido> partidos = partidoRepository.findAll(spec);
         
-        return partidos.stream()
+        log.debug("[PartidoService.listarPartidos] Partidos encontrados: {}", partidos.size());
+        
+        // ✅ FIX: Forzar inicialización del organizador dentro de la transacción
+        for (Partido p : partidos) {
+            if (p.getOrganizador() != null) {
+                p.getOrganizador().getNombre(); // Touch lazy field para forzar carga
+            }
+        }
+        
+        List<PartidoDTO> resultado = partidos.stream()
                 .map(this::entityToDtoCompleto)
                 .collect(Collectors.toList());
+        
+        log.debug("[PartidoService.listarPartidos] DTOs generados: {}", resultado.size());
+        return resultado;
     }
 
     /**
@@ -238,30 +250,57 @@ public class PartidoService {
      */
     @Transactional(readOnly = true)
     public List<PartidoDTO> listarPartidosPorUsuario(UUID usuarioId) {
-        // ✅ FIX: Usar método con JOIN FETCH para evitar LazyInitializationException
-        List<Partido> creados = partidoRepository.findByOrganizadorIdWithOrganizador(usuarioId);
+        log.debug("[PartidoService.listarPartidosPorUsuario] Buscando partidos para usuario: {}", usuarioId);
+        
+        try {
+            // ✅ FIX: Usar método con JOIN FETCH para evitar LazyInitializationException
+            List<Partido> creados = partidoRepository.findByOrganizadorIdWithOrganizador(usuarioId);
+            log.debug("[PartidoService.listarPartidosPorUsuario] Partidos creados: {}", creados.size());
 
-        // Partidos inscritos (ACEPTADO)
-        List<Inscripcion> inscripciones = inscripcionRepository
-                .findByUsuario_IdAndEstado(usuarioId, Inscripcion.EstadoInscripcion.ACEPTADO);
-        List<Partido> inscritos = inscripciones.stream()
-                .map(Inscripcion::getPartido)
-                .collect(Collectors.toList());
+            // ✅ FIX: Usar query con JOIN FETCH explícito en vez del método derivado
+            List<Inscripcion> inscripciones = inscripcionRepository
+                    .findByUsuarioIdAndEstado(usuarioId, Inscripcion.EstadoInscripcion.ACEPTADO);
+            log.debug("[PartidoService.listarPartidosPorUsuario] Inscripciones encontradas: {}", inscripciones.size());
+            
+            // ✅ FIX: Extraer partidos dentro de la transacción y forzar inicialización del organizador
+            List<Partido> inscritos = inscripciones.stream()
+                    .map(i -> {
+                        Partido p = i.getPartido();
+                        // Forzar inicialización del organizador dentro de la transacción
+                        if (p.getOrganizador() != null) {
+                            p.getOrganizador().getNombre(); // Touch lazy field
+                        }
+                        return p;
+                    })
+                    .collect(Collectors.toList());
 
-        // Combinar y eliminar duplicados
-        Set<Partido> todosPartidos = new HashSet<>();
-        todosPartidos.addAll(creados);
-        todosPartidos.addAll(inscritos);
+            log.debug("[PartidoService.listarPartidosPorUsuario] Partidos inscritos: {}", inscritos.size());
 
-        return todosPartidos.stream()
-                .map(this::entityToDtoCompleto)
-                .sorted((a, b) -> {
-                    // Ordenar por fecha descendente
-                    LocalDateTime dateA = LocalDateTime.of(a.getFecha(), a.getHora());
-                    LocalDateTime dateB = LocalDateTime.of(b.getFecha(), b.getHora());
-                    return dateB.compareTo(dateA);
-                })
-                .collect(Collectors.toList());
+            // Combinar y eliminar duplicados
+            Set<Partido> todosPartidos = new HashSet<>();
+            todosPartidos.addAll(creados);
+            todosPartidos.addAll(inscritos);
+
+            log.debug("[PartidoService.listarPartidosPorUsuario] Total partidos únicos: {}", todosPartidos.size());
+
+            List<PartidoDTO> resultado = todosPartidos.stream()
+                    .map(this::entityToDtoCompleto)
+                    .sorted((a, b) -> {
+                        // Ordenar por fecha descendente
+                        LocalDateTime dateA = LocalDateTime.of(a.getFecha(), a.getHora());
+                        LocalDateTime dateB = LocalDateTime.of(b.getFecha(), b.getHora());
+                        return dateB.compareTo(dateA);
+                    })
+                    .collect(Collectors.toList());
+
+            log.debug("[PartidoService.listarPartidosPorUsuario] DTOs generados: {}", resultado.size());
+            return resultado;
+            
+        } catch (Exception e) {
+            log.error("[PartidoService.listarPartidosPorUsuario] Error procesando partidos para usuario {}: {}", 
+                    usuarioId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
