@@ -86,11 +86,12 @@ public class NotificacionController {
             log.debug("[NotificacionController] PUT /api/notificaciones/{}/leer", id);
             notificacionService.marcarComoLeida(id, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Notificación marcada como leída", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("[NotificacionController] Recurso no encontrado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (Exception e) {
             log.error("[NotificacionController] Error marcando notificación como leída", e);
@@ -130,11 +131,12 @@ public class NotificacionController {
             log.debug("[NotificacionController] DELETE /api/notificaciones/{}", id);
             notificacionService.eliminarNotificacion(id, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Notificación eliminada", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("[NotificacionController] Recurso no encontrado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (Exception e) {
             log.error("[NotificacionController] Error eliminando notificación", e);

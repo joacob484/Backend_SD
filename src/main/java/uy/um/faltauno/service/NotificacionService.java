@@ -116,7 +116,7 @@ public class NotificacionService {
         UUID usuarioId = getUserIdFromAuth(auth);
         
         Notificacion notificacion = notificacionRepository.findById(notificacionId)
-                .orElseThrow(() -> new RuntimeException("Notificación no encontrada"));
+                .orElseThrow(() -> new IllegalArgumentException("Notificación no encontrada"));
 
         if (!notificacion.getUsuarioId().equals(usuarioId)) {
             throw new SecurityException("No tienes permiso para modificar esta notificación");
@@ -148,7 +148,7 @@ public class NotificacionService {
         UUID usuarioId = getUserIdFromAuth(auth);
         
         Notificacion notificacion = notificacionRepository.findById(notificacionId)
-                .orElseThrow(() -> new RuntimeException("Notificación no encontrada"));
+                .orElseThrow(() -> new IllegalArgumentException("Notificación no encontrada"));
 
         if (!notificacion.getUsuarioId().equals(usuarioId)) {
             throw new SecurityException("No tienes permiso para eliminar esta notificación");
