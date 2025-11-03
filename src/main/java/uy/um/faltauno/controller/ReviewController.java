@@ -35,6 +35,10 @@ public class ReviewController {
             ReviewDTO review = reviewService.crearReview(reviewDTO, auth);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponse<>(review, "Review creada exitosamente", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("[ReviewController] Recurso no encontrado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
@@ -144,12 +148,17 @@ public class ReviewController {
         try {
             reviewService.eliminarReview(reviewId, auth);
             return ResponseEntity.ok(new ApiResponse<>(null, "Review eliminada", true));
+        } catch (IllegalArgumentException e) {
+            log.warn("[ReviewController] Recurso no encontrado: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("Error eliminando review", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al eliminar review", false));
         }
     }
 }

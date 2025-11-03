@@ -40,13 +40,13 @@ public class ReviewService {
 
         // Validaciones
         Partido partido = partidoRepository.findById(dto.getPartidoId())
-                .orElseThrow(() -> new RuntimeException("Partido no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
         Usuario calificador = usuarioRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
         Usuario calificado = usuarioRepository.findById(dto.getUsuarioCalificadoId())
-                .orElseThrow(() -> new RuntimeException("Usuario calificado no encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Usuario calificado no encontrado"));
 
         // Validar que el partido ya haya pasado
         LocalDateTime fechaPartido = LocalDateTime.of(partido.getFecha(), partido.getHora());
@@ -239,7 +239,7 @@ public class ReviewService {
     @Transactional
     public void eliminarReview(UUID reviewId, Authentication auth) {
         Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new RuntimeException("Review no encontrada"));
+                .orElseThrow(() -> new IllegalArgumentException("Review no encontrada"));
 
         UUID userId = getUserIdFromAuth(auth);
 
