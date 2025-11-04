@@ -73,6 +73,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/verification/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
                 .requestMatchers("/api/novedades").permitAll()
                 .requestMatchers("/public/**", "/actuator/health", "/error").permitAll()
