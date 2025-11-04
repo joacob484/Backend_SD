@@ -26,18 +26,19 @@ public class CacheConfig implements CachingConfigurer {
     }
 
     /**
-     * Configuracion de Caffeine cache manager.
-     * - maximumSize: 10,000 entradas (ajustar segun memoria disponible)
-     * - expireAfterWrite: 10 minutos de TTL
+     * ⚡ OPTIMIZADO: Configuracion de Caffeine cache manager.
+     * - maximumSize: 15,000 entradas (aumentado para mejor hit rate)
+     * - expireAfterWrite: 10 minutos de TTL default
      * - allowNullValues: false (no cachear nulls)
+     * - recordStats: true (monitoreo de rendimiento)
      */
     @Bean
     public CaffeineCacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
         cacheManager.setCaffeine(Caffeine.newBuilder()
-            .maximumSize(10_000)
+            .maximumSize(15_000)  // ✅ Aumentado de 10k a 15k
             .expireAfterWrite(Duration.ofMinutes(10))
-            .recordStats()); // Habilitar estadisticas para monitoreo
+            .recordStats());
         cacheManager.setAllowNullValues(false);
         return cacheManager;
     }

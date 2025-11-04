@@ -26,13 +26,21 @@ spring:
       hibernate:
         default_schema: public
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: false  # ✅ Desactivado en producción para performance
         jdbc:
-          batch_size: 20
+          batch_size: 30  # ✅ Aumentado para mejor throughput
+          fetch_size: 50  # ✅ Reducir round-trips
           lob:
-            non_contextual_creation: true    # ✅ evita problemas con LOBs (única vez)
+            non_contextual_creation: true
         order_inserts: true
         order_updates: true
+        query:
+          in_clause_parameter_padding: true  # ✅ Mejora query plan caching
+          plan_cache_max_size: 2048  # ✅ Aumentar cache de query plans
+          plan_parameter_metadata_max_size: 256
+        cache:
+          use_second_level_cache: false  # ✅ Caffeine ya maneja L1
+          use_query_cache: false  # ✅ No duplicar con Caffeine
     show-sql: false  # ✅ Solo en desarrollo
     open-in-view: false  # ✅ Mejor práctica
 
@@ -47,7 +55,7 @@ spring:
   cache:
     type: caffeine
     caffeine:
-      spec: maximumSize=10000,expireAfterWrite=10m
+      spec: maximumSize=10000,expireAfterWrite=10m,recordStats=true
 
   security:
     oauth2:
@@ -149,18 +157,18 @@ gcp:
 logging:
   level:
     root: INFO
-    uy.um.faltauno: DEBUG
-    org.springframework.security: INFO
-    org.springframework.web: INFO
+    uy.um.faltauno: INFO  # ✅ OPTIMIZACIÓN: Reducir logs en producción
+    org.springframework.security: WARN  # ✅ Solo warnings
+    org.springframework.web: WARN
     org.hibernate: WARN
-    org.hibernate.SQL: INFO
-    org.hibernate.type.descriptor.sql.BasicBinder: INFO
-    io.netty: WARN
-    org.apache.coyote.http11: WARN
-    org.apache.tomcat.util.net: WARN
+    org.hibernate.SQL: WARN  # ✅ Desactivar SQL logging en producción
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    io.netty: ERROR  # ✅ Solo errores
+    org.apache.coyote.http11: ERROR
+    org.apache.tomcat.util.net: ERROR
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"  # ✅ Formato más corto
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
 
 # ✅ Performance Monitoring (deshabilitado por defecto)
 performance:
