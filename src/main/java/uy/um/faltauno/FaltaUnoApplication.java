@@ -6,10 +6,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling  // ✅ Habilitar scheduled tasks (cleanup automático)
+@EnableAsync  // ✅ Habilitar procesamiento asíncrono (notificaciones)
 @RequiredArgsConstructor
 @Slf4j
 public class FaltaUnoApplication {

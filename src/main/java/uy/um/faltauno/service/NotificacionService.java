@@ -15,7 +15,6 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -59,30 +58,18 @@ public class NotificacionService {
         Notificacion guardada = notificacionRepository.save(notificacion);
         log.info("[NotificacionService] ✅ Notificación creada: id={}, tipo={}", guardada.getId(), tipo);
 
-        // ✅ FIX: Enviar email de forma asíncrona FUERA de la transacción
-        // Si falla el email, NO debe hacer rollback de la notificación
-        enviarEmailAsync(usuarioId, tipo, titulo, mensaje, urlAccion);
+        // Enviar email de forma asíncrona (best-effort, no bloquea)
+        try {
+            Usuario usuario = usuarioService.findUsuarioEntityById(usuarioId);
+            if (usuario != null && usuario.getEmail() != null) {
+                emailService.enviarNotificacionEmail(usuario, tipo, titulo, mensaje, urlAccion);
+            }
+        } catch (Exception e) {
+            log.warn("[NotificacionService] No se pudo enviar email para notificación: {}", e.getMessage());
+            // NO propagar el error - el email es secundario
+        }
 
         return notificacionMapper.toDTO(guardada);
-    }
-    
-    /**
-     * Enviar email asíncrono - separado para no afectar la transacción principal
-     */
-    private void enviarEmailAsync(UUID usuarioId, Notificacion.TipoNotificacion tipo, 
-                                   String titulo, String mensaje, String urlAccion) {
-        // Ejecutar en thread separado para no bloquear ni hacer rollback
-        CompletableFuture.runAsync(() -> {
-            try {
-                Usuario usuario = usuarioService.findUsuarioEntityById(usuarioId);
-                if (usuario != null && usuario.getEmail() != null) {
-                    emailService.enviarNotificacionEmail(usuario, tipo, titulo, mensaje, urlAccion);
-                }
-            } catch (Exception e) {
-                log.warn("[NotificacionService] No se pudo enviar email para notificación: {}", e.getMessage());
-                // NO propagar el error - el email es secundario
-            }
-        });
     }
 
     /**

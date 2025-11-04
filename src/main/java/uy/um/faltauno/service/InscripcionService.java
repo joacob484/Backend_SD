@@ -2,6 +2,7 @@ package uy.um.faltauno.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,6 +13,7 @@ import uy.um.faltauno.entity.Inscripcion;
 import uy.um.faltauno.entity.Partido;
 import uy.um.faltauno.entity.SolicitudPartido;
 import uy.um.faltauno.entity.Usuario;
+import uy.um.faltauno.event.InscripcionAceptadaEvent;
 import uy.um.faltauno.repository.InscripcionRepository;
 import uy.um.faltauno.repository.PartidoRepository;
 import uy.um.faltauno.repository.SolicitudPartidoRepository;
@@ -33,6 +35,7 @@ public class InscripcionService {
     private final PartidoRepository partidoRepository;
     private final InscripcionMapper inscripcionMapper;
     private final NotificacionService notificacionService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
      * Crear solicitud para unirse a un partido.
@@ -295,25 +298,18 @@ public class InscripcionService {
         
         log.info("[InscripcionService] ✅ Solicitud aceptada y usuario inscrito: usuarioId={}", usuario.getId());
 
-        // Notificar al jugador
-        String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
-        notificacionService.notificarInscripcionAceptada(
-                usuario.getId(), 
-                partido.getId(), 
-                nombrePartido
+        // ✅ FIX RAÍZ: Publicar evento DESPUÉS del commit de la transacción
+        // Las notificaciones se ejecutarán SOLO si la transacción es exitosa
+        InscripcionAceptadaEvent evento = new InscripcionAceptadaEvent(
+                this,
+                usuario.getId(),
+                partido.getId(),
+                partido.getTipoPartido() + " - " + partido.getNombreUbicacion(),
+                jugadoresActuales + 1,
+                partido.getCantidadJugadores(),
+                partido.getOrganizador().getId()
         );
-
-        // Notificar si se llenó el cupo
-        long nuevosJugadores = jugadoresActuales + 1;
-        if (nuevosJugadores >= partido.getCantidadJugadores()) {
-            log.info("[InscripcionService] ⚽ Partido completo ({}/{})", 
-                    nuevosJugadores, partido.getCantidadJugadores());
-            notificacionService.notificarPartidoListo(
-                    partido.getOrganizador().getId(),
-                    partido.getId(),
-                    nombrePartido
-            );
-        }
+        applicationEventPublisher.publishEvent(evento);
 
         // Convertir a DTO
         InscripcionDTO dto = inscripcionMapper.toDTO(guardada);
