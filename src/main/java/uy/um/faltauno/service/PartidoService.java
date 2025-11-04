@@ -829,12 +829,22 @@ public class PartidoService {
             log.debug("[PartidoService.entityToDtoCompleto] Procesando organizador: {}", org.getId());
             // ✅ FIX: Ahora el organizador SE CARGA con JOIN FETCH en los repository methods
             // Por lo tanto podemos acceder a nombre/apellido sin LazyInitializationException
-            // Foto de perfil sigue siendo null porque es BLOB y se carga por endpoint separado
+            // ✅ NUEVO: Incluir foto_perfil del organizador para mostrar en frontend
+            String fotoPerfil = null;
+            if (org.getFotoPerfil() != null) {
+                try {
+                    fotoPerfil = java.util.Base64.getEncoder().encodeToString(org.getFotoPerfil());
+                    log.debug("[PartidoService] Foto de organizador incluida en DTO");
+                } catch (Exception e) {
+                    log.warn("[PartidoService] Error codificando foto del organizador: {}", e.getMessage());
+                }
+            }
+            
             UsuarioMinDTO orgMin = new UsuarioMinDTO(
                 org.getId(),
                 org.getNombre(),
                 org.getApellido(),
-                null  // ✅ fotoPerfil es BLOB, frontend lo carga con /api/usuarios/{id}/foto
+                fotoPerfil
             );
             dto.setOrganizador(orgMin);
         } else {
