@@ -125,9 +125,15 @@ public class InscripcionController {
                     .body(new ApiResponse<>(null, e.getMessage(), false));
                     
         } catch (Exception e) {
-            log.error("[InscripcionController] Error inesperado aceptando inscripción", e);
+            // ✅ MEJORADO: Log detallado del error con stack trace
+            log.error("[InscripcionController] ❌ Error inesperado aceptando inscripción {}: {}", 
+                    inscripcionId, e.getMessage(), e);
+            
+            // Agregar más contexto en el mensaje de error para debugging
+            String errorDetail = e.getClass().getSimpleName() + ": " + e.getMessage();
+            
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(null, "Error al aceptar inscripción", false));
+                    .body(new ApiResponse<>(null, "Error al aceptar inscripción: " + errorDetail, false));
         }
     }
 
