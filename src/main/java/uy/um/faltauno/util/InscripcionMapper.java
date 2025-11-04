@@ -24,8 +24,8 @@ public interface InscripcionMapper {
     @Mapping(source = "createdAt", target = "createdAt", defaultExpression = "java(java.time.Instant.now())")
     @Mapping(source = "updatedAt", target = "updatedAt", defaultExpression = "java(java.time.Instant.now())")
     @Mapping(source = "fechaInscripcion", target = "fechaAceptacion")  // fechaInscripcion → fechaAceptacion en DTO
-    @Mapping(target = "fechaRechazo", constant = "null")
-    @Mapping(target = "fechaCancelacion", constant = "null")
+    @Mapping(target = "fechaRechazo", ignore = true)  // Siempre null para inscripciones aceptadas
+    @Mapping(target = "fechaCancelacion", ignore = true)  // Siempre null para inscripciones aceptadas
     @Mapping(target = "tiempoTranscurrido", expression = "java(calcularTiempoTranscurrido(inscripcion.getCreatedAt()))")
     @Mapping(target = "puedeCancelar", constant = "true")  // Inscrito puede cancelar
     @Mapping(target = "puedeAceptar", constant = "false")  // Ya está aceptado
