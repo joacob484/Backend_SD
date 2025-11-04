@@ -21,8 +21,8 @@ public interface InscripcionMapper {
     @Mapping(target = "estado", expression = "java(\"ACEPTADO\")")  // Siempre ACEPTADO en la tabla inscripcion
     @Mapping(source = "usuario", target = "usuario", qualifiedByName = "toUsuarioMinDTO")
     @Mapping(source = "partido", target = "partido", qualifiedByName = "toPartidoMinDTO")
-    @Mapping(source = "createdAt", target = "createdAt")
-    @Mapping(source = "updatedAt", target = "updatedAt")
+    @Mapping(source = "createdAt", target = "createdAt", defaultExpression = "java(java.time.Instant.now())")
+    @Mapping(source = "updatedAt", target = "updatedAt", defaultExpression = "java(java.time.Instant.now())")
     @Mapping(source = "fechaInscripcion", target = "fechaAceptacion")  // fechaInscripcion → fechaAceptacion en DTO
     @Mapping(target = "fechaRechazo", constant = "null")
     @Mapping(target = "fechaCancelacion", constant = "null")
