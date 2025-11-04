@@ -135,11 +135,26 @@ public class UsuarioService {
             throw new IllegalArgumentException("El email ya está registrado");
         }
 
-        Usuario usuario = new Usuario();
-        usuario.setEmail(dto.getEmail());
-        usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
-        usuario.setProvider("LOCAL");
-        usuario.setCreatedAt(LocalDateTime.now());
+        // Mapear DTO a entidad (incluye nombre, apellido, celular, fechaNacimiento, etc.)
+        Usuario usuario = usuarioMapper.toEntity(dto);
+        
+        // Si ya está verificado, el password ya viene hasheado del pre-registro
+        // Si no está verificado (OAuth), no hay password
+        if (dto.getEmailVerified() != null && dto.getEmailVerified()) {
+            // Password ya viene hasheado de VerificationService - NO encriptar de nuevo
+            usuario.setPassword(dto.getPassword());
+        } else {
+            // Para registros directos (no deberían existir, pero por si acaso)
+            usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+        
+        // Asegurar campos requeridos
+        if (usuario.getProvider() == null) {
+            usuario.setProvider("LOCAL");
+        }
+        if (usuario.getCreatedAt() == null) {
+            usuario.setCreatedAt(LocalDateTime.now());
+        }
 
         usuario = usuarioRepository.save(usuario);
 
