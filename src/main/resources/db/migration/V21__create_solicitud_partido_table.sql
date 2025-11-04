@@ -37,7 +37,14 @@ DELETE FROM inscripcion WHERE estado = 'PENDIENTE';
 -- PASO 4: Eliminar inscripciones rechazadas/canceladas (ya no existen conceptualmente)
 DELETE FROM inscripcion WHERE estado IN ('RECHAZADO', 'CANCELADO');
 
--- PASO 5: Eliminar columna estado de inscripcion (ya no se necesita)
+-- PASO 5: Eliminar objetos dependientes de la columna estado antes de dropearla
+-- Estas vistas/triggers fueron creadas en migraciones anteriores y dependen del estado
+DROP VIEW IF EXISTS v_inscripciones_activas CASCADE;
+DROP VIEW IF EXISTS v_inscripciones_estadisticas CASCADE;
+DROP TRIGGER IF EXISTS trigger_inscripcion_fecha_estado ON inscripcion CASCADE;
+DROP FUNCTION IF EXISTS update_inscripcion_fecha_estado() CASCADE;
+
+-- PASO 6: Eliminar columna estado de inscripcion (ya no se necesita)
 -- Todas las inscripciones que quedan son ACEPTADAS por definición
 ALTER TABLE inscripcion DROP COLUMN IF EXISTS estado;
 ALTER TABLE inscripcion DROP COLUMN IF EXISTS motivo_rechazo;
@@ -51,7 +58,7 @@ ALTER TABLE inscripcion ALTER COLUMN fecha_inscripcion SET DEFAULT NOW();
 COMMENT ON TABLE inscripcion IS 'Jugadores ACEPTADOS en un partido (estar aquí = estar dentro)';
 COMMENT ON COLUMN inscripcion.fecha_inscripcion IS 'Fecha en que el organizador aceptó al jugador';
 
--- PASO 6: Actualizar índices (eliminar los que usaban estado)
+-- PASO 7: Actualizar índices (eliminar los que usaban estado)
 DROP INDEX IF EXISTS idx_inscripcion_estado;
 DROP INDEX IF EXISTS idx_inscripcion_usuario_estado;
 DROP INDEX IF EXISTS idx_inscripcion_partido_estado_created;
@@ -62,17 +69,29 @@ CREATE INDEX IF NOT EXISTS idx_inscripcion_partido_created
 CREATE INDEX IF NOT EXISTS idx_inscripcion_usuario_created 
     ON inscripcion(usuario_id, created_at DESC);
 
--- PASO 7: Log de migración
+-- PASO 8: Log de migración
 DO $$
 DECLARE
     solicitudes_movidas INT;
     inscripciones_limpiadas INT;
+    inicio TIMESTAMP;
+    fin TIMESTAMP;
+    duracion INTERVAL;
 BEGIN
+    inicio := clock_timestamp();
+    
     SELECT COUNT(*) INTO solicitudes_movidas FROM solicitud_partido;
     SELECT COUNT(*) INTO inscripciones_limpiadas FROM inscripcion;
     
-    RAISE NOTICE 'Migración V21 completada:';
-    RAISE NOTICE '  - % solicitudes movidas a solicitud_partido', solicitudes_movidas;
-    RAISE NOTICE '  - % inscripciones activas (aceptadas)', inscripciones_limpiadas;
-    RAISE NOTICE '  - Columna estado eliminada de inscripcion';
+    fin := clock_timestamp();
+    duracion := fin - inicio;
+    
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'Migración V21 completada exitosamente';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE 'Solicitudes movidas a solicitud_partido: %', solicitudes_movidas;
+    RAISE NOTICE 'Inscripciones activas (aceptadas): %', inscripciones_limpiadas;
+    RAISE NOTICE 'Columna estado eliminada de inscripcion: SI';
+    RAISE NOTICE 'Duración de la migración: %', duracion;
+    RAISE NOTICE '========================================';
 END $$;
