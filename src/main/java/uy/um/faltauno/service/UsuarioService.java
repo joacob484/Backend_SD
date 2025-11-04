@@ -391,17 +391,10 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> obtenerInvitaciones(UUID userId) {
-        List<Inscripcion> pendientes = inscripcionRepository.findByUsuario_IdAndEstado(userId, Inscripcion.EstadoInscripcion.PENDIENTE);
-        return pendientes.stream().map(i -> {
-            Map<String,Object> m = new HashMap<>();
-            m.put("id", i.getId());
-            m.put("usuarioId", i.getUsuario().getId());
-            m.put("matchId", i.getPartido().getId());
-            m.put("title", "Invitación a partido");
-            m.put("message", "Te han invitado al partido " + i.getPartido().getNombreUbicacion());
-            m.put("time", i.getCreatedAt());
-            return m;
-        }).collect(Collectors.toList());
+        // Con la nueva arquitectura, las invitaciones pendientes están en solicitud_partido
+        // Si aún se necesita este método, debería consultar solicitudPartidoRepository
+        // Por ahora retornar lista vacía
+        return Collections.emptyList();
     }
 
     @Transactional(readOnly = true)
@@ -418,7 +411,7 @@ public class UsuarioService {
             m.put("fecha", p.getFecha());
             m.put("hora", p.getHora());
             m.put("inscripcionId", insc.getId());
-            m.put("inscripcionEstado", insc.getEstado());
+            m.put("inscripcionEstado", "ACEPTADO");  // Siempre ACEPTADO en la tabla inscripcion
             updates.add(m);
         }
         return updates;

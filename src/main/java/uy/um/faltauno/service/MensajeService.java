@@ -192,10 +192,10 @@ public class MensajeService {
                 );
             }
 
-            // Notificar a todos los jugadores inscritos y aceptados (excepto remitente)
+            // Notificar a todos los jugadores inscritos (excepto remitente)
+            // Con la nueva arquitectura, todos en la tabla inscripcion están aceptados
             List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(partido.getId());
             inscripciones.stream()
-                    .filter(i -> i.getEstado() == Inscripcion.EstadoInscripcion.ACEPTADO)
                     .filter(i -> !i.getUsuario().getId().equals(remitenteId))
                     .forEach(i -> {
                         notificacionService.notificarNuevoMensaje(
@@ -225,19 +225,18 @@ public class MensajeService {
             return;
         }
 
-        // Verificar inscripción aceptada
+        // Verificar inscripción (con la nueva arquitectura, todos en inscripcion están aceptados)
         List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(partido.getId());
         log.debug("[MensajeService] Total inscripciones encontradas: {}", inscripciones.size());
         
         // Log de cada inscripción para debug
         inscripciones.forEach(i -> 
-            log.debug("[MensajeService] Inscripción: usuarioId={}, estado={}", 
-                    i.getUsuario().getId(), i.getEstado())
+            log.debug("[MensajeService] Inscripción: usuarioId={}", 
+                    i.getUsuario().getId())
         );
         
         boolean estaInscrito = inscripciones.stream()
-                .anyMatch(i -> i.getUsuario().getId().equals(userId) && 
-                              i.getEstado() == Inscripcion.EstadoInscripcion.ACEPTADO);
+                .anyMatch(i -> i.getUsuario().getId().equals(userId));
 
         if (!estaInscrito) {
             log.warn("[MensajeService] ❌ Acceso denegado: usuario no inscrito o no aceptado. UserId buscado: {}", userId);

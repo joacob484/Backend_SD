@@ -55,8 +55,7 @@ public class ReviewService {
         }
 
         // ✅ PERFORMANCE: Usar query optimizada con JOIN FETCH
-        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoIdAndEstado(
-                dto.getPartidoId(), Inscripcion.EstadoInscripcion.ACEPTADO);
+        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(dto.getPartidoId());
 
         boolean calificadorParticipo = inscripciones.stream()
                 .anyMatch(i -> i.getUsuario().getId().equals(userId));
@@ -173,9 +172,9 @@ public class ReviewService {
     public List<Map<String, Object>> obtenerReviewsPendientes(Authentication auth) {
         UUID userId = getUserIdFromAuth(auth);
 
-        // Obtener partidos donde participó
+        // Obtener partidos donde participó (todos en inscripcion están aceptados)
         List<Inscripcion> misInscripciones = inscripcionRepository
-                .findByUsuario_IdAndEstado(userId, Inscripcion.EstadoInscripcion.ACEPTADO);
+                .findByUsuarioId(userId);
 
         List<Map<String, Object>> pendientes = new ArrayList<>();
 
@@ -190,7 +189,7 @@ public class ReviewService {
 
             // ✅ PERFORMANCE: Usar query optimizada con JOIN FETCH
             List<Inscripcion> otrosJugadores = inscripcionRepository
-                    .findByPartidoIdAndEstado(partido.getId(), Inscripcion.EstadoInscripcion.ACEPTADO)
+                    .findByPartidoId(partido.getId())
                     .stream()
                     .filter(i -> !i.getUsuario().getId().equals(userId))
                     .collect(Collectors.toList());

@@ -84,11 +84,10 @@ public class PartidoService {
         log.info("Partido creado: id={}, tipo={}, fecha={}", 
                 guardado.getId(), guardado.getTipoPartido(), guardado.getFecha());
 
-        // � Crear inscripción automática para el organizador
+        // ✅ Crear inscripción automática para el organizador
         Inscripcion inscripcionOrganizador = Inscripcion.builder()
                 .partido(guardado)
                 .usuario(organizador)
-                .estado(Inscripcion.EstadoInscripcion.ACEPTADO)
                 .build();
         inscripcionRepository.save(inscripcionOrganizador);
         log.info("Inscripción automática creada para organizador: partidoId={}, userId={}", 
@@ -126,7 +125,7 @@ public class PartidoService {
 
         // ✅ PERFORMANCE: Usar query optimizada con JOIN FETCH para evitar N+1
         List<Inscripcion> inscripciones = inscripcionRepository
-            .findByPartidoIdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO);
+            .findByPartidoId(id);
         
         log.debug("[PartidoService] Inscripciones encontradas: {}", inscripciones.size());
 
@@ -259,7 +258,7 @@ public class PartidoService {
 
             // ✅ FIX: Usar query con JOIN FETCH explícito en vez del método derivado
             List<Inscripcion> inscripciones = inscripcionRepository
-                    .findByUsuarioIdAndEstado(usuarioId, Inscripcion.EstadoInscripcion.ACEPTADO);
+                    .findByUsuarioId(usuarioId);
             log.debug("[PartidoService.listarPartidosPorUsuario] Inscripciones encontradas: {}", inscripciones.size());
             
             // ✅ FIX: Extraer partidos dentro de la transacción y forzar inicialización del organizador
@@ -356,7 +355,7 @@ public class PartidoService {
         if (dto.getCantidadJugadores() != null) {
             // ✅ PERFORMANCE: Usar COUNT query en lugar de .size()
             long jugadoresActuales = inscripcionRepository
-                    .countInscripcionesAceptadas(id);
+                    .countByPartidoId(id);
             if (dto.getCantidadJugadores() < jugadoresActuales) {
                 throw new IllegalStateException(
                     "No se puede reducir la cantidad de jugadores por debajo de " + jugadoresActuales);
@@ -452,7 +451,7 @@ public class PartidoService {
         log.info("Partido completado manualmente: id={}", id);
         
         // Notificar jugadores para que califiquen
-        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoIdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO);
+        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(id);
         List<UUID> usuariosIds = inscripciones.stream()
                 .map(i -> i.getUsuario().getId())
                 .collect(Collectors.toList());
@@ -500,7 +499,7 @@ public class PartidoService {
 
         // Notificar a todos los inscritos
         List<Inscripcion> inscripciones = inscripcionRepository
-                .findByPartidoIdAndEstado(id, Inscripcion.EstadoInscripcion.ACEPTADO);
+                .findByPartidoId(id);
         
         List<UUID> usuariosIds = inscripciones.stream()
                 .map(i -> i.getUsuario().getId())
@@ -528,7 +527,7 @@ public class PartidoService {
     public List<UsuarioMinDTO> obtenerJugadores(UUID partidoId) {
         // ✅ PERFORMANCE: Usar query optimizada con JOIN FETCH
         List<Inscripcion> inscripciones = inscripcionRepository
-                .findByPartidoIdAndEstado(partidoId, Inscripcion.EstadoInscripcion.ACEPTADO);
+                .findByPartidoId(partidoId);
 
         return inscripciones.stream()
                 .map(i -> {
@@ -619,31 +618,26 @@ public class PartidoService {
 
         // ✅ PERFORMANCE: Usar COUNT query optimizada
         long jugadoresActuales = inscripcionRepository
-                .countInscripcionesAceptadas(partidoId);
+                .countByPartidoId(partidoId);
         
         if (jugadoresActuales >= partido.getCantidadJugadores()) {
             throw new IllegalStateException("El partido está completo");
         }
 
-        // Verificar que no esté ya inscrito
-        Optional<Inscripcion> existente = inscripcionRepository
-                .findByPartidoIdAndUsuarioId(partidoId, usuarioId);
-        
-        if (existente.isPresent()) {
-            Inscripcion insc = existente.get();
-            if (insc.getEstado() == Inscripcion.EstadoInscripcion.ACEPTADO) {
-                throw new IllegalStateException("El usuario ya está inscrito en este partido");
-            } else if (insc.getEstado() == Inscripcion.EstadoInscripcion.PENDIENTE) {
-                throw new IllegalStateException("El usuario ya tiene una solicitud pendiente");
-            }
-            // Si está rechazado, se puede crear nueva invitación
+        // Verificar que no esté ya inscrito o tenga solicitud pendiente
+        boolean yaInscrito = inscripcionRepository.existeInscripcion(partidoId, usuarioId);
+        if (yaInscrito) {
+            throw new IllegalStateException("El usuario ya está inscrito en este partido");
         }
-
-        // Crear inscripción pendiente (invitación)
+        
+        // Nota: En la nueva arquitectura, las invitaciones deberían ir a solicitud_partido
+        // o crear una tabla separada para invitaciones. Por ahora, crearemos una inscripción directa
+        // ya que es el organizador quien invita (auto-aprobado).
+        
+        // Crear inscripción directa (invitación del organizador = auto-aprobada)
         Inscripcion invitacion = Inscripcion.builder()
                 .partido(partido)
                 .usuario(usuario)
-                .estado(Inscripcion.EstadoInscripcion.PENDIENTE)
                 .build();
 
         inscripcionRepository.save(invitacion);
@@ -683,7 +677,7 @@ public class PartidoService {
         for (Partido partido : partidosPorEmpezar) {
             // ✅ PERFORMANCE: Usar COUNT query optimizada
             long jugadores = inscripcionRepository
-                    .countInscripcionesAceptadas(partido.getId());
+                    .countByPartidoId(partido.getId());
             
             // Si no alcanzó el mínimo, cancelar
             int minimo = calcularMinimoJugadores(partido.getCantidadJugadores());
@@ -825,7 +819,7 @@ public class PartidoService {
         
         // ✅ PERFORMANCE: Usar COUNT query optimizada
         long jugadoresActuales = inscripcionRepository
-            .countInscripcionesAceptadas(partido.getId());
+            .countByPartidoId(partido.getId());
         dto.setJugadoresActuales((int) jugadoresActuales);
         log.debug("[PartidoService.entityToDtoCompleto] Jugadores actuales: {}", jugadoresActuales);
         

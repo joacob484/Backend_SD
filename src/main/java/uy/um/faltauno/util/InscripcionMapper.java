@@ -18,30 +18,28 @@ public interface InscripcionMapper {
     
     @Mapping(source = "partido.id", target = "partidoId")
     @Mapping(source = "usuario.id", target = "usuarioId")
-    @Mapping(source = "estado", target = "estado")  // ✅ MapStruct maneja el enum automáticamente
+    @Mapping(target = "estado", expression = "java(\"ACEPTADO\")")  // Siempre ACEPTADO en la tabla inscripcion
     @Mapping(source = "usuario", target = "usuario", qualifiedByName = "toUsuarioMinDTO")
     @Mapping(source = "partido", target = "partido", qualifiedByName = "toPartidoMinDTO")
     @Mapping(source = "createdAt", target = "createdAt")
     @Mapping(source = "updatedAt", target = "updatedAt")
-    @Mapping(source = "fechaAceptacion", target = "fechaAceptacion")
-    @Mapping(source = "fechaRechazo", target = "fechaRechazo")
-    @Mapping(source = "fechaCancelacion", target = "fechaCancelacion")
+    @Mapping(source = "fechaInscripcion", target = "fechaAceptacion")  // fechaInscripcion → fechaAceptacion en DTO
+    @Mapping(target = "fechaRechazo", constant = "null")
+    @Mapping(target = "fechaCancelacion", constant = "null")
     @Mapping(target = "tiempoTranscurrido", expression = "java(calcularTiempoTranscurrido(inscripcion.getCreatedAt()))")
-    @Mapping(target = "puedeCancelar", expression = "java(inscripcion.isActiva())")
-    @Mapping(target = "puedeAceptar", expression = "java(inscripcion.isPendiente())")
-    @Mapping(target = "puedeRechazar", expression = "java(inscripcion.isPendiente())")
+    @Mapping(target = "puedeCancelar", constant = "true")  // Inscrito puede cancelar
+    @Mapping(target = "puedeAceptar", constant = "false")  // Ya está aceptado
+    @Mapping(target = "puedeRechazar", constant = "false")  // Ya está aceptado
     InscripcionDTO toDTO(Inscripcion inscripcion);
 
     @Mapping(target = "partido", ignore = true)
     @Mapping(target = "usuario", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "fechaAceptacion", ignore = true)
-    @Mapping(target = "fechaRechazo", ignore = true)
-    @Mapping(target = "fechaCancelacion", ignore = true)
+    @Mapping(target = "fechaInscripcion", ignore = true)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "comentario", ignore = true)
-    @Mapping(target = "motivoRechazo", ignore = true)
+    @Mapping(target = "version", ignore = true)
     Inscripcion toEntity(InscripcionDTO dto);
     
     @Named("toUsuarioMinDTO")

@@ -50,8 +50,7 @@ public class PartidoScheduledTasks {
                 .toList();
         
         for (Partido partido : disponiblesVencidos) {
-            long inscritos = inscripcionRepository.countByPartidoIdAndEstado(
-                    partido.getId(), "ACEPTADO");
+            long inscritos = inscripcionRepository.countByPartidoId(partido.getId());
             
             if (inscritos >= partido.getCantidadJugadores()) {
                 log.warn("⚠️ Cancelando partido {} con cupos llenos ({}/{}) por falta de confirmación del organizador",
