@@ -102,8 +102,7 @@ public class DevSecurityConfig {
         configuration.setAllowCredentials(true); // Set BEFORE patterns (workaround Spring 6.2.7 bug)
         
         configuration.setAllowedOriginPatterns(Arrays.asList(
-            "https://*.vercel.app",  // Frontend en Vercel
-            "https://*.run.app"  // Servicios Cloud Run
+            "https://*.run.app"  // Servicios Cloud Run (frontend y backend)
         ));
         configuration.setAllowedMethods(Arrays.asList(
             "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"

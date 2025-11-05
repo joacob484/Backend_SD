@@ -18,7 +18,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/inscripciones")
-@CrossOrigin(origins = "${FRONTEND_URL:https://faltauno.vercel.app}")
+@CrossOrigin(origins = "${FRONTEND_URL:https://faltauno-frontend-169771742214.us-central1.run.app}")
 @RequiredArgsConstructor
 @Slf4j
 public class InscripcionController {

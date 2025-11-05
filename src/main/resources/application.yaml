@@ -144,7 +144,7 @@ jwt:
 
 # Frontend URL for CORS (si lo usás en tu config de CORS)
 frontend:
-  url: ${FRONTEND_URL:https://faltauno.vercel.app}
+  url: ${FRONTEND_URL:https://faltauno-frontend-169771742214.us-central1.run.app}
 
 # Google Cloud Pub/Sub Configuration
 gcp:

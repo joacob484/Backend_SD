@@ -25,7 +25,7 @@ public class PasswordResetService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.frontend.url:https://faltauno.vercel.app}")
+    @Value("${app.frontend.url:https://faltauno-frontend-169771742214.us-central1.run.app}")
     private String frontendUrl;
 
     private static final int MAX_TOKENS_POR_HORA = 3;
