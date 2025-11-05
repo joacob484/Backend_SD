@@ -36,14 +36,14 @@ public class PasswordResetService {
      * Envía email con link de recuperación.
      */
     @Transactional
-    public void solicitarRecuperacion(String email) {
+    public String solicitarRecuperacion(String email) {
         // Buscar usuario (incluso si está eliminado, puede querer recuperar contraseña)
         Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
         
         if (usuario == null) {
             // Por seguridad, no revelar si el email existe o no
             log.warn("[PasswordReset] Intento de recuperación para email no registrado: {}", email);
-            return;
+            return null;
         }
 
         // Verificar que no esté spameando (máximo 3 solicitudes por hora)
@@ -72,11 +72,24 @@ public class PasswordResetService {
 
         passwordResetTokenRepository.save(resetToken);
 
-        // Enviar email
+        // Construir link de reset
         String resetLink = frontendUrl + "/reset-password?token=" + token;
-        emailService.enviarEmailRecuperacionPassword(usuario, resetLink);
 
-        log.info("[PasswordReset] ✅ Token generado y email enviado a: {}", email);
+        // ⚡ NUEVO: Verificar si email está configurado
+        String mailUsername = System.getenv("MAIL_USERNAME");
+        boolean isEmailConfigured = mailUsername != null && !mailUsername.isBlank();
+
+        if (isEmailConfigured) {
+            // Enviar email (modo producción)
+            emailService.enviarEmailRecuperacionPassword(usuario, resetLink);
+            log.info("[PasswordReset] ✅ Token generado y email enviado a: {}", email);
+            return null; // No devolver link en producción
+        } else {
+            // Modo desarrollo: NO enviar email, devolver link
+            log.warn("[PasswordReset] ⚠️ Email NO configurado - Devolviendo link directamente (SOLO DEV)");
+            log.warn("[PasswordReset] 🔍 Reset link (SOLO DEV): {}", resetLink);
+            return resetLink; // Devolver link para modo desarrollo
+        }
     }
 
     /**
