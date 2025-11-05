@@ -28,9 +28,13 @@ public class UsuarioDTO {
     private Double peso;
     private String posicion;
     private String fotoPerfil; // Base64 string
+    
+    // TODO: Cédula deshabilitada temporalmente - mantener para futura implementación de badge verificado
     private String cedula;
+    
     private String genero; // Masculino o Femenino
     
+    // TODO: Cédula deshabilitada temporalmente
     @JsonProperty("cedulaVerificada")
     private Boolean cedulaVerificada;
     
@@ -56,6 +60,7 @@ public class UsuarioDTO {
 
      /**
      * Calcula si el perfil está completo basándose en los campos requeridos.
+     * TODO: Cédula removida de requeridos - ahora solo nombre, apellido, celular, fechaNacimiento
      */
     public Boolean getPerfilCompleto() {
         // Perfil completo si tiene: nombre, apellido, celular, fechaNacimiento
@@ -73,11 +78,25 @@ public class UsuarioDTO {
     }
 
     /**
+     * TODO: Cédula deshabilitada temporalmente - siempre retorna true
      * Calcula si la cédula está verificada.
      */
     public Boolean getCedulaVerificada() {
+        // TODO: Retornar true siempre mientras la verificación está deshabilitada
+        return true;
+        
+        /* CÓDIGO ORIGINAL - Mantener para futura implementación de badge verificado
         // Cédula verificada si existe y no está vacía
         boolean verificada = cedula != null && !cedula.isEmpty();
+        
+        // Si cedulaVerificada está seteado explícitamente, respetarlo
+        if (cedulaVerificada != null) {
+            return cedulaVerificada;
+        }
+        
+        return verificada;
+        */
+    }
         
         // Si cedulaVerificada está seteado explícitamente, respetarlo
         if (cedulaVerificada != null) {
