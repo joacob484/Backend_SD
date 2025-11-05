@@ -75,7 +75,6 @@ public class AuthenticationController {
                 existingUser.getPassword() != null && !existingUser.getPassword().isEmpty());
             Boolean emailVerificado = existingUser.getEmailVerified();
             log.info("[AuthenticationController] 🔍 Email verificado: {}", emailVerificado != null ? emailVerificado : false);
-            log.info("[AuthenticationController] 🔍 Cuenta habilitada: {}", existingUser.isEnabled());
             
             if (existingUser.getPassword() != null && !existingUser.getPassword().isEmpty()) {
                 log.info("[AuthenticationController] 🔍 Password hash (primeros 20 chars): {}", 
