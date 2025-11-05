@@ -528,6 +528,62 @@ public class UsuarioService {
     }
 
     /**
+     * Crear o actualizar usuario después de que se verifique el email (flow resiliente).
+     * - Si el usuario NO existe: crea uno nuevo usando el passwordHash proporcionado (ya encriptado)
+     * - Si el usuario ya existe: actualiza campos de perfil disponibles y marca emailVerified = true
+     * Devuelve la entidad Usuario resultante (persistida)
+     */
+    @Transactional
+    public Usuario createOrUpdateUserAfterVerification(String email, String passwordHash, UsuarioDTO profileDto) {
+        Usuario existing = usuarioRepository.findByEmail(email).orElse(null);
+
+        if (existing != null) {
+            log.info("[UsuarioService] createOrUpdateUserAfterVerification - Usuario EXISTE: {} -> actualizando perfil y marcando emailVerified", email);
+            // Actualizar campos si vienen en profileDto
+            if (profileDto != null) {
+                if (profileDto.getNombre() != null) existing.setNombre(profileDto.getNombre());
+                if (profileDto.getApellido() != null) existing.setApellido(profileDto.getApellido());
+                if (profileDto.getFechaNacimiento() != null) {
+                    try {
+                        existing.setFechaNacimiento(LocalDate.parse(profileDto.getFechaNacimiento(), UsuarioMapper.FORMATTER));
+                    } catch (Exception e) {
+                        log.warn("[UsuarioService] Fecha de nacimiento inválida al actualizar: {}", profileDto.getFechaNacimiento());
+                    }
+                }
+                if (profileDto.getCelular() != null) existing.setCelular(profileDto.getCelular());
+            }
+
+            // Marcar email verificado
+            existing.setEmailVerified(true);
+
+            // Si no tenía password (OAuth), establecer el passwordHash del pre-registro
+            if (existing.getPassword() == null && passwordHash != null) {
+                existing.setPassword(passwordHash);
+            }
+
+            // Persistir cambios
+            usuarioRepository.save(existing);
+            return existing;
+        }
+
+        // No existía: crear nuevo usuario mínimo usando el DTO de perfil y el passwordHash
+        log.info("[UsuarioService] createOrUpdateUserAfterVerification - Usuario NO existe: {} -> creando nuevo usuario", email);
+        UsuarioDTO dto = new UsuarioDTO();
+        dto.setEmail(email);
+        dto.setPassword(passwordHash);
+        dto.setEmailVerified(true);
+        if (profileDto != null) {
+            dto.setNombre(profileDto.getNombre());
+            dto.setApellido(profileDto.getApellido());
+            dto.setFechaNacimiento(profileDto.getFechaNacimiento());
+            dto.setCelular(profileDto.getCelular());
+        }
+
+        UsuarioDTO created = createUsuario(dto);
+        return findUsuarioEntityById(created.getId());
+    }
+
+    /**
      * Busca usuario por email (carga TODA la entidad incluyendo LOB).
      * SOLO usar dentro de transacciones activas.
      */

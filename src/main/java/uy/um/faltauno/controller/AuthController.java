@@ -184,26 +184,34 @@ public class AuthController {
             log.info("[AuthController] 🔍 Password hash del pre-registro (primeros 20 chars): {}", 
                 preRegistro.getPasswordHash() != null ? preRegistro.getPasswordHash().substring(0, Math.min(20, preRegistro.getPasswordHash().length())) : "null");
 
-            // 2. Crear usuario con password ya encriptado
+            // 2. Crear o actualizar usuario con password ya encriptado
             dto.setPassword(preRegistro.getPasswordHash()); // Usar password hash del pre-registro
             dto.setEmailVerified(true); // Marcar como verificado
-            
-            UsuarioDTO nuevoUsuario = usuarioService.createUsuario(dto);
-            
-            // 3. Obtener la entidad Usuario para generar token con tokenVersion
-            Usuario usuarioEntity = usuarioService.findUsuarioEntityById(nuevoUsuario.getId());
-            
-            // 4. Generar token JWT
+
+            Usuario usuarioEntity;
+            UsuarioDTO nuevoUsuario;
+
+            if (usuarioService.existsByEmail(email)) {
+                // Si el usuario ya existe (p. ej. creado por otro flujo), actualizamos perfil
+                usuarioEntity = usuarioService.createOrUpdateUserAfterVerification(email, preRegistro.getPasswordHash(), dto);
+                nuevoUsuario = usuarioService.getUsuario(usuarioEntity.getId());
+            } else {
+                // Crear nuevo usuario (caso normal)
+                nuevoUsuario = usuarioService.createUsuario(dto);
+                usuarioEntity = usuarioService.findUsuarioEntityById(nuevoUsuario.getId());
+            }
+
+            // 3. Generar token JWT
             String token = jwtUtil.generateToken(
                 usuarioEntity.getId(), 
                 usuarioEntity.getEmail(), 
                 usuarioEntity.getTokenVersion()
             );
-            
-            // 5. Agregar token al DTO de respuesta
+
+            // 4. Agregar token al DTO de respuesta
             nuevoUsuario.setPassword(null); // No retornar password en response
-            
-            // 6. Limpiar pre-registro
+
+            // 5. Limpiar pre-registro
             verificationService.limpiarPreRegistro(email);
 
             log.info("[AuthController] Usuario creado exitosamente con token: {}", nuevoUsuario.getEmail());

@@ -28,6 +28,7 @@ public class AuthenticationController {
 
     private final AuthenticationManager authenticationManager;
     private final UsuarioService usuarioService;
+    private final uy.um.faltauno.service.VerificationService verificationService;
     private final JwtUtil jwtUtil;
 
     public static record LoginRequest(String email, String password) {}
@@ -52,12 +53,29 @@ public class AuthenticationController {
                             false));
             }
 
+            // ...existing code...
+
             // ⚡ IMPORTANTE: NO rechazar si emailVerified=false
             // El frontend manejará la redirección a verificación
             // Solo autenticar email + password
 
             // 🔍 DEBUG: Log para diagnosticar problema de password
             Usuario existingUser = usuarioService.findByEmail(req.email());
+            // 🔎 Si NO existe usuario pero existe un pre-registro pendiente -> informar al frontend
+            if (existingUser == null && verificationService.tienePreRegistroPendiente(req.email())) {
+                Map<String, Object> preRegResp = new HashMap<>();
+                preRegResp.put("preRegistered", true);
+                preRegResp.put("email", req.email());
+                // In dev mode include the code for convenience (do NOT expose in production)
+                String mailUsername = System.getenv("MAIL_USERNAME");
+                boolean isEmailConfigured = mailUsername != null && !mailUsername.isBlank();
+                if (!isEmailConfigured) {
+                    preRegResp.put("debugMode", true);
+                }
+
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(preRegResp, "Email verificado pendiente. Verifica tu email para completar el registro.", false));
+            }
             if (existingUser != null) {
                 log.info("[AuthenticationController] 🔍 Usuario encontrado: {}", req.email());
                 log.info("[AuthenticationController] 🔍 Provider: {}", existingUser.getProvider());
@@ -81,6 +99,16 @@ public class AuthenticationController {
             SecurityContextHolder.getContext().setAuthentication(auth);
             HttpSession session = request.getSession(true);
             log.info("Login JSON exitoso para {}, session={}", req.email(), session != null ? session.getId() : "null");
+
+            // Asegurar que tenemos la entidad Usuario (re-obtener si fuera necesario)
+            if (existingUser == null) {
+                existingUser = usuarioService.findByEmail(req.email());
+            }
+            if (existingUser == null) {
+                log.error("[AuthenticationController] Usuario autenticado pero no existe entidad en BD: {}", req.email());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(new ApiResponse<>(null, "Usuario autenticado pero no encontrado en base de datos", false));
+            }
 
             UsuarioDTO dto = usuarioService.getUsuario(existingUser.getId());
             dto.setPassword(null);
