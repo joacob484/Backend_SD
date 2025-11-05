@@ -15,7 +15,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/stats")
-@CrossOrigin(origins = "${FRONTEND_URL:http://localhost:3000}")
+@CrossOrigin(origins = "${FRONTEND_URL:https://faltauno.vercel.app}")
 @RequiredArgsConstructor
 @Slf4j
 public class StatsController {

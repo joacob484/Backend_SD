@@ -24,7 +24,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
   private final JwtUtil jwtUtil;
 
   // Default a la URL de producción del frontend
-  @Value("${FRONTEND_URL:https://faltauno-frontend-169771742214.us-central1.run.app}")
+  @Value("${FRONTEND_URL:https://faltauno.vercel.app}")
   private String frontend;
 
   @Override

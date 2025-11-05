@@ -24,7 +24,7 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequestMapping("/api/partidos")
-@CrossOrigin(origins = "${FRONTEND_URL:http://localhost:3000}")
+@CrossOrigin(origins = "${FRONTEND_URL:https://faltauno.vercel.app}")
 public class PartidoController {
 
     private final PartidoService partidoService;

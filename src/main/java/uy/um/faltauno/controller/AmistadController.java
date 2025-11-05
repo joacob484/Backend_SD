@@ -31,7 +31,7 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/amistades")
-@CrossOrigin(origins = "${FRONTEND_URL:http://localhost:3000}")
+@CrossOrigin(origins = "${FRONTEND_URL:https://faltauno.vercel.app}")
 @RequiredArgsConstructor
 @Slf4j
 public class AmistadController {

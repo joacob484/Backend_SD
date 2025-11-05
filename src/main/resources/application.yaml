@@ -3,9 +3,9 @@ spring:
     name: falta-uno-backend
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/faltauno_db}
-    username: ${SPRING_DATASOURCE_USERNAME:app}
-    password: ${SPRING_DATASOURCE_PASSWORD:pass}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://REQUIRED_SET_SPRING_DATASOURCE_URL/faltauno_db}
+    username: ${SPRING_DATASOURCE_USERNAME:REQUIRED_SET_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD:REQUIRED_SET_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
     # ✅ Pool Hikari (estable)
@@ -144,7 +144,7 @@ jwt:
 
 # Frontend URL for CORS (si lo usás en tu config de CORS)
 frontend:
-  url: ${FRONTEND_URL:https://faltauno-frontend-169771742214.us-central1.run.app}
+  url: ${FRONTEND_URL:https://faltauno.vercel.app}
 
 # Google Cloud Pub/Sub Configuration
 gcp:
@@ -222,7 +222,7 @@ spring:
   
   # ✅ Cloud SQL connection
   datasource:
-    url: jdbc:postgresql://localhost:5432/faltauno_db?cloudSqlInstance=master-might-274420:us-central1:faltauno-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory&ipTypes=PUBLIC&connectTimeout=30&socketTimeout=30
+    url: jdbc:postgresql:///faltauno_db?cloudSqlInstance=master-might-274420:us-central1:faltauno-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory&ipTypes=PUBLIC&connectTimeout=30&socketTimeout=30
     username: ${SPRING_DATASOURCE_USERNAME:app}
     password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:

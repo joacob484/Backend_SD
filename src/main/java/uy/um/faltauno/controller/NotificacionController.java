@@ -17,7 +17,7 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequestMapping("/api/notificaciones")
-@CrossOrigin(origins = "${FRONTEND_URL:http://localhost:3000}")
+@CrossOrigin(origins = "${FRONTEND_URL:https://faltauno.vercel.app}")
 @RequiredArgsConstructor
 public class NotificacionController {
 

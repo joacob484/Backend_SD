@@ -37,7 +37,7 @@ public class SecurityConfig {
     private final RateLimitingFilter rateLimitingFilter;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
-    @Value("${FRONTEND_URL:http://localhost:3000}")
+    @Value("${FRONTEND_URL:https://faltauno.vercel.app}")
     private String frontendUrl;
 
     // ======== Autenticación base ========
@@ -115,8 +115,7 @@ public class SecurityConfig {
         configuration.setAllowCredentials(true); // Set BEFORE patterns (workaround Spring 6.2.7 bug)
 
         configuration.setAllowedOriginPatterns(List.of(
-            "http://localhost:*",
-            "http://host.docker.internal:*",
+            "https://*.vercel.app",
             "https://*.run.app",
             frontendUrl
         ));

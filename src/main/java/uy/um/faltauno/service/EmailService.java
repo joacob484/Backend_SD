@@ -22,7 +22,7 @@ public class EmailService {
     @Value("${spring.mail.username:#{null}}")
     private String fromEmail;
     
-    @Value("${frontend.url:http://localhost:3000}")
+    @Value("${frontend.url:https://faltauno.vercel.app}")
     private String frontendUrl;
 
     // Inicialización
