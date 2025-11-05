@@ -204,6 +204,14 @@ public class ReviewService {
 
                 if (!yaCalificado) {
                     Usuario otroUsuario = otraInsc.getUsuario();
+                    String fotoPerfil = null;
+                    if (otroUsuario.getFotoPerfil() != null) {
+                        try {
+                            fotoPerfil = java.util.Base64.getEncoder().encodeToString(otroUsuario.getFotoPerfil());
+                        } catch (Exception ex) {
+                            log.warn("[ReviewService] Error encoding foto: {}", ex.getMessage());
+                        }
+                    }
                     Map<String, Object> pendiente = new HashMap<>();
                     pendiente.put("partido_id", partido.getId());
                     pendiente.put("tipo_partido", partido.getTipoPartido());
@@ -212,7 +220,7 @@ public class ReviewService {
                             otroUsuario.getId(),
                             otroUsuario.getNombre(),
                             otroUsuario.getApellido(),
-                            otroUsuario.getFotoPerfil()
+                            fotoPerfil
                     ));
                     pendientes.add(pendiente);
                 }
@@ -255,11 +263,19 @@ public class ReviewService {
     private ReviewDTO convertirADTO(Review review) {
         // Crear UsuarioMinDTO para el usuario calificado
         Usuario calificado = review.getUsuarioCalificado();
+        String fotoPerfil = null;
+        if (calificado.getFotoPerfil() != null) {
+            try {
+                fotoPerfil = java.util.Base64.getEncoder().encodeToString(calificado.getFotoPerfil());
+            } catch (Exception ex) {
+                log.warn("[ReviewService] Error encoding foto: {}", ex.getMessage());
+            }
+        }
         UsuarioMinDTO usuarioCalificadoDTO = new UsuarioMinDTO(
                 calificado.getId(),
                 calificado.getNombre(),
                 calificado.getApellido(),
-                calificado.getFotoPerfil()
+                fotoPerfil
         );
 
         // Usar el builder para crear el DTO

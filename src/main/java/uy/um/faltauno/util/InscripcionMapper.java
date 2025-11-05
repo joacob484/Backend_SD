@@ -47,11 +47,19 @@ public interface InscripcionMapper {
         if (usuario == null) {
             return null;
         }
+        String fotoPerfil = null;
+        if (usuario.getFotoPerfil() != null) {
+            try {
+                fotoPerfil = java.util.Base64.getEncoder().encodeToString(usuario.getFotoPerfil());
+            } catch (Exception e) {
+                // Log silently, return null
+            }
+        }
         return new UsuarioMinDTO(
             usuario.getId(),
             usuario.getNombre(),
             usuario.getApellido(),
-            usuario.getFotoPerfil()
+            fotoPerfil
         );
     }
     

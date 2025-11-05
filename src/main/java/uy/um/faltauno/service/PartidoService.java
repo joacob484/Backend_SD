@@ -132,7 +132,7 @@ public class PartidoService {
         List<UsuarioMinDTO> jugadores = inscripciones.stream()
             .map(i -> {
                 Usuario u = i.getUsuario();
-                return new UsuarioMinDTO(u.getId(), u.getNombre(), u.getApellido(), u.getFotoPerfil());
+                return new UsuarioMinDTO(u.getId(), u.getNombre(), u.getApellido(), encodeFotoPerfil(u.getFotoPerfil()));
             })
             .toList();
 
@@ -536,7 +536,7 @@ public class PartidoService {
                         u.getId(),
                         u.getNombre(),
                         u.getApellido(),
-                        u.getFotoPerfil()
+                        encodeFotoPerfil(u.getFotoPerfil())
                     );
                 })
                 .collect(Collectors.toList());
@@ -860,6 +860,21 @@ public class PartidoService {
         
         log.debug("[PartidoService.entityToDtoCompleto] DTO completo");        
         return dto;
+    }
+
+    /**
+     * Helper method to safely encode foto_perfil to Base64
+     */
+    private String encodeFotoPerfil(byte[] fotoPerfil) {
+        if (fotoPerfil == null) {
+            return null;
+        }
+        try {
+            return java.util.Base64.getEncoder().encodeToString(fotoPerfil);
+        } catch (Exception e) {
+            log.warn("[PartidoService] Error encoding foto_perfil: {}", e.getMessage());
+            return null;
+        }
     }
 
     public Partido findById(UUID id){

@@ -263,11 +263,19 @@ public class MensajeService {
         try {
             Usuario usuario = usuarioRepository.findById(mensaje.getRemitenteId()).orElse(null);
             if (usuario != null) {
+                String fotoPerfil = null;
+                if (usuario.getFotoPerfil() != null) {
+                    try {
+                        fotoPerfil = java.util.Base64.getEncoder().encodeToString(usuario.getFotoPerfil());
+                    } catch (Exception ex) {
+                        log.warn("[MensajeService] Error encoding foto: {}", ex.getMessage());
+                    }
+                }
                 UsuarioMinDTO usuarioMin = new UsuarioMinDTO(
                     usuario.getId(),
                     usuario.getNombre(),
                     usuario.getApellido(),
-                    usuario.getFotoPerfil()
+                    fotoPerfil
                 );
                 dto.setUsuario(usuarioMin);
             }

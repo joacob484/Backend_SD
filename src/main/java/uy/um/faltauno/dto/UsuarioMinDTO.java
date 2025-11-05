@@ -6,13 +6,13 @@ public class UsuarioMinDTO {
     private String id;
     private String nombre;
     private String apellido;
-    private byte[] fotoPerfil;
+    private String fotoPerfil; // Base64 encoded string
 
     // Constructor sin parámetros para Jackson
     public UsuarioMinDTO() {
     }
 
-    public UsuarioMinDTO(UUID id, String nombre, String apellido, byte[] fotoPerfil) {
+    public UsuarioMinDTO(UUID id, String nombre, String apellido, String fotoPerfil) {
         this.id = id.toString();
         this.nombre = nombre;
         this.apellido = apellido;
@@ -26,6 +26,6 @@ public class UsuarioMinDTO {
     public void setNombre(String nombre) { this.nombre = nombre; }
     public String getApellido() { return apellido; }
     public void setApellido(String apellido) { this.apellido = apellido; }
-    public byte[] getFotoPerfil() { return fotoPerfil; }
-    public void setFotoPerfil(byte[] fotoPerfil) { this.fotoPerfil = fotoPerfil; }
+    public String getFotoPerfil() { return fotoPerfil; }
+    public void setFotoPerfil(String fotoPerfil) { this.fotoPerfil = fotoPerfil; }
 }

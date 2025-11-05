@@ -288,20 +288,36 @@ public class AmistadService {
         dto.setCreatedAt(amistad.getCreatedAt());
         
         if (usuario != null) {
+            String fotoPerfilUsuario = null;
+            if (usuario.getFotoPerfil() != null) {
+                try {
+                    fotoPerfilUsuario = java.util.Base64.getEncoder().encodeToString(usuario.getFotoPerfil());
+                } catch (Exception ex) {
+                    log.warn("[AmistadService] Error encoding foto usuario: {}", ex.getMessage());
+                }
+            }
             dto.setUsuario(new UsuarioMinDTO(
                 usuario.getId(),
                 usuario.getNombre(),
                 usuario.getApellido(),
-                usuario.getFotoPerfil()
+                fotoPerfilUsuario
             ));
         }
         
         if (amigo != null) {
+            String fotoPerfilAmigo = null;
+            if (amigo.getFotoPerfil() != null) {
+                try {
+                    fotoPerfilAmigo = java.util.Base64.getEncoder().encodeToString(amigo.getFotoPerfil());
+                } catch (Exception ex) {
+                    log.warn("[AmistadService] Error encoding foto amigo: {}", ex.getMessage());
+                }
+            }
             dto.setAmigo(new UsuarioMinDTO(
                 amigo.getId(),
                 amigo.getNombre(),
                 amigo.getApellido(),
-                amigo.getFotoPerfil()
+                fotoPerfilAmigo
             ));
         }
         
