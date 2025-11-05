@@ -61,20 +61,31 @@ public class AuthenticationController {
 
             // 🔍 DEBUG: Log para diagnosticar problema de password
             Usuario existingUser = usuarioService.findByEmail(req.email());
-            // 🔎 Si NO existe usuario pero existe un pre-registro pendiente -> informar al frontend
-            if (existingUser == null && verificationService.tienePreRegistroPendiente(req.email())) {
-                Map<String, Object> preRegResp = new HashMap<>();
-                preRegResp.put("preRegistered", true);
-                preRegResp.put("email", req.email());
-                // In dev mode include the code for convenience (do NOT expose in production)
-                String mailUsername = System.getenv("MAIL_USERNAME");
-                boolean isEmailConfigured = mailUsername != null && !mailUsername.isBlank();
-                if (!isEmailConfigured) {
-                    preRegResp.put("debugMode", true);
+
+            // Si NO existe usuario -> si hay pre-registro informar PRE_REGISTERED; si no, responder USER_NOT_FOUND
+            if (existingUser == null) {
+                if (verificationService.tienePreRegistroPendiente(req.email())) {
+                    Map<String, Object> preRegResp = new HashMap<>();
+                    preRegResp.put("preRegistered", true);
+                    preRegResp.put("email", req.email());
+                    // In dev mode include the code for convenience (do NOT expose in production)
+                    String mailUsername = System.getenv("MAIL_USERNAME");
+                    boolean isEmailConfigured = mailUsername != null && !mailUsername.isBlank();
+                    if (!isEmailConfigured) {
+                        preRegResp.put("debugMode", true);
+                    }
+
+                    // 401: authentication required, but indicate pre-registration state
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(new ApiResponse<>(preRegResp, "Email registrado pero pendiente de verificación.", false));
                 }
 
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new ApiResponse<>(preRegResp, "Email verificado pendiente. Verifica tu email para completar el registro.", false));
+        // 400 explícito: email no registrado (usamos 400 para que el frontend reciba el mensaje detallado)
+        Map<String, Object> notFound = new HashMap<>();
+        notFound.put("errorCode", "USER_NOT_FOUND");
+        notFound.put("email", req.email());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(new ApiResponse<>(notFound, "Email no registrado.", false));
             }
             if (existingUser != null) {
                 log.info("[AuthenticationController] 🔍 Usuario encontrado: {}", req.email());
@@ -100,16 +111,6 @@ public class AuthenticationController {
             HttpSession session = request.getSession(true);
             log.info("Login JSON exitoso para {}, session={}", req.email(), session != null ? session.getId() : "null");
 
-            // Asegurar que tenemos la entidad Usuario (re-obtener si fuera necesario)
-            if (existingUser == null) {
-                existingUser = usuarioService.findByEmail(req.email());
-            }
-            if (existingUser == null) {
-                log.error("[AuthenticationController] Usuario autenticado pero no existe entidad en BD: {}", req.email());
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(new ApiResponse<>(null, "Usuario autenticado pero no encontrado en base de datos", false));
-            }
-
             UsuarioDTO dto = usuarioService.getUsuario(existingUser.getId());
             dto.setPassword(null);
             
@@ -126,19 +127,24 @@ public class AuthenticationController {
             return ResponseEntity.ok(new ApiResponse<>(responseData, "Autenticado", true));
         } catch (BadCredentialsException ex) {
             log.warn("[AuthenticationController] ❌ Credenciales inválidas para {}: {}", req.email(), ex.getMessage());
-            
-            // 🔍 DEBUG: Verificar si el problema es password NULL
+
+            // Construir respuesta estructurada
             Usuario user = usuarioService.findByEmail(req.email());
+            Map<String, Object> err = new HashMap<>();
+            err.put("errorCode", "BAD_CREDENTIALS");
+            err.put("email", req.email());
+
             if (user != null && user.getPassword() == null) {
                 log.error("[AuthenticationController] ❌❌❌ Usuario {} tiene PASSWORD NULL - No puede hacer login", req.email());
+                err.put("errorCode", "PASSWORD_NOT_SET");
+                err.put("message", "Tu cuenta no tiene contraseña configurada. Por favor contacta soporte o registra una nueva cuenta.");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new ApiResponse<>(null, 
-                            "Tu cuenta no tiene contraseña configurada. Por favor contacta soporte o registra una nueva cuenta.", 
-                            false));
+                        .body(new ApiResponse<>(err, "Tu cuenta no tiene contraseña configurada.", false));
             }
-            
+
+            err.put("message", "Email o contraseña incorrectos.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse<>(null, "Email o contraseña incorrectos. Si acabas de registrarte, verifica tu email primero.", false));
+                    .body(new ApiResponse<>(err, "Email o contraseña incorrectos.", false));
         } catch (DisabledException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(null, "Cuenta deshabilitada", false));
