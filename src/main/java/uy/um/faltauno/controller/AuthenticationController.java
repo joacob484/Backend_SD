@@ -69,10 +69,19 @@ public class AuthenticationController {
             }
 
             // 🔍 DEBUG: Log para diagnosticar problema de password
-            log.info("[AuthenticationController] Usuario encontrado: {} | Provider: {} | Password hash presente: {}", 
-                req.email(), 
-                existingUser.getProvider(), 
+            log.info("[AuthenticationController] 🔍 Usuario encontrado: {}", req.email());
+            log.info("[AuthenticationController] 🔍 Provider: {}", existingUser.getProvider());
+            log.info("[AuthenticationController] 🔍 Password hash presente: {}", 
                 existingUser.getPassword() != null && !existingUser.getPassword().isEmpty());
+            log.info("[AuthenticationController] 🔍 Email verificado: {}", existingUser.getEmailVerified());
+            log.info("[AuthenticationController] 🔍 Cuenta habilitada: {}", existingUser.isEnabled());
+            
+            if (existingUser.getPassword() != null) {
+                log.info("[AuthenticationController] 🔍 Password hash (primeros 20 chars): {}", 
+                    existingUser.getPassword().substring(0, Math.min(20, existingUser.getPassword().length())));
+            } else {
+                log.warn("[AuthenticationController] ⚠️ Password es NULL - Usuario no puede hacer login con contraseña");
+            }
 
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(req.email(), req.password());
@@ -97,9 +106,20 @@ public class AuthenticationController {
 
             return ResponseEntity.ok(new ApiResponse<>(responseData, "Autenticado", true));
         } catch (BadCredentialsException ex) {
-            log.warn("Credenciales inválidas para {}: {}", req.email(), ex.getMessage());
+            log.warn("[AuthenticationController] ❌ Credenciales inválidas para {}: {}", req.email(), ex.getMessage());
+            
+            // 🔍 DEBUG: Verificar si el problema es password NULL
+            Usuario user = usuarioService.findByEmail(req.email());
+            if (user != null && user.getPassword() == null) {
+                log.error("[AuthenticationController] ❌❌❌ Usuario {} tiene PASSWORD NULL - No puede hacer login", req.email());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(null, 
+                            "Tu cuenta no tiene contraseña configurada. Por favor contacta soporte o registra una nueva cuenta.", 
+                            false));
+            }
+            
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(new ApiResponse<>(null, "Credenciales inválidas", false));
+                    .body(new ApiResponse<>(null, "Email o contraseña incorrectos. Si acabas de registrarte, verifica tu email primero.", false));
         } catch (DisabledException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(null, "Cuenta deshabilitada", false));
