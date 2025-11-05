@@ -150,4 +150,46 @@ public class VerificationController {
                     .body(new ApiResponse<>(null, "Error al reenviar el código", false));
         }
     }
+
+    /**
+     * ⚡ NUEVO: Solicitar código de verificación para usuario existente (login con emailVerified=false)
+     * POST /api/verification/request-login-verification
+     * 
+     * Este endpoint es para usuarios que hicieron login pero no tienen el email verificado.
+     * NO requiere password porque el usuario ya está autenticado.
+     */
+    @PostMapping("/request-login-verification")
+    public ResponseEntity<ApiResponse<Map<String, String>>> solicitarVerificacionLogin(
+            @RequestBody Map<String, String> request
+    ) {
+        try {
+            String email = request.get("email");
+            
+            if (email == null || email.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse<>(null, "Email requerido", false));
+            }
+
+            // Verificar si ya existe un pre-registro
+            verificationService.reenviarCodigo(email);
+
+            log.info("[VerificationController] Código de verificación enviado para login: {}", email);
+
+            return ResponseEntity.ok(new ApiResponse<>(
+                    Map.of("email", email, "message", "Código enviado"),
+                    "Código de verificación enviado a tu email",
+                    true
+            ));
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            log.error("[VerificationController] Error en request-login-verification", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
+        } catch (Exception e) {
+            log.error("[VerificationController] Error enviando código de verificación para login", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al enviar el código", false));
+        }
+    }
 }

@@ -106,7 +106,7 @@ public class AuthController {
                         ));
             }
 
-            // ✅ Crear pre-registro sin enviar email (por si hay más validaciones)
+            // ✅ Crear pre-registro sin enviar email (permite validaciones previas en controller)
             PendingRegistration preRegistro = verificationService.crearPreRegistroSinEmail(email, password);
 
             // ✅ Solo enviar email si todo salió bien
@@ -114,11 +114,22 @@ public class AuthController {
 
             log.info("[AuthController] Pre-registro creado y email enviado: {}", email);
 
+            // ⚡ Para desarrollo: incluir código si email no está configurado
+            String mailUsername = System.getenv("MAIL_USERNAME");
+            boolean isEmailConfigured = mailUsername != null && !mailUsername.isBlank();
+            
+            Map<String, String> responseData = new java.util.HashMap<>();
+            responseData.put("email", preRegistro.getEmail());
+            responseData.put("message", "Código de verificación enviado a tu email");
+            
+            if (!isEmailConfigured) {
+                log.warn("[AuthController] 🔍 Email NO configurado - Incluyendo código en respuesta (SOLO DEV)");
+                responseData.put("verificationCode", preRegistro.getVerificationCode());
+                responseData.put("debugMode", "true");
+            }
+
             return ResponseEntity.ok(new ApiResponse<>(
-                    Map.of(
-                        "email", preRegistro.getEmail(),
-                        "message", "Código de verificación enviado a tu email"
-                    ),
+                    responseData,
                     "Pre-registro exitoso. Revisa tu email para el código de verificación.",
                     true
             ));

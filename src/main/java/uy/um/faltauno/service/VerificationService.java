@@ -87,7 +87,19 @@ public class VerificationService {
             log.info("[VerificationService] ✅ Email enviado a: {}", preRegistro.getEmail());
         } catch (Exception e) {
             log.error("[VerificationService] ❌ Error enviando email", e);
-            // Eliminar pre-registro si falla el email
+            
+            // ⚡ IMPORTANTE: En desarrollo, NO eliminar pre-registro si falla el email
+            // En producción, el email DEBE funcionar, pero en dev puede estar deshabilitado
+            String mailUsername = System.getenv("MAIL_USERNAME");
+            boolean isEmailConfigured = mailUsername != null && !mailUsername.isBlank();
+            
+            if (!isEmailConfigured) {
+                log.warn("[VerificationService] ⚠️ Email NO configurado. Pre-registro creado sin enviar email.");
+                log.warn("[VerificationService] 🔍 Código de verificación (SOLO DEV): {}", preRegistro.getVerificationCode());
+                return; // ✅ NO lanzar excepción si el email no está configurado
+            }
+            
+            // Si el email está configurado pero falló, entonces SÍ es un error crítico
             pendingRegistrationRepository.delete(preRegistro);
             throw new IllegalStateException("Error al enviar el código de verificación");
         }
