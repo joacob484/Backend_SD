@@ -68,6 +68,12 @@ public class AuthenticationController {
                             false));
             }
 
+            // 🔍 DEBUG: Log para diagnosticar problema de password
+            log.info("[AuthenticationController] Usuario encontrado: {} | Provider: {} | Password hash presente: {}", 
+                req.email(), 
+                existingUser.getProvider(), 
+                existingUser.getPassword() != null && !existingUser.getPassword().isEmpty());
+
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(req.email(), req.password());
 
