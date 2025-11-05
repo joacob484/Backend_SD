@@ -470,6 +470,14 @@ public class UsuarioService {
         return usuarioRepository.findByEmail(email).orElse(null);
     }
 
+    /**
+     * Verifica si existe un usuario con el email dado (activo, no eliminado).
+     */
+    @Transactional(readOnly = true)
+    public boolean existsByEmail(String email) {
+        return usuarioRepository.existsByEmail(email);
+    }
+
     @Transactional
     public void deleteUsuario(UUID id) {
         Usuario usuario = usuarioRepository.findById(id)

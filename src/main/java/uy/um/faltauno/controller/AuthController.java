@@ -8,8 +8,10 @@ import org.springframework.web.bind.annotation.*;
 import uy.um.faltauno.dto.ApiResponse;
 import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.entity.PendingRegistration;
+import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.service.VerificationService;
 import uy.um.faltauno.service.UsuarioService;
+import uy.um.faltauno.config.JwtUtil;
 
 import java.util.Map;
 
@@ -25,6 +27,39 @@ public class AuthController {
 
     private final VerificationService verificationService;
     private final UsuarioService usuarioService;
+    private final JwtUtil jwtUtil;
+
+    /**
+     * Verificar si un email ya está registrado
+     * GET /api/auth/check-email?email=user@example.com
+     */
+    @GetMapping("/check-email")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkEmail(
+            @RequestParam String email
+    ) {
+        try {
+            if (email == null || email.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse<>(null, "Email requerido", false));
+            }
+
+            boolean exists = usuarioService.existsByEmail(email);
+            boolean hasDeletedRecoverable = usuarioService.hasRecoverableDeletedUser(email);
+
+            Map<String, Object> result = Map.of(
+                "exists", exists,
+                "hasDeletedRecoverable", hasDeletedRecoverable,
+                "available", !exists && !hasDeletedRecoverable
+            );
+
+            return ResponseEntity.ok(new ApiResponse<>(result, "Verificación completada", true));
+
+        } catch (Exception e) {
+            log.error("[AuthController] Error verificando email", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al verificar email", false));
+        }
+    }
 
     /**
      * Pre-registro: validar datos y enviar código de verificación
@@ -110,7 +145,7 @@ public class AuthController {
      * }
      */
     @PostMapping("/complete-register")
-    public ResponseEntity<ApiResponse<UsuarioDTO>> completeRegister(
+    public ResponseEntity<ApiResponse<Object>> completeRegister(
             @RequestBody UsuarioDTO dto
     ) {
         try {
@@ -135,16 +170,34 @@ public class AuthController {
             dto.setEmailVerified(true); // Marcar como verificado
             
             UsuarioDTO nuevoUsuario = usuarioService.createUsuario(dto);
+            
+            // 3. Obtener la entidad Usuario para generar token con tokenVersion
+            Usuario usuarioEntity = usuarioService.findUsuarioEntityById(nuevoUsuario.getId());
+            
+            // 4. Generar token JWT
+            String token = jwtUtil.generateToken(
+                usuarioEntity.getId(), 
+                usuarioEntity.getEmail(), 
+                usuarioEntity.getTokenVersion()
+            );
+            
+            // 5. Agregar token al DTO de respuesta
             nuevoUsuario.setPassword(null); // No retornar password en response
-
-            // 3. Limpiar pre-registro
+            
+            // 6. Limpiar pre-registro
             verificationService.limpiarPreRegistro(email);
 
-            log.info("[AuthController] Usuario creado exitosamente: {}", nuevoUsuario.getEmail());
+            log.info("[AuthController] Usuario creado exitosamente con token: {}", nuevoUsuario.getEmail());
+
+            // Crear respuesta con usuario y token
+            Map<String, Object> responseData = Map.of(
+                "usuario", nuevoUsuario,
+                "token", token
+            );
 
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponse<>(
-                            nuevoUsuario,
+                            responseData,
                             "Registro completado exitosamente",
                             true
                     ));
