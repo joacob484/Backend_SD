@@ -73,10 +73,11 @@ public class AuthenticationController {
             log.info("[AuthenticationController] 🔍 Provider: {}", existingUser.getProvider());
             log.info("[AuthenticationController] 🔍 Password hash presente: {}", 
                 existingUser.getPassword() != null && !existingUser.getPassword().isEmpty());
-            log.info("[AuthenticationController] 🔍 Email verificado: {}", existingUser.getEmailVerified());
+            Boolean emailVerificado = existingUser.getEmailVerified();
+            log.info("[AuthenticationController] 🔍 Email verificado: {}", emailVerificado != null ? emailVerificado : false);
             log.info("[AuthenticationController] 🔍 Cuenta habilitada: {}", existingUser.isEnabled());
             
-            if (existingUser.getPassword() != null) {
+            if (existingUser.getPassword() != null && !existingUser.getPassword().isEmpty()) {
                 log.info("[AuthenticationController] 🔍 Password hash (primeros 20 chars): {}", 
                     existingUser.getPassword().substring(0, Math.min(20, existingUser.getPassword().length())));
             } else {
