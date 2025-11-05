@@ -348,6 +348,61 @@ public class UsuarioService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Buscar usuarios por números de teléfono (para sincronización de contactos)
+     * Normaliza los números antes de buscar
+     */
+    @Transactional(readOnly = true)
+    public List<UsuarioDTO> buscarPorTelefonos(List<String> telefonos) {
+        if (telefonos == null || telefonos.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        log.info("Buscando usuarios para {} números", telefonos.size());
+
+        // Normalizar números: quitar espacios, + inicial, etc. para buscar
+        List<String> telefonosNormalizados = telefonos.stream()
+                .map(tel -> tel.replaceAll("[\\s\\-\\(\\)\\+]", "")) // Quitar formato
+                .filter(tel -> !tel.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+
+        log.info("Números normalizados: {}", telefonosNormalizados.size());
+
+        // Buscar en la base de datos
+        // Hacemos búsqueda flexible: buscar tanto con + como sin +
+        List<Usuario> usuarios = usuarioRepository.findAllActive().stream()
+                .filter(u -> {
+                    if (u.getCelular() == null || u.getCelular().isEmpty()) {
+                        return false;
+                    }
+                    String celularNormalizado = u.getCelular().replaceAll("[\\s\\-\\(\\)\\+]", "");
+                    
+                    // Buscar coincidencia exacta o coincidencia de sufijo (últimos 8-10 dígitos)
+                    return telefonosNormalizados.stream().anyMatch(tel -> {
+                        // Coincidencia exacta
+                        if (celularNormalizado.equals(tel)) {
+                            return true;
+                        }
+                        // Coincidencia de sufijo (últimos 8-10 dígitos)
+                        int minLength = Math.min(8, Math.min(celularNormalizado.length(), tel.length()));
+                        if (celularNormalizado.length() >= minLength && tel.length() >= minLength) {
+                            String sufijoCelular = celularNormalizado.substring(celularNormalizado.length() - minLength);
+                            String sufijoTel = tel.substring(tel.length() - minLength);
+                            return sufijoCelular.equals(sufijoTel);
+                        }
+                        return false;
+                    });
+                })
+                .collect(Collectors.toList());
+
+        log.info("Encontrados {} usuarios", usuarios.size());
+
+        return usuarios.stream()
+                .map(usuarioMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
     @Transactional(readOnly = true)
     public List<PendingReviewResponse> obtenerPendingReviews(UUID userId) {
         List<Inscripcion> misInscripciones = inscripcionRepository.findByUsuarioId(userId);

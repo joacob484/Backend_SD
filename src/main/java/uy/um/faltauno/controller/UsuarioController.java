@@ -274,6 +274,38 @@ public class UsuarioController {
         return ResponseEntity.ok(new ApiResponse<>(all, "Lista de usuarios", true));
     }
 
+    /**
+     * Buscar usuarios por números de teléfono (para sincronización de contactos)
+     * POST /api/usuarios/buscar-por-telefonos
+     * Body: { "telefonos": ["+598...", "+54..."] }
+     */
+    @PostMapping(path = "/buscar-por-telefonos", produces = "application/json", consumes = "application/json")
+    public ResponseEntity<ApiResponse<List<UsuarioDTO>>> buscarPorTelefonos(@RequestBody Map<String, List<String>> request) {
+        try {
+            List<String> telefonos = request.get("telefonos");
+            if (telefonos == null || telefonos.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse<>(null, "Lista de teléfonos requerida", false));
+            }
+
+            log.info("Buscando usuarios para {} números de teléfono", telefonos.size());
+            
+            List<UsuarioDTO> usuarios = usuarioService.buscarPorTelefonos(telefonos);
+            
+            // Limpiar passwords
+            usuarios.forEach(u -> u.setPassword(null));
+            
+            log.info("Encontrados {} usuarios de {} teléfonos", usuarios.size(), telefonos.size());
+            
+            return ResponseEntity.ok(new ApiResponse<>(usuarios, 
+                    "Usuarios encontrados: " + usuarios.size(), true));
+        } catch (Exception e) {
+            log.error("Error buscando usuarios por teléfono", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al buscar usuarios", false));
+        }
+    }
+
     @GetMapping(path = "/{id}", produces = "application/json")
     public ResponseEntity<ApiResponse<UsuarioDTO>> getUsuario(@PathVariable UUID id) {
         try {
