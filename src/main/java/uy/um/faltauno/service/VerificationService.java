@@ -30,11 +30,6 @@ public class VerificationService {
     private static final Random RANDOM = new Random();
 
     /**
-     * Crear pre-registro y enviar código de verificación
-     * Este es el primer paso del registro LOCAL
-     */
-    @Transactional
-    /**
      * Crear pre-registro SIN enviar email (permite validaciones previas en controller)
      */
     @Transactional
