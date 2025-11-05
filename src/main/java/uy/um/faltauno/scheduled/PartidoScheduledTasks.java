@@ -33,58 +33,72 @@ public class PartidoScheduledTasks {
     @Scheduled(fixedRate = 300000) // 5 minutos
     @Transactional
     public void procesarPartidosVencidos() {
-        LocalDateTime ahora = LocalDateTime.now();
-        LocalDate hoy = ahora.toLocalDate();
-        LocalTime ahoraHora = ahora.toLocalTime();
-        
-        // 1. Cancelar TODOS los partidos DISPONIBLES que llegaron a su fecha/hora
-        List<Partido> disponiblesVencidos = partidoRepository
-                .findByEstadoAndFechaLessThanEqual("DISPONIBLE", hoy)
-                .stream()
-                .filter(p -> {
-                    // Si es de antes de hoy, ya venció
-                    if (p.getFecha().isBefore(hoy)) return true;
-                    // Si es hoy, verificar que la hora ya pasó
-                    return p.getFecha().isEqual(hoy) && p.getHora().isBefore(ahoraHora);
-                })
-                .toList();
-        
-        for (Partido partido : disponiblesVencidos) {
-            long inscritos = inscripcionRepository.countByPartidoId(partido.getId());
+        try {
+            LocalDateTime ahora = LocalDateTime.now();
+            LocalDate hoy = ahora.toLocalDate();
+            LocalTime ahoraHora = ahora.toLocalTime();
             
-            if (inscritos >= partido.getCantidadJugadores()) {
-                log.warn("⚠️ Cancelando partido {} con cupos llenos ({}/{}) por falta de confirmación del organizador",
-                        partido.getId(), inscritos, partido.getCantidadJugadores());
-            } else {
-                log.info("Cancelando partido {} por falta de jugadores ({}/{})",
-                        partido.getId(), inscritos, partido.getCantidadJugadores());
+            // 1. Cancelar TODOS los partidos DISPONIBLES que llegaron a su fecha/hora
+            List<Partido> disponiblesVencidos = partidoRepository
+                    .findByEstadoAndFechaLessThanEqual("DISPONIBLE", hoy)
+                    .stream()
+                    .filter(p -> {
+                        // Si es de antes de hoy, ya venció
+                        if (p.getFecha().isBefore(hoy)) return true;
+                        // Si es hoy, verificar que la hora ya pasó
+                        return p.getFecha().isEqual(hoy) && p.getHora().isBefore(ahoraHora);
+                    })
+                    .toList();
+            
+            int cancelados = 0;
+            for (Partido partido : disponiblesVencidos) {
+                try {
+                    long inscritos = inscripcionRepository.countByPartidoId(partido.getId());
+                    
+                    if (inscritos >= partido.getCantidadJugadores()) {
+                        log.warn("⚠️ Cancelando partido {} con cupos llenos ({}/{}) por falta de confirmación del organizador",
+                                partido.getId(), inscritos, partido.getCantidadJugadores());
+                    } else {
+                        log.info("Cancelando partido {} por falta de jugadores ({}/{})",
+                                partido.getId(), inscritos, partido.getCantidadJugadores());
+                    }
+                    
+                    partido.setEstado("CANCELADO");
+                    partidoRepository.save(partido);
+                    cancelados++;
+                } catch (Exception e) {
+                    log.error("Error cancelando partido {}", partido.getId(), e);
+                }
             }
             
-            partido.setEstado("CANCELADO");
-            partidoRepository.save(partido);
-        }
-        
-        // 2. Completar partidos CONFIRMADOS que ya pasaron
-        List<Partido> confirmadosVencidos = partidoRepository
-                .findByEstadoAndFechaLessThanEqual("CONFIRMADO", hoy)
-                .stream()
-                .filter(p -> {
-                    if (p.getFecha().isBefore(hoy)) return true;
-                    return p.getFecha().isEqual(hoy) && p.getHora().isBefore(ahoraHora);
-                })
-                .toList();
-        
-        for (Partido partido : confirmadosVencidos) {
-            log.info("Completando partido {} automáticamente", partido.getId());
-            partido.setEstado("COMPLETADO");
-            partidoRepository.save(partido);
-        }
-        
-        if (!disponiblesVencidos.isEmpty() || !confirmadosVencidos.isEmpty()) {
-            log.info("Procesados {} partidos: {} cancelados, {} completados",
-                    disponiblesVencidos.size() + confirmadosVencidos.size(),
-                    disponiblesVencidos.size(),
-                    confirmadosVencidos.size());
+            // 2. Completar partidos CONFIRMADOS que ya pasaron
+            List<Partido> confirmadosVencidos = partidoRepository
+                    .findByEstadoAndFechaLessThanEqual("CONFIRMADO", hoy)
+                    .stream()
+                    .filter(p -> {
+                        if (p.getFecha().isBefore(hoy)) return true;
+                        return p.getFecha().isEqual(hoy) && p.getHora().isBefore(ahoraHora);
+                    })
+                    .toList();
+            
+            int completados = 0;
+            for (Partido partido : confirmadosVencidos) {
+                try {
+                    log.info("Completando partido {} automáticamente", partido.getId());
+                    partido.setEstado("COMPLETADO");
+                    partidoRepository.save(partido);
+                    completados++;
+                } catch (Exception e) {
+                    log.error("Error completando partido {}", partido.getId(), e);
+                }
+            }
+            
+            if (cancelados > 0 || completados > 0) {
+                log.info("Procesados {} partidos: {} cancelados, {} completados",
+                        cancelados + completados, cancelados, completados);
+            }
+        } catch (Exception e) {
+            log.error("Error crítico en procesarPartidosVencidos", e);
         }
     }
 }

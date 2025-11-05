@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.HandlerInterceptor;
 import uy.um.faltauno.config.CustomUserDetailsService.UserPrincipal;
 import uy.um.faltauno.entity.Usuario;
@@ -57,6 +58,7 @@ public class ActivityTrackingInterceptor implements HandlerInterceptor {
      * Solo actualiza si han pasado más de 60 segundos desde la última actividad.
      */
     @Async
+    @Transactional
     public void updateUserActivity(UUID userId) {
         try {
             Usuario usuario = usuarioRepository.findById(userId).orElse(null);
@@ -83,7 +85,7 @@ public class ActivityTrackingInterceptor implements HandlerInterceptor {
             
         } catch (Exception e) {
             // No fallar el request por error de tracking
-            log.warn("[ActivityTracking] Error actualizando actividad: {}", e.getMessage());
+            log.error("[ActivityTracking] Error actualizando actividad userId={}: {}", userId, e.getMessage(), e);
         }
     }
 }

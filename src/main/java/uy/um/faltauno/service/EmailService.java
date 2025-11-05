@@ -507,4 +507,156 @@ public class EmailService {
                 frontendUrl
             );
     }
+
+    /**
+     * Enviar email de recuperación de contraseña
+     */
+    @Async
+    public void enviarEmailRecuperacionPassword(Usuario usuario, String resetLink) {
+        // Verificar si el email está configurado
+        if (!isEmailConfigured()) {
+            log.debug("[EmailService] Email no configurado. Saltando envío de recuperación de contraseña.");
+            return;
+        }
+
+        try {
+            String nombre = usuario.getNombre() != null ? usuario.getNombre() : "";
+            String asunto = "[Falta Uno] Recuperación de Contraseña";
+            
+            String cuerpoHtml = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Recuperación de Contraseña</title>
+                </head>
+                <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+                    <table width="100%%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f3f4f6; padding: 20px;">
+                        <tr>
+                            <td align="center">
+                                <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                                    <!-- Header -->
+                                    <tr>
+                                        <td style="background: linear-gradient(135deg, #4caf50 0%%, #45a049 100%%); padding: 32px 24px; text-align: center;">
+                                            <h1 style="color: #ffffff; font-size: 28px; font-weight: bold; margin: 0;">
+                                                🔐 Recuperación de Contraseña
+                                            </h1>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Saludo -->
+                                    <tr>
+                                        <td style="padding: 32px 24px 16px;">
+                                            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0;">
+                                                Hola%s,
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Mensaje -->
+                                    <tr>
+                                        <td style="padding: 0 24px 24px;">
+                                            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+                                                Recibimos una solicitud para restablecer la contraseña de tu cuenta en <strong>Falta Uno</strong>.
+                                            </p>
+                                            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0;">
+                                                Haz clic en el botón de abajo para crear una nueva contraseña:
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Botón de acción -->
+                                    <tr>
+                                        <td style="padding: 0 24px 32px; text-align: center;">
+                                            <a href="%s" style="display: inline-block; background-color: #4caf50; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; padding: 14px 32px; border-radius: 8px; box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);">
+                                                Restablecer Contraseña
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Info adicional -->
+                                    <tr>
+                                        <td style="padding: 0 24px 24px;">
+                                            <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 4px;">
+                                                <p style="color: #92400e; font-size: 14px; line-height: 1.5; margin: 0;">
+                                                    ⚠️ <strong>Este enlace expira en 1 hora</strong> por seguridad.
+                                                </p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Enlace alternativo -->
+                                    <tr>
+                                        <td style="padding: 0 24px 24px;">
+                                            <p style="color: #6b7280; font-size: 14px; line-height: 1.5; margin: 0;">
+                                                Si el botón no funciona, copia y pega este enlace en tu navegador:
+                                            </p>
+                                            <p style="color: #4caf50; font-size: 12px; line-height: 1.5; margin: 8px 0 0; word-break: break-all;">
+                                                %s
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Aviso de seguridad -->
+                                    <tr>
+                                        <td style="padding: 0 24px 32px;">
+                                            <div style="background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 16px; border-radius: 4px;">
+                                                <p style="color: #7f1d1d; font-size: 14px; line-height: 1.5; margin: 0 0 8px;">
+                                                    🛡️ <strong>¿No solicitaste esto?</strong>
+                                                </p>
+                                                <p style="color: #7f1d1d; font-size: 14px; line-height: 1.5; margin: 0;">
+                                                    Si no solicitaste restablecer tu contraseña, puedes ignorar este email. Tu cuenta permanecerá segura.
+                                                </p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Footer -->
+                                    <tr>
+                                        <td style="background-color: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+                                            <p style="color: #6b7280; font-size: 14px; margin: 8px 0;">
+                                                © 2025 Falta Uno. Todos los derechos reservados.
+                                            </p>
+                                            <p style="color: #6b7280; font-size: 14px; margin: 8px 0;">
+                                                <a href="%s/help" style="color: #4caf50; text-decoration: none; font-weight: 500;">Centro de Ayuda</a> • 
+                                                <a href="%s/terms" style="color: #4caf50; text-decoration: none; font-weight: 500;">Términos</a> • 
+                                                <a href="%s/privacy" style="color: #4caf50; text-decoration: none; font-weight: 500;">Privacidad</a>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(
+                    nombre.isEmpty() ? "" : " " + nombre,
+                    resetLink,
+                    resetLink,
+                    frontendUrl,
+                    frontendUrl,
+                    frontendUrl
+                );
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom(fromEmail, "Falta Uno");
+            helper.setTo(usuario.getEmail());
+            helper.setSubject(asunto);
+            helper.setText(cuerpoHtml, true);
+
+            mailSender.send(mimeMessage);
+            
+            log.info("[EmailService] ✅ Email de recuperación de contraseña enviado a: {}", usuario.getEmail());
+
+        } catch (MessagingException e) {
+            log.error("[EmailService] ❌ Error enviando email de recuperación a {}: {}", usuario.getEmail(), e.getMessage());
+        } catch (Exception e) {
+            log.error("[EmailService] ❌ Error inesperado enviando email de recuperación: {}", e.getMessage(), e);
+        }
+    }
 }
+
