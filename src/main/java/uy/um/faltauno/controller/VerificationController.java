@@ -45,7 +45,9 @@ public class VerificationController {
                         .body(new ApiResponse<>(null, "Contraseña requerida", false));
             }
 
-            PendingRegistration preRegistro = verificationService.crearPreRegistro(email, password);
+            // ✅ Usar nuevo método sin deprecación
+            PendingRegistration preRegistro = verificationService.crearPreRegistroSinEmail(email, password);
+            verificationService.enviarCodigoVerificacionPreRegistro(preRegistro);
 
             return ResponseEntity.ok(new ApiResponse<>(
                     Map.of("email", preRegistro.getEmail()),
