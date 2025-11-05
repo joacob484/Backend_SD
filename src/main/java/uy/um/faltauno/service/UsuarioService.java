@@ -212,8 +212,21 @@ public class UsuarioService {
             throw new IllegalArgumentException("Apellido demasiado largo (máx 100 caracteres)");
         }
 
-        usuario.setNombre(perfilDTO.getNombre());
-        usuario.setApellido(perfilDTO.getApellido());
+        // ✅ FIX: Limpiar nombre si contiene apellido duplicado
+        String nombre = perfilDTO.getNombre();
+        String apellido = perfilDTO.getApellido();
+        
+        if (nombre != null && apellido != null && !apellido.isBlank()) {
+            // Si el nombre termina con el apellido, quitarlo
+            if (nombre.trim().endsWith(" " + apellido.trim())) {
+                nombre = nombre.substring(0, nombre.lastIndexOf(" " + apellido.trim())).trim();
+                log.debug("[UsuarioService] Apellido duplicado removido del nombre: {} → {}", 
+                    perfilDTO.getNombre(), nombre);
+            }
+        }
+        
+        usuario.setNombre(nombre);
+        usuario.setApellido(apellido);
         usuario.setCelular(perfilDTO.getCelular());
         usuario.setPosicion(perfilDTO.getPosicion());
         
@@ -591,9 +604,28 @@ public class UsuarioService {
         // Marcar como usuario de Google OAuth
         u.setProvider("GOOGLE");
 
-        // name (si viene)
-        if (name != null && !name.isBlank()) {
-            u.setNombre(name);
+        // ✅ FIX: Procesar nombre y apellido correctamente desde Google
+        // Google puede enviar: given_name (nombre), family_name (apellido), name (completo)
+        String givenName = attrs != null ? (String) attrs.get("given_name") : null;
+        String familyName = attrs != null ? (String) attrs.get("family_name") : null;
+        
+        if (givenName != null && !givenName.isBlank()) {
+            // Google envió nombre separado
+            u.setNombre(givenName.trim());
+            log.debug("[OAuth] Nombre desde given_name: {}", givenName);
+        } else if (name != null && !name.isBlank()) {
+            // Fallback: separar el nombre completo
+            String[] parts = name.trim().split("\\s+", 2); // Separar en máximo 2 partes
+            u.setNombre(parts[0]); // Primera parte es el nombre
+            if (parts.length > 1 && familyName == null) {
+                familyName = parts[1]; // Segunda parte como apellido
+            }
+            log.debug("[OAuth] Nombre desde name (split): {}", parts[0]);
+        }
+        
+        if (familyName != null && !familyName.isBlank()) {
+            u.setApellido(familyName.trim());
+            log.debug("[OAuth] Apellido desde family_name: {}", familyName);
         }
 
         // Campos opcionales: no fallar si no existen en la entidad
