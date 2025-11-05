@@ -212,10 +212,21 @@ public class UsuarioService {
             throw new IllegalArgumentException("Apellido demasiado largo (máx 100 caracteres)");
         }
 
-        // ✅ FIX: Limpiar nombre si contiene apellido duplicado
+        // ✅ FIX: Limpiar nombre si contiene apellido duplicado (tanto del request como histórico)
         String nombre = perfilDTO.getNombre();
         String apellido = perfilDTO.getApellido();
         
+        // 🔧 Limpieza de datos históricos: si el nombre ACTUAL del usuario contiene apellido duplicado, limpiarlo
+        if (usuario.getNombre() != null && apellido != null && !apellido.isBlank()) {
+            if (usuario.getNombre().trim().endsWith(" " + apellido.trim())) {
+                String nombreLimpio = usuario.getNombre().substring(0, usuario.getNombre().lastIndexOf(" " + apellido.trim())).trim();
+                log.info("[UsuarioService] 🧹 Limpieza automática de datos históricos - Usuario {}: nombre '{}' → '{}'", 
+                    usuarioId, usuario.getNombre(), nombreLimpio);
+                usuario.setNombre(nombreLimpio);
+            }
+        }
+        
+        // Validación de nuevo nombre del request
         if (nombre != null && apellido != null && !apellido.isBlank()) {
             // Si el nombre termina con el apellido, quitarlo
             if (nombre.trim().endsWith(" " + apellido.trim())) {
