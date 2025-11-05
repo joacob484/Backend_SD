@@ -453,7 +453,7 @@ public class EmailService {
                                 <tr>
                                     <td style="padding: 32px 24px;">
                                         <h2 style="color: #1f2937; font-size: 24px; font-weight: 600; margin: 0 0 16px 0;">
-                                            %s ¡Hola%s!
+                                            ¡Hola%s!
                                         </h2>
                                         <p style="color: #1f2937; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
                                             Gracias por registrarte en <strong>Falta Uno</strong>. Para completar tu registro, 
@@ -497,6 +497,14 @@ public class EmailService {
                 </table>
             </body>
             </html>
-            """.formatted(frontendUrl, nombre.isEmpty() ? "" : " " + nombre, nombre.isEmpty() ? "" : "", codigo, minutosExpiracion, frontendUrl, frontendUrl, frontendUrl);
+            """.formatted(
+                frontendUrl, 
+                nombre.isEmpty() ? "" : " " + nombre, 
+                codigo, 
+                minutosExpiracion, 
+                frontendUrl, 
+                frontendUrl, 
+                frontendUrl
+            );
     }
 }
