@@ -21,9 +21,12 @@ CREATE INDEX IF NOT EXISTS idx_partido_estado_fecha
     ON partido(estado, fecha DESC);
 
 -- Índice para búsquedas por ubicación (LIKE queries)
-CREATE INDEX IF NOT EXISTS idx_partido_ubicacion 
-    ON partido USING gin(to_tsvector('spanish', 
-        COALESCE(nombre_ubicacion, '') || ' ' || COALESCE(direccion_ubicacion, '')));
+-- Usando índices separados en lugar de GIN fulltext (más compatible)
+CREATE INDEX IF NOT EXISTS idx_partido_nombre_ubicacion 
+    ON partido(nombre_ubicacion);
+
+CREATE INDEX IF NOT EXISTS idx_partido_direccion_ubicacion 
+    ON partido(direccion_ubicacion);
 
 -- ✅ Índices para tabla INSCRIPCION (joins frecuentes)
 CREATE INDEX IF NOT EXISTS idx_inscripcion_usuario 
