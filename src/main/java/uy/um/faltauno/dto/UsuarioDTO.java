@@ -97,12 +97,4 @@ public class UsuarioDTO {
         return verificada;
         */
     }
-        
-        // Si cedulaVerificada está seteado explícitamente, respetarlo
-        if (cedulaVerificada != null) {
-            return cedulaVerificada;
-        }
-        
-        return verificada;
-    }
 }
