@@ -39,7 +39,7 @@ public class VerificationService {
         // Validar que el email no esté ya registrado
         if (usuarioRepository.existsByEmail(email)) {
             log.warn("[VerificationService] Email ya registrado: {}", email);
-            throw new IllegalStateException("Este email ya está registrado");
+            throw new IllegalStateException("Este email ya está registrado. Si olvidaste tu contraseña, usa la opción 'Recuperar contraseña' en el login.");
         }
 
         // Eliminar pre-registro anterior si existe
@@ -54,6 +54,10 @@ public class VerificationService {
 
         // Encriptar contraseña
         String passwordHash = passwordEncoder.encode(password);
+        
+        // 🔍 DEBUG: Log del password hash generado
+        log.info("[VerificationService] 🔍 Password hash generado (primeros 20 chars): {}", 
+            passwordHash.substring(0, Math.min(20, passwordHash.length())));
 
         // Crear pre-registro
         PendingRegistration preRegistro = PendingRegistration.builder()

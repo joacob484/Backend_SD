@@ -169,6 +169,10 @@ public class AuthController {
             // 1. Verificar código
             PendingRegistration preRegistro = verificationService.verificarCodigo(email, codigo.trim());
 
+            // 🔍 DEBUG: Log del password hash que se va a guardar
+            log.info("[AuthController] 🔍 Password hash del pre-registro (primeros 20 chars): {}", 
+                preRegistro.getPasswordHash() != null ? preRegistro.getPasswordHash().substring(0, Math.min(20, preRegistro.getPasswordHash().length())) : "null");
+
             // 2. Crear usuario con password ya encriptado
             dto.setPassword(preRegistro.getPasswordHash()); // Usar password hash del pre-registro
             dto.setEmailVerified(true); // Marcar como verificado

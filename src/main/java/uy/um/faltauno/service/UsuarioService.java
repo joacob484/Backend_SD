@@ -138,15 +138,26 @@ public class UsuarioService {
         // Mapear DTO a entidad (incluye nombre, apellido, celular, fechaNacimiento, etc.)
         Usuario usuario = usuarioMapper.toEntity(dto);
         
+        // 🔍 DEBUG: Log para verificar qué path se toma
+        log.info("[UsuarioService] 🔍 createUsuario - emailVerified: {} | password presente: {}", 
+            dto.getEmailVerified(), 
+            dto.getPassword() != null);
+        
         // Si ya está verificado, el password ya viene hasheado del pre-registro
         // Si no está verificado (OAuth), no hay password
         if (dto.getEmailVerified() != null && dto.getEmailVerified()) {
             // Password ya viene hasheado de VerificationService - NO encriptar de nuevo
+            log.info("[UsuarioService] 🔍 Usando password hash del pre-registro (NO re-encriptando)");
             usuario.setPassword(dto.getPassword());
         } else {
             // Para registros directos (no deberían existir, pero por si acaso)
+            log.info("[UsuarioService] 🔍 Encriptando password (registro directo u OAuth)");
             usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
         }
+        
+        // 🔍 DEBUG: Log del password final guardado
+        log.info("[UsuarioService] 🔍 Password guardado en BD (primeros 20 chars): {}", 
+            usuario.getPassword() != null ? usuario.getPassword().substring(0, Math.min(20, usuario.getPassword().length())) : "null");
         
         // Asegurar campos requeridos
         if (usuario.getProvider() == null) {
