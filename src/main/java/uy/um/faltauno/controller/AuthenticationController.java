@@ -52,35 +52,26 @@ public class AuthenticationController {
                             false));
             }
 
-            // ✅ NUEVO: Verificar si el usuario existe en Usuario antes de autenticar
-            Usuario existingUser = usuarioService.findByEmail(req.email());
-            if (existingUser == null) {
-                // Usuario no existe en tabla Usuario - verificar si está en PendingRegistration
-                log.warn("Usuario no encontrado en tabla Usuario: {}", req.email());
-                
-                Map<String, Object> unverifiedResponse = new HashMap<>();
-                unverifiedResponse.put("emailNotVerified", true);
-                unverifiedResponse.put("email", req.email());
-                
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new ApiResponse<>(unverifiedResponse, 
-                            "Email no verificado. Por favor verifica tu email antes de iniciar sesión.", 
-                            false));
-            }
+            // ⚡ IMPORTANTE: NO rechazar si emailVerified=false
+            // El frontend manejará la redirección a verificación
+            // Solo autenticar email + password
 
             // 🔍 DEBUG: Log para diagnosticar problema de password
-            log.info("[AuthenticationController] 🔍 Usuario encontrado: {}", req.email());
-            log.info("[AuthenticationController] 🔍 Provider: {}", existingUser.getProvider());
-            log.info("[AuthenticationController] 🔍 Password hash presente: {}", 
-                existingUser.getPassword() != null && !existingUser.getPassword().isEmpty());
-            Boolean emailVerificado = existingUser.getEmailVerified();
-            log.info("[AuthenticationController] 🔍 Email verificado: {}", emailVerificado != null ? emailVerificado : false);
-            
-            if (existingUser.getPassword() != null && !existingUser.getPassword().isEmpty()) {
-                log.info("[AuthenticationController] 🔍 Password hash (primeros 20 chars): {}", 
-                    existingUser.getPassword().substring(0, Math.min(20, existingUser.getPassword().length())));
-            } else {
-                log.warn("[AuthenticationController] ⚠️ Password es NULL - Usuario no puede hacer login con contraseña");
+            Usuario existingUser = usuarioService.findByEmail(req.email());
+            if (existingUser != null) {
+                log.info("[AuthenticationController] 🔍 Usuario encontrado: {}", req.email());
+                log.info("[AuthenticationController] 🔍 Provider: {}", existingUser.getProvider());
+                log.info("[AuthenticationController] 🔍 Password hash presente: {}", 
+                    existingUser.getPassword() != null && !existingUser.getPassword().isEmpty());
+                Boolean emailVerificado = existingUser.getEmailVerified();
+                log.info("[AuthenticationController] 🔍 Email verificado: {}", emailVerificado != null ? emailVerificado : false);
+                
+                if (existingUser.getPassword() != null && !existingUser.getPassword().isEmpty()) {
+                    log.info("[AuthenticationController] 🔍 Password hash (primeros 20 chars): {}", 
+                        existingUser.getPassword().substring(0, Math.min(20, existingUser.getPassword().length())));
+                } else {
+                    log.warn("[AuthenticationController] ⚠️ Password es NULL - Usuario no puede hacer login con contraseña");
+                }
             }
 
             UsernamePasswordAuthenticationToken authToken =
