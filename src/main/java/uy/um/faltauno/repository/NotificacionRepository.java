@@ -1,5 +1,7 @@
 package uy.um.faltauno.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,10 +17,25 @@ import java.util.UUID;
 public interface NotificacionRepository extends JpaRepository<Notificacion, UUID> {
 
     /**
+     * ✅ OPTIMIZACIÓN: Obtener notificaciones paginadas
+     * Mejora performance cuando el usuario tiene muchas notificaciones
+     */
+    @Query("SELECT n FROM Notificacion n WHERE n.usuarioId = :usuarioId ORDER BY n.createdAt DESC")
+    Page<Notificacion> findByUsuarioIdPaginated(@Param("usuarioId") UUID usuarioId, Pageable pageable);
+
+    /**
      * Obtener todas las notificaciones de un usuario, ordenadas por fecha descendente
+     * DEPRECADO: Usar findByUsuarioIdPaginated para mejor performance
      */
     @Query("SELECT n FROM Notificacion n WHERE n.usuarioId = :usuarioId ORDER BY n.createdAt DESC")
     List<Notificacion> findByUsuarioIdOrderByCreatedAtDesc(@Param("usuarioId") UUID usuarioId);
+
+    /**
+     * ✅ OPTIMIZACIÓN: Obtener solo IDs de notificaciones no leídas (ultra rápido)
+     * Para badge count sin cargar toda la entidad
+     */
+    @Query("SELECT n.id FROM Notificacion n WHERE n.usuarioId = :usuarioId AND n.leida = false")
+    List<UUID> findNoLeidasIds(@Param("usuarioId") UUID usuarioId);
 
     /**
      * Obtener notificaciones no leídas de un usuario

@@ -1,5 +1,8 @@
 package uy.um.faltauno.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -12,6 +15,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface PartidoRepository extends JpaRepository<Partido, UUID>, JpaSpecificationExecutor<Partido> {
+    
+    /**
+     * ✅ OPTIMIZACIÓN: EntityGraph evita queries adicionales para organizador
+     * Mejor que JOIN FETCH porque funciona con paginación
+     */
+    @EntityGraph(attributePaths = {"organizador"})
+    Optional<Partido> findById(UUID id);
+    
     @Query("""
            select p
            from Partido p
@@ -102,4 +113,44 @@ public interface PartidoRepository extends JpaRepository<Partido, UUID>, JpaSpec
            ORDER BY p.fecha DESC, p.hora DESC
            """)
     List<Partido> findAllWithOrganizador();
+    
+    /**
+     * ✅ OPTIMIZACIÓN: Paginación con EntityGraph
+     * Soluciona problema de JOIN FETCH que no funciona con paginación
+     */
+    @EntityGraph(attributePaths = {"organizador"})
+    @Query("SELECT p FROM Partido p ORDER BY p.fecha DESC, p.hora DESC")
+    Page<Partido> findAllPaginated(Pageable pageable);
+    
+    /**
+     * ✅ OPTIMIZACIÓN: Buscar partidos futuros con paginación
+     */
+    @EntityGraph(attributePaths = {"organizador"})
+    @Query("SELECT p FROM Partido p WHERE p.fecha >= :fecha ORDER BY p.fecha ASC, p.hora ASC")
+    Page<Partido> findPartidosFuturosPaginated(@Param("fecha") LocalDate fecha, Pageable pageable);
+    
+    /**
+     * ✅ OPTIMIZACIÓN: Buscar por estado con EntityGraph
+     */
+    @EntityGraph(attributePaths = {"organizador"})
+    @Query("SELECT p FROM Partido p WHERE p.estado = :estado ORDER BY p.fecha DESC")
+    List<Partido> findByEstadoWithOrganizador(@Param("estado") String estado);
+    
+    /**
+     * ✅ OPTIMIZACIÓN: Búsqueda con filtros múltiples
+     */
+    @EntityGraph(attributePaths = {"organizador"})
+    @Query("""
+        SELECT p FROM Partido p 
+        WHERE p.fecha >= :fechaDesde 
+        AND (:estado IS NULL OR p.estado = :estado)
+        AND (:tipoPartido IS NULL OR p.tipoPartido = :tipoPartido)
+        ORDER BY p.fecha ASC, p.hora ASC
+    """)
+    Page<Partido> buscarConFiltros(
+        @Param("fechaDesde") LocalDate fechaDesde,
+        @Param("estado") String estado,
+        @Param("tipoPartido") String tipoPartido,
+        Pageable pageable
+    );
 }
