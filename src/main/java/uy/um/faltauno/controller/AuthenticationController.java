@@ -52,6 +52,22 @@ public class AuthenticationController {
                             false));
             }
 
+            // ✅ NUEVO: Verificar si el usuario existe en Usuario antes de autenticar
+            Usuario existingUser = usuarioService.findByEmail(req.email());
+            if (existingUser == null) {
+                // Usuario no existe en tabla Usuario - verificar si está en PendingRegistration
+                log.warn("Usuario no encontrado en tabla Usuario: {}", req.email());
+                
+                Map<String, Object> unverifiedResponse = new HashMap<>();
+                unverifiedResponse.put("emailNotVerified", true);
+                unverifiedResponse.put("email", req.email());
+                
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponse<>(unverifiedResponse, 
+                            "Email no verificado. Por favor verifica tu email antes de iniciar sesión.", 
+                            false));
+            }
+
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(req.email(), req.password());
 
@@ -60,20 +76,14 @@ public class AuthenticationController {
             HttpSession session = request.getSession(true);
             log.info("Login JSON exitoso para {}, session={}", req.email(), session != null ? session.getId() : "null");
 
-            Usuario u = usuarioService.findByEmail(req.email());
-            if (u == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new ApiResponse<>(null, "Usuario no encontrado", false));
-            }
-
-            UsuarioDTO dto = usuarioService.getUsuario(u.getId());
+            UsuarioDTO dto = usuarioService.getUsuario(existingUser.getId());
             dto.setPassword(null);
             
             // Asegurar que los campos calculados están presentes
             dto.setPerfilCompleto(dto.getPerfilCompleto());
             dto.setCedulaVerificada(dto.getCedulaVerificada());
 
-            String token = jwtUtil.generateToken(u.getId(), u.getEmail(), u.getTokenVersion());
+            String token = jwtUtil.generateToken(existingUser.getId(), existingUser.getEmail(), existingUser.getTokenVersion());
 
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("token", token);
