@@ -24,6 +24,13 @@ public class Usuario {
     private String apellido;
     private LocalDate fechaNacimiento;
     private String email;
+    
+    /**
+     * Número de celular en formato internacional: +XXX XXXXXXXXX
+     * Ejemplo: +598 91234567 (Uruguay), +54 1123456789 (Argentina)
+     * Máximo 30 caracteres para soportar códigos de país y extensiones.
+     */
+    @Column(length = 30)
     private String celular;
     private Double altura;
     private Double peso;
