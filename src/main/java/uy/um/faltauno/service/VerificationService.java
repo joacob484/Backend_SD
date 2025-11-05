@@ -34,7 +34,11 @@ public class VerificationService {
      * Este es el primer paso del registro LOCAL
      */
     @Transactional
-    public PendingRegistration crearPreRegistro(String email, String password) {
+    /**
+     * Crear pre-registro SIN enviar email (permite validaciones previas en controller)
+     */
+    @Transactional
+    public PendingRegistration crearPreRegistroSinEmail(String email, String password) {
         log.info("[VerificationService] Creando pre-registro para: {}", email);
         
         // Validar que el email no esté ya registrado
@@ -67,18 +71,38 @@ public class VerificationService {
         PendingRegistration saved = pendingRegistrationRepository.save(preRegistro);
         log.info("[VerificationService] Pre-registro creado, código expira: {}", expiresAt);
 
-        // Enviar email con código
+        return saved;
+    }
+
+    /**
+     * Enviar código de verificación para un pre-registro existente
+     */
+    public void enviarCodigoVerificacionPreRegistro(PendingRegistration preRegistro) {
         try {
-            emailService.enviarCodigoVerificacion(email, email, code, CODE_EXPIRATION_MINUTES);
-            log.info("[VerificationService] ✅ Email enviado a: {}", email);
+            emailService.enviarCodigoVerificacion(
+                preRegistro.getEmail(), 
+                preRegistro.getEmail(), 
+                preRegistro.getVerificationCode(), 
+                CODE_EXPIRATION_MINUTES
+            );
+            log.info("[VerificationService] ✅ Email enviado a: {}", preRegistro.getEmail());
         } catch (Exception e) {
             log.error("[VerificationService] ❌ Error enviando email", e);
             // Eliminar pre-registro si falla el email
-            pendingRegistrationRepository.delete(saved);
+            pendingRegistrationRepository.delete(preRegistro);
             throw new IllegalStateException("Error al enviar el código de verificación");
         }
+    }
 
-        return saved;
+    /**
+     * Crear pre-registro Y enviar email (método legacy - mantener para compatibilidad)
+     * @deprecated Use crearPreRegistroSinEmail + enviarCodigoVerificacionPreRegistro para mejor control
+     */
+    @Deprecated
+    public PendingRegistration crearPreRegistro(String email, String password) {
+        PendingRegistration preRegistro = crearPreRegistroSinEmail(email, password);
+        enviarCodigoVerificacionPreRegistro(preRegistro);
+        return preRegistro;
     }
 
     /**

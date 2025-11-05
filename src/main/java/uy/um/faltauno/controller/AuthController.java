@@ -106,9 +106,13 @@ public class AuthController {
                         ));
             }
 
-            PendingRegistration preRegistro = verificationService.crearPreRegistro(email, password);
+            // ✅ Crear pre-registro sin enviar email (por si hay más validaciones)
+            PendingRegistration preRegistro = verificationService.crearPreRegistroSinEmail(email, password);
 
-            log.info("[AuthController] Pre-registro creado para email: {}", email);
+            // ✅ Solo enviar email si todo salió bien
+            verificationService.enviarCodigoVerificacionPreRegistro(preRegistro);
+
+            log.info("[AuthController] Pre-registro creado y email enviado: {}", email);
 
             return ResponseEntity.ok(new ApiResponse<>(
                     Map.of(
