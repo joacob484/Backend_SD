@@ -604,28 +604,19 @@ public class UsuarioService {
         // Marcar como usuario de Google OAuth
         u.setProvider("GOOGLE");
 
-        // ✅ FIX: Procesar nombre y apellido correctamente desde Google
-        // Google puede enviar: given_name (nombre), family_name (apellido), name (completo)
-        String givenName = attrs != null ? (String) attrs.get("given_name") : null;
-        String familyName = attrs != null ? (String) attrs.get("family_name") : null;
+        // ✅ OAuth solo guarda el email
+        // Nombre/apellido se completarán en profile-setup
+        // Pero guardamos datos de Google como sugerencias pre-llenadas
         
-        if (givenName != null && !givenName.isBlank()) {
-            // Google envió nombre separado
-            u.setNombre(givenName.trim());
-            log.debug("[OAuth] Nombre desde given_name: {}", givenName);
-        } else if (name != null && !name.isBlank()) {
-            // Fallback: separar el nombre completo
-            String[] parts = name.trim().split("\\s+", 2); // Separar en máximo 2 partes
-            u.setNombre(parts[0]); // Primera parte es el nombre
-            if (parts.length > 1 && familyName == null) {
-                familyName = parts[1]; // Segunda parte como apellido
+        // Guardar nombre completo de Google temporalmente (para profile-setup)
+        if (name != null && !name.isBlank() && (u.getNombre() == null || u.getNombre().isBlank())) {
+            // Si usuario no tiene nombre aún, separar el de Google como sugerencia
+            String[] parts = name.trim().split("\\s+", 2);
+            u.setNombre(parts[0]); // Primera palabra como nombre
+            if (parts.length > 1 && (u.getApellido() == null || u.getApellido().isBlank())) {
+                u.setApellido(parts[1]); // Resto como apellido
             }
-            log.debug("[OAuth] Nombre desde name (split): {}", parts[0]);
-        }
-        
-        if (familyName != null && !familyName.isBlank()) {
-            u.setApellido(familyName.trim());
-            log.debug("[OAuth] Apellido desde family_name: {}", familyName);
+            log.debug("[OAuth] Sugerencia de nombre desde Google: {} {}", parts[0], parts.length > 1 ? parts[1] : "");
         }
 
         // Campos opcionales: no fallar si no existen en la entidad
