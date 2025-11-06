@@ -310,7 +310,10 @@ public class UsuarioService {
             // si PerfilDTO no contiene fechaNacimiento, se ignora
         }
 
-        return usuarioRepository.save(usuario);
+    Usuario saved = usuarioRepository.save(usuario);
+    // Forzar flush para visibilidad inmediata en lecturas subsecuentes
+    usuarioRepository.flush();
+    return saved;
     }
 
     @Transactional
@@ -337,8 +340,10 @@ public class UsuarioService {
             throw new IllegalArgumentException("Solo se permiten imágenes JPEG o PNG");
         }
 
-        usuario.setFotoPerfil(file.getBytes());
-        usuarioRepository.save(usuario);
+    usuario.setFotoPerfil(file.getBytes());
+    usuarioRepository.save(usuario);
+    // Forzar flush para asegurar visibilidad inmediata en lecturas posteriores
+    usuarioRepository.flush();
     }
 
     @Transactional
@@ -563,6 +568,8 @@ public class UsuarioService {
 
             // Persistir cambios
             usuarioRepository.save(existing);
+            // Forzar flush para garantizar visibilidad inmediata (evita race conditions)
+            usuarioRepository.flush();
             return existing;
         }
 
@@ -579,8 +586,10 @@ public class UsuarioService {
             dto.setCelular(profileDto.getCelular());
         }
 
-        UsuarioDTO created = createUsuario(dto);
-        return findUsuarioEntityById(created.getId());
+    UsuarioDTO created = createUsuario(dto);
+    // Garantizar persistencia inmediata
+    usuarioRepository.flush();
+    return findUsuarioEntityById(created.getId());
     }
 
     /**

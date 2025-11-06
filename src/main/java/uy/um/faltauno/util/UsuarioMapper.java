@@ -24,6 +24,7 @@ public interface UsuarioMapper {
     @Mapping(source = "fechaNacimiento", target = "fechaNacimiento", qualifiedByName = "localDateToString")
     @Mapping(target = "cedulaVerificada", ignore = true) // Calculated in DTO getter
     @Mapping(target = "perfilCompleto", ignore = true) // Calculated in DTO getter
+    @Mapping(target = "hasFotoPerfil", ignore = true) // Set in @AfterMapping
     UsuarioDTO toDTO(Usuario usuario);
 
     /**
@@ -35,10 +36,14 @@ public interface UsuarioMapper {
      * Al forzar el cálculo aquí, garantizamos que SIEMPRE se envíe un valor booleano real.
      */
     @AfterMapping
-    default void setCalculatedFields(@MappingTarget UsuarioDTO dto) {
+    default void setCalculatedFields(@MappingTarget UsuarioDTO dto, Usuario usuario) {
         // ✅ Forzar cálculo de campos calculados para que NUNCA sean null
         dto.setPerfilCompleto(dto.getPerfilCompleto());
         dto.setCedulaVerificada(dto.getCedulaVerificada());
+
+        // ✅ Forzar presence flag de foto para evitar que el frontend tenga que inferir
+        // Se expone hasFotoPerfil = usuario.fotoPerfil != null
+        dto.setHasFotoPerfil(usuario != null && usuario.getFotoPerfil() != null && usuario.getFotoPerfil().length > 0);
     }
 
     // ----------------------

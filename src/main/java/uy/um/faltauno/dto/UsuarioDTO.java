@@ -29,6 +29,11 @@ public class UsuarioDTO {
     private String posicion;
     private String fotoPerfil; // Base64 string
     
+    // Indica explícitamente si el usuario tiene foto de perfil guardada en el backend
+    // Esto evita que el frontend tenga que inferir la presencia de la foto por distintos aliases
+    @JsonProperty("hasFotoPerfil")
+    private Boolean hasFotoPerfil;
+
     // TODO: Cédula deshabilitada temporalmente - mantener para futura implementación de badge verificado
     private String cedula;
     
@@ -83,19 +88,10 @@ public class UsuarioDTO {
      * Calcula si la cédula está verificada.
      */
     public Boolean getCedulaVerificada() {
-        // TODO: Retornar true siempre mientras la verificación está deshabilitada
-        return true;
-        
-        /* CÓDIGO ORIGINAL - Mantener para futura implementación de badge verificado
-        // Cédula verificada si existe y no está vacía
-        boolean verificada = cedula != null && !cedula.isEmpty();
-        
-        // Si cedulaVerificada está seteado explícitamente, respetarlo
-        if (cedulaVerificada != null) {
-            return cedulaVerificada;
-        }
-        
-        return verificada;
-        */
+        // Si el flag se estableció explícitamente, respetarlo
+        if (cedulaVerificada != null) return cedulaVerificada;
+
+        // Si no, inferir por la existencia de la cédula
+        return cedula != null && !cedula.isEmpty();
     }
 }
