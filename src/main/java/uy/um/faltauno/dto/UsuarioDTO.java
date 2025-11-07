@@ -65,15 +65,15 @@ public class UsuarioDTO {
 
      /**
      * Calcula si el perfil está completo basándose en los campos requeridos.
-     * TODO: Celular se pide en paso separado - ahora solo nombre, apellido, fechaNacimiento
+     * Perfil completo: nombre, apellido, fechaNacimiento Y foto
      * El celular es obligatorio pero se valida por separado en la navegación del frontend
      */
     public Boolean getPerfilCompleto() {
-        // Perfil completo si tiene: nombre, apellido, fechaNacimiento
-        // (el celular se pide en paso posterior de verificación)
+        // Perfil completo si tiene: nombre, apellido, fechaNacimiento Y foto
         boolean completo = nombre != null && !nombre.isEmpty()
                 && apellido != null && !apellido.isEmpty()
-                && fechaNacimiento != null && !fechaNacimiento.isEmpty();
+                && fechaNacimiento != null && !fechaNacimiento.isEmpty()
+                && (hasFotoPerfil != null && hasFotoPerfil); // ✅ AGREGADO: Validar que tenga foto
         
         // Si perfilCompleto está seteado explícitamente, respetarlo
         if (perfilCompleto != null) {
