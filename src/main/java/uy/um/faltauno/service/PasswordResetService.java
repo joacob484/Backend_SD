@@ -27,6 +27,9 @@ public class PasswordResetService {
 
     @Value("${app.frontend.url:https://faltauno-frontend-169771742214.us-central1.run.app}")
     private String frontendUrl;
+    
+    @Value("${spring.mail.username:#{null}}")
+    private String mailUsername;
 
     private static final int MAX_TOKENS_POR_HORA = 3;
     private static final SecureRandom secureRandom = new SecureRandom();
@@ -75,14 +78,18 @@ public class PasswordResetService {
         // Construir link de reset
         String resetLink = frontendUrl + "/reset-password?token=" + token;
 
-        // ⚡ NUEVO: Verificar si email está configurado
-        String mailUsername = System.getenv("MAIL_USERNAME");
+        // ⚡ CORREGIDO: Usar valor inyectado por Spring en lugar de System.getenv
         boolean isEmailConfigured = mailUsername != null && !mailUsername.isBlank();
 
         if (isEmailConfigured) {
             // Enviar email (modo producción)
-            emailService.enviarEmailRecuperacionPassword(usuario, resetLink);
-            log.info("[PasswordReset] ✅ Token generado y email enviado a: {}", email);
+            try {
+                emailService.enviarEmailRecuperacionPassword(usuario, resetLink);
+                log.info("[PasswordReset] ✅ Token generado y email enviado a: {}", email);
+            } catch (Exception e) {
+                log.error("[PasswordReset] ❌ Error enviando email a {}: {}", email, e.getMessage(), e);
+                // No lanzar error - el token ya fue creado, el usuario puede intentar solicitar otro
+            }
             return null; // No devolver link en producción
         } else {
             // Modo desarrollo: NO enviar email, devolver link

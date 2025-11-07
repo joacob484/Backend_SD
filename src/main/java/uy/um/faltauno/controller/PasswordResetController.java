@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.Map;
 
 /**
  * Controller para recuperación de contraseña
@@ -28,15 +29,26 @@ public class PasswordResetController {
      * Solicitar recuperación de contraseña
      */
     @PostMapping("/forgot")
-    public ResponseEntity<ApiResponse<Void>> solicitarRecuperacion(
+    public ResponseEntity<ApiResponse<Object>> solicitarRecuperacion(
             @Valid @RequestBody ForgotPasswordRequest request
     ) {
         try {
             log.info("[PasswordReset] Solicitud de recuperación para: {}", request.email());
             
-            passwordResetService.solicitarRecuperacion(request.email());
+            String resetLink = passwordResetService.solicitarRecuperacion(request.email());
             
-            // Siempre devolver éxito (por seguridad, no revelar si el email existe)
+            // ⚡ NUEVO: Si resetLink no es null, estamos en modo desarrollo (sin email configurado)
+            // Devolver el link directamente en la respuesta
+            if (resetLink != null) {
+                log.warn("[PasswordReset] ⚠️ Modo desarrollo - Devolviendo link en respuesta");
+                return ResponseEntity.ok(new ApiResponse<>(
+                        Map.of("resetLink", resetLink),
+                        "Link de recuperación generado (solo modo desarrollo)",
+                        true
+                ));
+            }
+            
+            // Modo producción - Email enviado, no devolver link
             return ResponseEntity.ok(new ApiResponse<>(
                     null,
                     "Si el email existe, recibirás instrucciones para restablecer tu contraseña",

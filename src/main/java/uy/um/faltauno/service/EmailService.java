@@ -515,9 +515,11 @@ public class EmailService {
     public void enviarEmailRecuperacionPassword(Usuario usuario, String resetLink) {
         // Verificar si el email está configurado
         if (!isEmailConfigured()) {
-            log.debug("[EmailService] Email no configurado. Saltando envío de recuperación de contraseña.");
+            log.warn("[EmailService] ⚠️ Email no configurado. Saltando envío de recuperación de contraseña.");
             return;
         }
+
+        log.info("[EmailService] 📧 Iniciando envío de email de recuperación a: {}", usuario.getEmail());
 
         try {
             String nombre = usuario.getNombre() != null ? usuario.getNombre() : "";
@@ -650,12 +652,14 @@ public class EmailService {
 
             mailSender.send(mimeMessage);
             
-            log.info("[EmailService] ✅ Email de recuperación de contraseña enviado a: {}", usuario.getEmail());
+            log.info("[EmailService] ✅ Email de recuperación de contraseña enviado exitosamente a: {}", usuario.getEmail());
 
         } catch (MessagingException e) {
-            log.error("[EmailService] ❌ Error enviando email de recuperación a {}: {}", usuario.getEmail(), e.getMessage());
+            log.error("[EmailService] ❌ Error de mensajería enviando email de recuperación a {}: {}", 
+                usuario.getEmail(), e.getMessage(), e);
         } catch (Exception e) {
-            log.error("[EmailService] ❌ Error inesperado enviando email de recuperación: {}", e.getMessage(), e);
+            log.error("[EmailService] ❌ Error inesperado enviando email de recuperación a {}: {}", 
+                usuario.getEmail(), e.getMessage(), e);
         }
     }
 }
