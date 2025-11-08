@@ -104,10 +104,16 @@ public class UsuarioController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(new ApiResponse<>(null, "No autenticado", false));
             }
+            
+            // 🔍 DEBUG: Obtener entidad directamente antes del mapper
+            Usuario usuarioEntity = usuarioService.findUsuarioEntityById(currentUserId);
+            log.info("[UsuarioController] 🔍 /me - Entidad ANTES de mapper: fotoPerfil en DB: {}", 
+                usuarioEntity.getFotoPerfil() != null ? "SÍ (" + usuarioEntity.getFotoPerfil().length + " bytes)" : "NO");
+            
             UsuarioDTO dto = usuarioService.getUsuario(currentUserId);
             
             // 🔍 DEBUG: Log del usuario retornado
-            log.info("[UsuarioController] 🔍 /me - Retornando usuario: {} | perfilCompleto: {} | hasFotoPerfil: {} | fotoPerfil: {}", 
+            log.info("[UsuarioController] 🔍 /me - DTO DESPUÉS de mapper: {} | perfilCompleto: {} | hasFotoPerfil: {} | fotoPerfil: {}", 
                 dto.getEmail(),
                 dto.getPerfilCompleto(),
                 dto.getHasFotoPerfil(),
