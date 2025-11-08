@@ -279,8 +279,11 @@ public class UsuarioService {
             usuario.setApellido(apellido);
         }
         
-        // Celular es opcional - puede ser null
-        usuario.setCelular(perfilDTO.getCelular());
+        // ⚡ CRÍTICO: Solo actualizar celular si viene en el request (no sobrescribir con null)
+        if (perfilDTO.getCelular() != null) {
+            usuario.setCelular(perfilDTO.getCelular());
+        }
+        
         usuario.setPosicion(perfilDTO.getPosicion());
         
         // ✅ Validar altura (frontend envía en cm, backend almacena en cm)
