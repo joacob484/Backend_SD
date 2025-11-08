@@ -138,6 +138,12 @@ public class UsuarioService {
         // Mapear DTO a entidad (incluye nombre, apellido, celular, fechaNacimiento, etc.)
         Usuario usuario = usuarioMapper.toEntity(dto);
         
+        // 🔍 DEBUG: Verificar foto
+        log.info("[UsuarioService] 🔍 createUsuario - Foto recibida en DTO: {}", 
+            dto.getFotoPerfil() != null ? "SÍ (" + dto.getFotoPerfil().length() + " chars)" : "NO");
+        log.info("[UsuarioService] 🔍 createUsuario - Foto en entidad después de mapper: {}", 
+            usuario.getFotoPerfil() != null ? "SÍ (" + usuario.getFotoPerfil().length + " bytes)" : "NO");
+        
         // 🔍 DEBUG: Log para verificar qué path se toma
         log.info("[UsuarioService] 🔍 createUsuario - emailVerified: {} | password presente: {}", 
             dto.getEmailVerified(), 
@@ -168,6 +174,10 @@ public class UsuarioService {
         }
 
         usuario = usuarioRepository.save(usuario);
+        
+        // 🔍 DEBUG: Verificar que la foto se guardó en BD
+        log.info("[UsuarioService] 🔍 createUsuario - Usuario guardado. Foto en BD: {}", 
+            usuario.getFotoPerfil() != null ? "SÍ (" + usuario.getFotoPerfil().length + " bytes)" : "NO");
 
         // Enviar email de bienvenida de forma asíncrona
         try {
@@ -178,6 +188,12 @@ public class UsuarioService {
         }
 
         UsuarioDTO out = usuarioMapper.toDTO(usuario);
+        
+        // 🔍 DEBUG: Verificar que hasFotoPerfil se calcula correctamente
+        log.info("[UsuarioService] 🔍 createUsuario - DTO retornado. hasFotoPerfil: {} | fotoPerfil en DTO: {}", 
+            out.getHasFotoPerfil(),
+            out.getFotoPerfil() != null ? "SÍ (" + out.getFotoPerfil().length() + " chars)" : "NO");
+        
         out.setPassword(null);
         return out;
     }

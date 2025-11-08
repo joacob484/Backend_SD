@@ -105,6 +105,14 @@ public class UsuarioController {
                         .body(new ApiResponse<>(null, "No autenticado", false));
             }
             UsuarioDTO dto = usuarioService.getUsuario(currentUserId);
+            
+            // 🔍 DEBUG: Log del usuario retornado
+            log.info("[UsuarioController] 🔍 /me - Retornando usuario: {} | perfilCompleto: {} | hasFotoPerfil: {} | fotoPerfil: {}", 
+                dto.getEmail(),
+                dto.getPerfilCompleto(),
+                dto.getHasFotoPerfil(),
+                dto.getFotoPerfil() != null ? "SÍ (" + dto.getFotoPerfil().length() + " chars)" : "NO");
+            
             dto.setPassword(null);
             return ResponseEntity.ok(new ApiResponse<>(dto, "Usuario actual", true));
         } catch (RuntimeException e) {

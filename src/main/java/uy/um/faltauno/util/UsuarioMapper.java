@@ -79,15 +79,32 @@ public interface UsuarioMapper {
     // Conversores para byte[] <-> Base64
     @Named("bytesToBase64")
     default String mapBytesToBase64(byte[] bytes) {
-        return (bytes != null && bytes.length > 0) ? Base64.getEncoder().encodeToString(bytes) : null;
+        if (bytes == null || bytes.length == 0) {
+            System.out.println("[UsuarioMapper] 🔍 bytesToBase64: bytes es null o vacío");
+            return null;
+        }
+        
+        String base64 = Base64.getEncoder().encodeToString(bytes);
+        System.out.println("[UsuarioMapper] 🔍 bytesToBase64: Conversión exitosa. " + 
+            bytes.length + " bytes → " + base64.length() + " chars");
+        return base64;
     }
 
     @Named("base64ToBytes")
     default byte[] mapBase64ToBytes(String base64) {
         try {
-            return (base64 != null && !base64.isBlank()) ? Base64.getDecoder().decode(base64) : null;
+            if (base64 == null || base64.isBlank()) {
+                System.out.println("[UsuarioMapper] 🔍 base64ToBytes: base64 es null o vacío");
+                return null;
+            }
+            
+            byte[] bytes = Base64.getDecoder().decode(base64);
+            System.out.println("[UsuarioMapper] 🔍 base64ToBytes: Conversión exitosa. " + 
+                base64.length() + " chars → " + bytes.length + " bytes");
+            return bytes;
         } catch (IllegalArgumentException e) {
             // ⚠️ Si el string no es Base64 válido, devuelve null para evitar 400
+            System.out.println("[UsuarioMapper] ⚠️ base64ToBytes: ERROR - String no es Base64 válido: " + e.getMessage());
             return null;
         }
     }
