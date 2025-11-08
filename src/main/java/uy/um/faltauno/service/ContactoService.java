@@ -30,12 +30,25 @@ public class ContactoService {
      */
     @Transactional(readOnly = true)
     public List<ContactoDTO> listarContactos(Usuario usuario) {
-        log.info("Listando contactos para usuario: {}", usuario.getId());
-        
-        List<Contacto> contactos = contactoRepository.findByUsuarioId(usuario.getId());
-        log.info("Encontrados {} contactos", contactos.size());
-        
-        return contactoMapper.toDTOList(contactos);
+        try {
+            log.info("Listando contactos para usuario: {}", usuario.getId());
+            
+            List<Contacto> contactos = contactoRepository.findByUsuarioId(usuario.getId());
+            log.info("Encontrados {} contactos", contactos.size());
+            
+            if (contactos.isEmpty()) {
+                log.info("Usuario no tiene contactos sincronizados, devolviendo lista vacía");
+                return new ArrayList<>();
+            }
+            
+            List<ContactoDTO> dtos = contactoMapper.toDTOList(contactos);
+            log.info("Convertidos {} contactos a DTO", dtos.size());
+            
+            return dtos;
+        } catch (Exception e) {
+            log.error("Error al listar contactos para usuario {}: {}", usuario.getId(), e.getMessage(), e);
+            throw new RuntimeException("Error al listar contactos", e);
+        }
     }
     
     /**

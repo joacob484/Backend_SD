@@ -13,16 +13,23 @@ public interface ContactoMapper {
     
     @Mapping(target = "usuarioAppId", expression = "java(mapUsuarioAppId(contacto))")
     @Mapping(target = "fotoPerfil", ignore = true) // La foto se maneja por separado
-    @Mapping(source = "usuarioApp.email", target = "email")
+    @Mapping(target = "email", expression = "java(mapEmail(contacto))")
     ContactoDTO toDTO(Contacto contacto);
     
     List<ContactoDTO> toDTOList(List<Contacto> contactos);
     
     default Long mapUsuarioAppId(Contacto contacto) {
-        if (contacto.getUsuarioApp() == null || contacto.getUsuarioApp().getId() == null) {
+        if (contacto == null || contacto.getUsuarioApp() == null || contacto.getUsuarioApp().getId() == null) {
             return null;
         }
         UUID uuid = contacto.getUsuarioApp().getId();
         return uuid.getMostSignificantBits() & Long.MAX_VALUE;
+    }
+    
+    default String mapEmail(Contacto contacto) {
+        if (contacto == null || contacto.getUsuarioApp() == null) {
+            return null;
+        }
+        return contacto.getUsuarioApp().getEmail();
     }
 }
