@@ -46,6 +46,7 @@ public class VerificationService {
         pendingRegistrationRepository.findByEmail(email).ifPresent(existing -> {
             log.info("[VerificationService] Eliminando pre-registro anterior: {}", email);
             pendingRegistrationRepository.delete(existing);
+            pendingRegistrationRepository.flush(); // ✅ Forzar eliminación inmediata
         });
 
         // Generar código de 6 dígitos
