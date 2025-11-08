@@ -219,9 +219,16 @@ public class UsuarioService {
             
             UsuarioDTO dto = usuarioMapper.toDTO(usuario);
             
-            // Asegurar que los campos calculados están correctos
+            // ⚡ CRITICAL: Asegurar que los campos calculados están correctos
             dto.setPerfilCompleto(dto.getPerfilCompleto());
             dto.setCedulaVerificada(dto.getCedulaVerificada());
+            
+            // ⚡ CRITICAL FIX: Force hasFotoPerfil to be calculated correctly
+            // The mapper should do this, but ensure it's set explicitly
+            dto.setHasFotoPerfil(fotoPerfilBytes != null && fotoPerfilBytes.length > 0);
+            
+            log.info("[UsuarioService] 🔍 getUsuario - DTO final: hasFotoPerfil={}, perfilCompleto={}", 
+                dto.getHasFotoPerfil(), dto.getPerfilCompleto());
             
             return dto;
         }
