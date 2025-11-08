@@ -62,6 +62,36 @@ public class AuthController {
     }
 
     /**
+     * Verificar si un celular ya está registrado
+     * GET /api/auth/check-phone?phone=+598123456789
+     */
+    @GetMapping("/check-phone")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> checkPhone(
+            @RequestParam String phone
+    ) {
+        try {
+            if (phone == null || phone.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse<>(null, "Teléfono requerido", false));
+            }
+
+            boolean exists = usuarioService.existsByCelular(phone);
+
+            Map<String, Object> result = Map.of(
+                "exists", exists,
+                "available", !exists
+            );
+
+            return ResponseEntity.ok(new ApiResponse<>(result, "Verificación completada", true));
+
+        } catch (Exception e) {
+            log.error("[AuthController] Error verificando teléfono", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al verificar teléfono", false));
+        }
+    }
+
+    /**
      * Pre-registro: validar datos y enviar código de verificación
      * POST /api/auth/pre-register
      * 

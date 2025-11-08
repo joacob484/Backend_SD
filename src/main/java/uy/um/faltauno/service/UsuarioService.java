@@ -647,6 +647,11 @@ public class UsuarioService {
         return usuarioRepository.existsByEmail(email);
     }
 
+    @Transactional(readOnly = true)
+    public boolean existsByCelular(String celular) {
+        return usuarioRepository.existsByCelular(celular);
+    }
+
     @Transactional
     public void deleteUsuario(UUID id) {
         Usuario usuario = usuarioRepository.findById(id)
