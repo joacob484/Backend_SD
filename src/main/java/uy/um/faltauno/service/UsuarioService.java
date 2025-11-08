@@ -284,7 +284,10 @@ public class UsuarioService {
             usuario.setCelular(perfilDTO.getCelular());
         }
         
-        usuario.setPosicion(perfilDTO.getPosicion());
+        // ⚡ CRÍTICO: Solo actualizar posicion si viene en el request
+        if (perfilDTO.getPosicion() != null && !perfilDTO.getPosicion().isBlank()) {
+            usuario.setPosicion(perfilDTO.getPosicion());
+        }
         
         // ✅ Validar altura (frontend envía en cm, backend almacena en cm)
         if (perfilDTO.getAltura() != null && !perfilDTO.getAltura().isEmpty()) {
