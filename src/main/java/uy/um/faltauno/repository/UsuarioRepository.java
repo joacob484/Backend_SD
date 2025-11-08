@@ -69,6 +69,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
      */
     @Query("SELECT u FROM Usuario u WHERE u.deletedAt IS NOT NULL AND u.deletedAt < :cutoffDate")
     java.util.List<Usuario> findExpiredDeletedUsers(@Param("cutoffDate") LocalDateTime cutoffDate);
+    
+    /**
+     * Buscar usuarios por lista de números de teléfono (para sincronización de contactos)
+     */
+    @Query("SELECT u FROM Usuario u WHERE u.celular IN :telefonos AND u.deletedAt IS NULL")
+    java.util.List<Usuario> findByCelularIn(@Param("telefonos") java.util.List<String> telefonos);
 
     interface AuthProjection {
         UUID getId();
