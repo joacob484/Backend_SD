@@ -560,15 +560,15 @@ public class PartidoService {
             throw new IllegalStateException("No se pueden remover jugadores de un partido que ya pasó");
         }
 
-        // Buscar inscripción
-        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(partidoId);
-        Inscripcion inscripcion = inscripciones.stream()
-                .filter(i -> i.getUsuario().getId().equals(jugadorId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("El jugador no está inscrito en este partido"));
+        // Buscar inscripción usando el método directo del repository
+        Inscripcion inscripcion = inscripcionRepository.findByPartidoIdAndUsuarioId(partidoId, jugadorId)
+                .orElseThrow(() -> {
+                    log.warn("[PartidoService] No se encontró inscripción: partidoId={}, jugadorId={}", partidoId, jugadorId);
+                    return new IllegalArgumentException("El jugador no está inscrito en este partido. Puede que ya haya sido removido.");
+                });
 
         inscripcionRepository.delete(inscripcion);
-        log.info("Jugador removido del partido: partidoId={}, jugadorId={}", partidoId, jugadorId);
+        log.info("[PartidoService] Jugador removido del partido: partidoId={}, jugadorId={}", partidoId, jugadorId);
 
         // Notificar al jugador
         String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
