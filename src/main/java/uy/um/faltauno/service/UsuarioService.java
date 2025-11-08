@@ -209,7 +209,15 @@ public class UsuarioService {
                 throw new IllegalArgumentException("Usuario eliminado");
             }
             
-            UsuarioDTO dto = usuarioMapper.toDTO(usuarioOpt.get());
+            Usuario usuario = usuarioOpt.get();
+            
+            // ⚡ CRITICAL FIX: Force eager loading of foto WITHIN transaction
+            // fotoPerfil is LAZY, so we must access it before session closes
+            byte[] fotoPerfilBytes = usuario.getFotoPerfil(); // Trigger lazy load
+            log.info("[UsuarioService] 🔍 getUsuario - fotoPerfil loaded: {}", 
+                fotoPerfilBytes != null ? fotoPerfilBytes.length + " bytes" : "NULL");
+            
+            UsuarioDTO dto = usuarioMapper.toDTO(usuario);
             
             // Asegurar que los campos calculados están correctos
             dto.setPerfilCompleto(dto.getPerfilCompleto());
