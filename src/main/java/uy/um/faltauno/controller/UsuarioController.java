@@ -105,21 +105,9 @@ public class UsuarioController {
                         .body(new ApiResponse<>(null, "No autenticado", false));
             }
             
-            // 🔍 DEBUG: Obtener entidad directamente antes del mapper
-            Usuario usuarioEntity = usuarioService.findUsuarioEntityById(currentUserId);
-            log.info("[UsuarioController] 🔍 /me - Entidad ANTES de mapper: fotoPerfil en DB: {}", 
-                usuarioEntity.getFotoPerfil() != null ? "SÍ (" + usuarioEntity.getFotoPerfil().length + " bytes)" : "NO");
-            
             UsuarioDTO dto = usuarioService.getUsuario(currentUserId);
-            
-            // 🔍 DEBUG: Log del usuario retornado
-            log.info("[UsuarioController] 🔍 /me - DTO DESPUÉS de mapper: {} | perfilCompleto: {} | hasFotoPerfil: {} | fotoPerfil: {}", 
-                dto.getEmail(),
-                dto.getPerfilCompleto(),
-                dto.getHasFotoPerfil(),
-                dto.getFotoPerfil() != null ? "SÍ (" + dto.getFotoPerfil().length() + " chars)" : "NO");
-            
             dto.setPassword(null);
+            
             return ResponseEntity.ok(new ApiResponse<>(dto, "Usuario actual", true));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)

@@ -214,8 +214,6 @@ public class UsuarioService {
             // ⚡ CRITICAL FIX: Force eager loading of foto WITHIN transaction
             // fotoPerfil is LAZY, so we must access it before session closes
             byte[] fotoPerfilBytes = usuario.getFotoPerfil(); // Trigger lazy load
-            log.info("[UsuarioService] 🔍 getUsuario - fotoPerfil loaded: {}", 
-                fotoPerfilBytes != null ? fotoPerfilBytes.length + " bytes" : "NULL");
             
             UsuarioDTO dto = usuarioMapper.toDTO(usuario);
             
@@ -224,11 +222,7 @@ public class UsuarioService {
             dto.setCedulaVerificada(dto.getCedulaVerificada());
             
             // ⚡ CRITICAL FIX: Force hasFotoPerfil to be calculated correctly
-            // The mapper should do this, but ensure it's set explicitly
             dto.setHasFotoPerfil(fotoPerfilBytes != null && fotoPerfilBytes.length > 0);
-            
-            log.info("[UsuarioService] 🔍 getUsuario - DTO final: hasFotoPerfil={}, perfilCompleto={}", 
-                dto.getHasFotoPerfil(), dto.getPerfilCompleto());
             
             return dto;
         }
