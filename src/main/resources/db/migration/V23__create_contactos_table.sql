@@ -1,11 +1,11 @@
 -- V23: Crear tabla de contactos importados
 CREATE TABLE contactos (
     id BIGSERIAL PRIMARY KEY,
-    usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    usuario_id UUID NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
     nombre VARCHAR(255) NOT NULL,
     apellido VARCHAR(255),
     celular VARCHAR(50) NOT NULL,
-    usuario_app_id UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    usuario_app_id UUID REFERENCES usuario(id) ON DELETE SET NULL,
     is_on_app BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
