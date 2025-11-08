@@ -247,8 +247,15 @@ public class UsuarioService {
             }
         }
         
-        usuario.setNombre(nombre);
-        usuario.setApellido(apellido);
+        // ⚡ CRÍTICO: Solo actualizar si vienen datos válidos (NO sobreescribir con vacíos)
+        if (nombre != null && !nombre.trim().isEmpty()) {
+            usuario.setNombre(nombre);
+        }
+        if (apellido != null && !apellido.trim().isEmpty()) {
+            usuario.setApellido(apellido);
+        }
+        
+        // Celular es opcional - puede ser null
         usuario.setCelular(perfilDTO.getCelular());
         usuario.setPosicion(perfilDTO.getPosicion());
         
