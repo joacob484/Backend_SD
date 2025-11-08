@@ -75,24 +75,33 @@ public class AuthController {
             String email = request.get("email");
             String password = request.get("password");
 
+            log.info("[AuthController] 📝 Pre-registro iniciado para: {}", email);
+
             if (email == null || email.isBlank()) {
+                log.warn("[AuthController] ❌ Email requerido");
                 return ResponseEntity.badRequest()
                         .body(new ApiResponse<>(null, "Email requerido", false));
             }
 
             if (password == null || password.isBlank()) {
+                log.warn("[AuthController] ❌ Contraseña requerida");
                 return ResponseEntity.badRequest()
                         .body(new ApiResponse<>(null, "Contraseña requerida", false));
             }
 
             // Validar longitud mínima de contraseña
             if (password.length() < 8) {
+                log.warn("[AuthController] ❌ Contraseña muy corta");
                 return ResponseEntity.badRequest()
                         .body(new ApiResponse<>(null, "La contraseña debe tener al menos 8 caracteres", false));
             }
 
             // ✅ NUEVO: Verificar si existe usuario eliminado recuperable
-            if (usuarioService.hasRecoverableDeletedUser(email)) {
+            log.info("[AuthController] Verificando usuario eliminado recuperable...");
+            boolean hasDeletedUser = usuarioService.hasRecoverableDeletedUser(email);
+            log.info("[AuthController] Usuario eliminado recuperable: {}", hasDeletedUser);
+            
+            if (hasDeletedUser) {
                 Map<String, String> deletedUserData = new java.util.HashMap<>();
                 deletedUserData.put("deletedUser", "true");
                 deletedUserData.put("canRecover", "true");
@@ -107,12 +116,14 @@ public class AuthController {
             }
 
             // ✅ Crear pre-registro sin enviar email (permite validaciones previas en controller)
+            log.info("[AuthController] Creando pre-registro...");
             PendingRegistration preRegistro = verificationService.crearPreRegistroSinEmail(email, password);
 
             // ✅ Solo enviar email si todo salió bien
+            log.info("[AuthController] Enviando código de verificación...");
             verificationService.enviarCodigoVerificacionPreRegistro(preRegistro);
 
-            log.info("[AuthController] Pre-registro creado y email enviado: {}", email);
+            log.info("[AuthController] ✅ Pre-registro creado y email enviado: {}", email);
 
             // ⚡ Para desarrollo: incluir código si email no está configurado
             String mailUsername = System.getenv("MAIL_USERNAME");
@@ -135,14 +146,19 @@ public class AuthController {
             ));
 
         } catch (IllegalStateException e) {
-            log.error("[AuthController] Error de estado en pre-registro", e);
+            log.error("[AuthController] ❌ Error de estado en pre-registro: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(null, e.getMessage(), false));
                     
         } catch (Exception e) {
-            log.error("[AuthController] Error en pre-registro", e);
+            log.error("[AuthController] ❌ Error INESPERADO en pre-registro", e);
+            log.error("[AuthController] ❌ Tipo de excepción: {}", e.getClass().getName());
+            log.error("[AuthController] ❌ Mensaje: {}", e.getMessage());
+            if (e.getCause() != null) {
+                log.error("[AuthController] ❌ Causa: {}", e.getCause().getMessage());
+            }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(null, "Error al procesar el registro", false));
+                    .body(new ApiResponse<>(null, "Error al procesar el registro: " + e.getMessage(), false));
         }
     }
 

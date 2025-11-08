@@ -712,14 +712,26 @@ public class UsuarioService {
      */
     @Transactional(readOnly = true)
     public boolean hasRecoverableDeletedUser(String email) {
-        Optional<Usuario> deletedUser = usuarioRepository.findDeletedByEmail(email);
-        if (deletedUser.isEmpty()) {
-            return false;
+        try {
+            Optional<Usuario> deletedUser = usuarioRepository.findDeletedByEmail(email);
+            if (deletedUser.isEmpty()) {
+                return false;
+            }
+            
+            // Validación defensiva: verificar que deletedAt no sea null
+            LocalDateTime deletedAt = deletedUser.get().getDeletedAt();
+            if (deletedAt == null) {
+                log.warn("[UsuarioService] Usuario marcado como eliminado pero deletedAt es null: {}", email);
+                return false;
+            }
+            
+            // Verificar que no hayan pasado 30 días
+            LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
+            return deletedAt.isAfter(cutoffDate);
+        } catch (Exception e) {
+            log.error("[UsuarioService] Error verificando usuario eliminado recuperable para {}", email, e);
+            return false; // En caso de error, asumir que no es recuperable
         }
-        
-        // Verificar que no hayan pasado 30 días
-        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
-        return deletedUser.get().getDeletedAt().isAfter(cutoffDate);
     }
 
     /**
