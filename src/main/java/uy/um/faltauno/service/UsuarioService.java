@@ -20,6 +20,7 @@ import uy.um.faltauno.entity.Amistad;
 import uy.um.faltauno.entity.Inscripcion;
 import uy.um.faltauno.entity.Mensaje;
 import uy.um.faltauno.entity.Partido;
+import uy.um.faltauno.entity.Review;
 import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.repository.AmistadRepository;
 import uy.um.faltauno.repository.InscripcionRepository;
@@ -1119,38 +1120,46 @@ public class UsuarioService {
             amistadRepository.deleteAll(solicitudesRecibidas);
         }
         
-        // 2. Eliminar mensajes (enviados y recibidos)
-        List<Mensaje> mensajesEnviados = mensajeRepository.findByEmisor(usuario);
-        List<Mensaje> mensajesRecibidos = mensajeRepository.findByReceptor(usuario);
-        int totalMensajes = mensajesEnviados.size() + mensajesRecibidos.size();
-        if (totalMensajes > 0) {
-            log.info("[ADMIN] Eliminando {} mensajes", totalMensajes);
-            mensajeRepository.deleteAll(mensajesEnviados);
-            mensajeRepository.deleteAll(mensajesRecibidas);
-        }
+        // 2. Eliminar mensajes (confiando en CASCADE DELETE de PostgreSQL)
+        // Los mensajes se eliminan automáticamente por las foreign keys con ON DELETE CASCADE
+        log.info("[ADMIN] Mensajes: confiando en CASCADE DELETE de base de datos");
         
         // 3. Eliminar reviews (dadas y recibidas)
-        int reviewsEliminadas = reviewRepository.deleteByReviewerOrReviewee(usuario, usuario);
-        if (reviewsEliminadas > 0) {
-            log.info("[ADMIN] Eliminando {} reviews", reviewsEliminadas);
+        List<Review> reviewsHechas = reviewRepository.findByUsuarioQueCalifica_Id(uuid);
+        List<Review> reviewsRecibidas = reviewRepository.findByUsuarioCalificado_Id(uuid);
+        int totalReviews = reviewsHechas.size() + reviewsRecibidas.size();
+        if (totalReviews > 0) {
+            log.info("[ADMIN] Eliminando {} reviews ({} hechas, {} recibidas)", 
+                    totalReviews, reviewsHechas.size(), reviewsRecibidas.size());
+            reviewRepository.deleteAll(reviewsHechas);
+            reviewRepository.deleteAll(reviewsRecibidas);
         }
         
         // 4. Eliminar inscripciones a partidos
-        List<Inscripcion> inscripciones = inscripcionRepository.findByUsuario(usuario);
+        List<Inscripcion> inscripciones = inscripcionRepository.findByUsuarioId(uuid);
         if (!inscripciones.isEmpty()) {
             log.info("[ADMIN] Eliminando {} inscripciones", inscripciones.size());
             inscripcionRepository.deleteAll(inscripciones);
         }
         
         // 5. Eliminar partidos organizados por el usuario
-        List<Partido> partidosOrganizados = partidoRepository.findByOrganizador(usuario);
+        List<Partido> partidosOrganizados = partidoRepository.findByOrganizador_Id(uuid);
         if (!partidosOrganizados.isEmpty()) {
             log.info("[ADMIN] Eliminando {} partidos organizados", partidosOrganizados.size());
             // Primero eliminar inscripciones a estos partidos
             for (Partido partido : partidosOrganizados) {
-                List<Inscripcion> inscripcionesPartido = inscripcionRepository.findByPartido(partido);
+                List<Inscripcion> inscripcionesPartido = inscripcionRepository.findByPartidoId(partido.getId());
                 if (!inscripcionesPartido.isEmpty()) {
+                    log.info("[ADMIN]   → Eliminando {} inscripciones del partido {}", 
+                            inscripcionesPartido.size(), partido.getId());
                     inscripcionRepository.deleteAll(inscripcionesPartido);
+                }
+                // Eliminar reviews del partido
+                List<Review> reviewsPartido = reviewRepository.findByPartido_Id(partido.getId());
+                if (!reviewsPartido.isEmpty()) {
+                    log.info("[ADMIN]   → Eliminando {} reviews del partido {}", 
+                            reviewsPartido.size(), partido.getId());
+                    reviewRepository.deleteAll(reviewsPartido);
                 }
             }
             // Luego eliminar los partidos
