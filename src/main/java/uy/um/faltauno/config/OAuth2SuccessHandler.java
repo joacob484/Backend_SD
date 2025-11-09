@@ -42,7 +42,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
       if (email == null || email.isBlank()) {
         log.error("[OAuth2SuccessHandler] ❌ Email is null or blank from OAuth provider");
-        String errorTarget = frontend + "/login?error=oauth_no_email";
+        String errorTarget = frontend + "/oauth/error?reason=no_email";
         response.sendRedirect(errorTarget);
         return;
       }
@@ -61,7 +61,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
       
     } catch (Exception e) {
       log.error("[OAuth2SuccessHandler] ❌ Error during OAuth success handling", e);
-      String errorTarget = frontend + "/login?error=oauth_error&message=" + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+      String errorMsg = e.getMessage() != null ? e.getMessage() : "Error desconocido";
+      String errorTarget = frontend + "/oauth/error?reason=server_error&message=" + URLEncoder.encode(errorMsg, StandardCharsets.UTF_8);
       response.sendRedirect(errorTarget);
     }
   }
