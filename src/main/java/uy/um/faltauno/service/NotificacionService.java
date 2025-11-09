@@ -374,17 +374,25 @@ public class NotificacionService {
             throw new SecurityException("Usuario no autenticado");
         }
         
-        String principal = auth.getName(); // Puede ser email o UUID string
+        Object principal = auth.getPrincipal();
+        
+        // ✅ NUEVO: Soporte para Usuario como principal (JWT auth)
+        if (principal instanceof Usuario) {
+            return ((Usuario) principal).getId();
+        }
+        
+        // Fallback: intentar obtener desde getName() (puede ser email o UUID)
+        String principalName = auth.getName();
         
         // Intentar parsear como UUID primero
         try {
-            return UUID.fromString(principal);
+            return UUID.fromString(principalName);
         } catch (IllegalArgumentException e) {
             // Si no es un UUID, debe ser un email - buscar usuario por email
-            log.debug("[NotificacionService] Principal no es UUID, buscando por email: {}", principal);
-            Usuario usuario = usuarioService.findByEmail(principal);
+            log.debug("[NotificacionService] Principal no es UUID, buscando por email: {}", principalName);
+            Usuario usuario = usuarioService.findByEmail(principalName);
             if (usuario == null) {
-                throw new IllegalArgumentException("Usuario no encontrado con email: " + principal);
+                throw new IllegalArgumentException("Usuario no encontrado con email: " + principalName);
             }
             return usuario.getId();
         }

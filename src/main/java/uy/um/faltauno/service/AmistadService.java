@@ -374,6 +374,14 @@ public class AmistadService {
         }
         
         Object principal = auth.getPrincipal();
+        
+        // ✅ NUEVO: Soporte para Usuario como principal (JWT auth)
+        if (principal instanceof uy.um.faltauno.entity.Usuario) {
+            UUID userId = ((uy.um.faltauno.entity.Usuario) principal).getId();
+            log.debug("[AmistadService] Usuario autenticado (JWT): {}", userId);
+            return userId;
+        }
+        
         if (principal instanceof CustomUserDetailsService.UserPrincipal) {
             UUID userId = ((CustomUserDetailsService.UserPrincipal) principal).getId();
             log.debug("[AmistadService] Usuario autenticado: {}", userId);

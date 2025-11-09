@@ -804,6 +804,12 @@ public class PartidoService {
         }
         
         Object principal = auth.getPrincipal();
+        
+        // ✅ NUEVO: Soporte para Usuario como principal (JWT auth)
+        if (principal instanceof uy.um.faltauno.entity.Usuario) {
+            return ((uy.um.faltauno.entity.Usuario) principal).getId();
+        }
+        
         if (principal instanceof CustomUserDetailsService.UserPrincipal) {
             return ((CustomUserDetailsService.UserPrincipal) principal).getId();
         }
