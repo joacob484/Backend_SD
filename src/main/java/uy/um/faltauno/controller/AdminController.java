@@ -137,8 +137,10 @@ public class AdminController {
             log.info("[ADMIN] {} obteniendo estadísticas", admin.getEmail());
             
             Map<String, Object> stats = new HashMap<>();
+            // Total usuarios (no eliminados)
             stats.put("totalUsuarios", usuarioService.contarUsuariosActivos());
-            stats.put("usuariosActivos", usuarioService.contarUsuariosActivos());
+            // Usuarios activos en los últimos 30 días (con actividad reciente)
+            stats.put("usuariosActivos", usuarioService.contarUsuariosConActividadReciente(30));
             stats.put("registrosRecientes", usuarioService.contarRegistrosRecientes(7));
             stats.put("totalPartidos", partidoService.contarPartidos());
             stats.put("partidosHoy", partidoService.contarPartidosHoy());

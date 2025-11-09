@@ -1069,6 +1069,15 @@ public class UsuarioService {
     }
     
     /**
+     * Contar usuarios con actividad reciente (últimos N días)
+     */
+    @Transactional(readOnly = true)
+    public long contarUsuariosConActividadReciente(int dias) {
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(dias);
+        return usuarioRepository.countByLastActivityAtAfter(cutoffDate);
+    }
+    
+    /**
      * Contar registros recientes (últimos N días)
      */
     @Transactional(readOnly = true)
