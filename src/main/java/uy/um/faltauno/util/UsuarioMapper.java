@@ -22,6 +22,7 @@ public interface UsuarioMapper {
     // ----------------------
     @Mapping(source = "fotoPerfil", target = "fotoPerfil", qualifiedByName = "bytesToBase64")
     @Mapping(source = "fechaNacimiento", target = "fechaNacimiento", qualifiedByName = "localDateToString")
+    @Mapping(source = "rol", target = "rol") // Mapear rol explícitamente
     @Mapping(target = "cedulaVerificada", ignore = true) // Calculated in DTO getter
     @Mapping(target = "perfilCompleto", ignore = true) // Calculated in DTO getter
     @Mapping(target = "hasFotoPerfil", ignore = true) // Set in @AfterMapping
