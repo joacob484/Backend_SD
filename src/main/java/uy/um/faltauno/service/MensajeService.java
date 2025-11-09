@@ -23,6 +23,7 @@ import uy.um.faltauno.repository.ChatVisitRepository;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -364,7 +365,7 @@ public class MensajeService {
         } else {
             // Convertir LocalDateTime a Instant
             cutoffTime = visitOpt.get().getLastVisitAt()
-                .atZone(java.time.ZoneId.systemDefault())
+                .atZone(ZoneId.systemDefault())
                 .toInstant();
         }
         
