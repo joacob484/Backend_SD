@@ -41,9 +41,16 @@ public class ActivityTrackingInterceptor implements HandlerInterceptor {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         
         // Solo para requests autenticados
-        if (auth != null && auth.isAuthenticated() && auth.getPrincipal() instanceof UserPrincipal) {
-            UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
-            UUID userId = userPrincipal.getId();
+        if (auth != null && auth.isAuthenticated()) {
+            UUID userId = null;
+            Object principal = auth.getPrincipal();
+            
+            // ✅ NUEVO: Soporte para Usuario como principal (JWT auth)
+            if (principal instanceof uy.um.faltauno.entity.Usuario) {
+                userId = ((uy.um.faltauno.entity.Usuario) principal).getId();
+            } else if (principal instanceof UserPrincipal) {
+                userId = ((UserPrincipal) principal).getId();
+            }
             
             if (userId != null) {
                 updateUserActivity(userId);
