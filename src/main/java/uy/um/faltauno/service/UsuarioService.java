@@ -17,16 +17,24 @@ import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.util.UsuarioMapper;
 import uy.um.faltauno.entity.Amistad;
+import uy.um.faltauno.entity.Contacto;
 import uy.um.faltauno.entity.Inscripcion;
 import uy.um.faltauno.entity.Mensaje;
+import uy.um.faltauno.entity.Notificacion;
 import uy.um.faltauno.entity.Partido;
+import uy.um.faltauno.entity.PasswordResetToken;
 import uy.um.faltauno.entity.Review;
+import uy.um.faltauno.entity.SolicitudPartido;
 import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.repository.AmistadRepository;
+import uy.um.faltauno.repository.ContactoRepository;
 import uy.um.faltauno.repository.InscripcionRepository;
 import uy.um.faltauno.repository.MensajeRepository;
+import uy.um.faltauno.repository.NotificacionRepository;
 import uy.um.faltauno.repository.PartidoRepository;
+import uy.um.faltauno.repository.PasswordResetTokenRepository;
 import uy.um.faltauno.repository.ReviewRepository;
+import uy.um.faltauno.repository.SolicitudPartidoRepository;
 import uy.um.faltauno.repository.UsuarioRepository;
 
 import java.io.IOException;
@@ -50,6 +58,10 @@ public class UsuarioService {
     private final PartidoRepository partidoRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final ContactoRepository contactoRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final SolicitudPartidoRepository solicitudPartidoRepository;
+    private final NotificacionRepository notificacionRepository;
 
     /**
      * Encuentra el ID de un usuario por email SIN cargar LOBs.
@@ -1091,86 +1103,142 @@ public class UsuarioService {
     
     /**
      * Eliminar permanentemente un usuario (hard delete)
-     * Elimina en cascada todos los datos relacionados:
+     * Elimina en cascada TODOS los datos relacionados:
+     * - Contactos (propios y referencias)
+     * - Password reset tokens
+     * - Notificaciones  
+     * - Solicitudes de partido
      * - Amistades
-     * - Mensajes enviados y recibidos
+     * - Mensajes (via DB CASCADE)
      * - Reviews dadas y recibidas
      * - Inscripciones a partidos
-     * - Partidos organizados
+     * - Partidos organizados (con sus inscripciones, reviews, solicitudes)
      */
     @Transactional
     @CacheEvict(value = "usuarios", key = "#usuarioId")
     public void eliminarPermanentemente(String usuarioId) {
-        log.warn("[ADMIN] Eliminando permanentemente usuario {} y todos sus datos relacionados", usuarioId);
+        log.warn("[ADMIN] ⚠️ Iniciando eliminación PERMANENTE de usuario {} y TODOS sus datos", usuarioId);
         
         UUID uuid = UUID.fromString(usuarioId);
         Usuario usuario = usuarioRepository.findById(uuid)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
         
-        // 1. Eliminar amistades (donde el usuario es usuario1 o usuario2)
+        log.info("[ADMIN] 📋 Usuario: {} {} ({})", usuario.getNombre(), usuario.getApellido(), usuario.getEmail());
+        
+        // 0️⃣ CONTACTOS
+        log.info("[ADMIN] 📇 Eliminando contactos...");
+        List<Contacto> contactosPropios = contactoRepository.findByUsuarioId(uuid);
+        log.info("[ADMIN]   → {} contactos propios", contactosPropios.size());
+        contactoRepository.deleteAll(contactosPropios);
+        
+        // Limpiar referencias a este usuario en contactos de otros
+        List<Contacto> contactosQueApuntanAEsteUsuario = contactoRepository.findAll().stream()
+            .filter(c -> c.getUsuarioApp() != null && c.getUsuarioApp().getId().equals(uuid))
+            .collect(Collectors.toList());
+        log.info("[ADMIN]   → {} contactos de otros apuntan a este usuario", contactosQueApuntanAEsteUsuario.size());
+        contactosQueApuntanAEsteUsuario.forEach(c -> {
+            c.setUsuarioApp(null);
+            c.setIsOnApp(false);
+        });
+        contactoRepository.saveAll(contactosQueApuntanAEsteUsuario);
+        
+        // 1️⃣ PASSWORD RESET TOKENS
+        log.info("[ADMIN] 🔑 Eliminando tokens de recuperación...");
+        passwordResetTokenRepository.invalidarTokensDelUsuario(usuario);
+        List<PasswordResetToken> tokens = passwordResetTokenRepository.findAll().stream()
+            .filter(t -> t.getUsuario().getId().equals(uuid))
+            .collect(Collectors.toList());
+        log.info("[ADMIN]   → {} tokens encontrados", tokens.size());
+        passwordResetTokenRepository.deleteAll(tokens);
+        
+        // 2️⃣ NOTIFICACIONES
+        log.info("[ADMIN] 🔔 Eliminando notificaciones...");
+        List<Notificacion> notificaciones = notificacionRepository.findByUsuarioIdOrderByCreatedAtDesc(uuid);
+        log.info("[ADMIN]   → {} notificaciones", notificaciones.size());
+        notificacionRepository.deleteAll(notificaciones);
+        
+        // 3️⃣ SOLICITUDES DE PARTIDO
+        log.info("[ADMIN] 📋 Eliminando solicitudes de partido...");
+        List<SolicitudPartido> solicitudes = solicitudPartidoRepository.findByUsuarioId(uuid);
+        log.info("[ADMIN]   → {} solicitudes", solicitudes.size());
+        solicitudPartidoRepository.deleteAll(solicitudes);
+        
+        // 4️⃣ AMISTADES
+        log.info("[ADMIN] 👥 Eliminando amistades...");
         List<Amistad> amistades = amistadRepository.findAmigosByUsuarioId(uuid);
         List<Amistad> solicitudesEnviadas = amistadRepository.findByUsuarioIdAndEstado(uuid, "PENDIENTE");
         List<Amistad> solicitudesRecibidas = amistadRepository.findByAmigoIdAndEstado(uuid, "PENDIENTE");
         
         int totalAmistades = amistades.size() + solicitudesEnviadas.size() + solicitudesRecibidas.size();
+        log.info("[ADMIN]   → {} amistades y solicitudes", totalAmistades);
         if (totalAmistades > 0) {
-            log.info("[ADMIN] Eliminando {} amistades y solicitudes", totalAmistades);
             amistadRepository.deleteAll(amistades);
             amistadRepository.deleteAll(solicitudesEnviadas);
             amistadRepository.deleteAll(solicitudesRecibidas);
         }
         
-        // 2. Eliminar mensajes (confiando en CASCADE DELETE de PostgreSQL)
-        // Los mensajes se eliminan automáticamente por las foreign keys con ON DELETE CASCADE
-        log.info("[ADMIN] Mensajes: confiando en CASCADE DELETE de base de datos");
+        // 5️⃣ MENSAJES - Confiar en CASCADE DELETE de PostgreSQL
+        log.info("[ADMIN] 💬 Mensajes: confiando en CASCADE DELETE de base de datos");
         
-        // 3. Eliminar reviews (dadas y recibidas)
+        // 6️⃣ REVIEWS
+        log.info("[ADMIN] ⭐ Eliminando reviews...");
         List<Review> reviewsHechas = reviewRepository.findByUsuarioQueCalifica_Id(uuid);
         List<Review> reviewsRecibidas = reviewRepository.findByUsuarioCalificado_Id(uuid);
         int totalReviews = reviewsHechas.size() + reviewsRecibidas.size();
+        log.info("[ADMIN]   → {} reviews ({} hechas, {} recibidas)", 
+                totalReviews, reviewsHechas.size(), reviewsRecibidas.size());
         if (totalReviews > 0) {
-            log.info("[ADMIN] Eliminando {} reviews ({} hechas, {} recibidas)", 
-                    totalReviews, reviewsHechas.size(), reviewsRecibidas.size());
             reviewRepository.deleteAll(reviewsHechas);
             reviewRepository.deleteAll(reviewsRecibidas);
         }
         
-        // 4. Eliminar inscripciones a partidos
+        // 7️⃣ INSCRIPCIONES
+        log.info("[ADMIN] 📝 Eliminando inscripciones...");
         List<Inscripcion> inscripciones = inscripcionRepository.findByUsuarioId(uuid);
+        log.info("[ADMIN]   → {} inscripciones", inscripciones.size());
         if (!inscripciones.isEmpty()) {
-            log.info("[ADMIN] Eliminando {} inscripciones", inscripciones.size());
             inscripcionRepository.deleteAll(inscripciones);
         }
         
-        // 5. Eliminar partidos organizados por el usuario
+        // 8️⃣ PARTIDOS ORGANIZADOS
+        log.info("[ADMIN] ⚽ Eliminando partidos organizados...");
         List<Partido> partidosOrganizados = partidoRepository.findByOrganizador_Id(uuid);
+        log.info("[ADMIN]   → {} partidos organizados", partidosOrganizados.size());
         if (!partidosOrganizados.isEmpty()) {
-            log.info("[ADMIN] Eliminando {} partidos organizados", partidosOrganizados.size());
-            // Primero eliminar inscripciones a estos partidos
             for (Partido partido : partidosOrganizados) {
+                // Eliminar solicitudes del partido
+                List<SolicitudPartido> solicitudesPartido = solicitudPartidoRepository.findByPartidoId(partido.getId());
+                if (!solicitudesPartido.isEmpty()) {
+                    log.info("[ADMIN]     → Eliminando {} solicitudes del partido {}", 
+                            solicitudesPartido.size(), partido.getId());
+                    solicitudPartidoRepository.deleteAll(solicitudesPartido);
+                }
+                
+                // Eliminar inscripciones del partido
                 List<Inscripcion> inscripcionesPartido = inscripcionRepository.findByPartidoId(partido.getId());
                 if (!inscripcionesPartido.isEmpty()) {
-                    log.info("[ADMIN]   → Eliminando {} inscripciones del partido {}", 
+                    log.info("[ADMIN]     → Eliminando {} inscripciones del partido {}", 
                             inscripcionesPartido.size(), partido.getId());
                     inscripcionRepository.deleteAll(inscripcionesPartido);
                 }
+                
                 // Eliminar reviews del partido
                 List<Review> reviewsPartido = reviewRepository.findByPartido_Id(partido.getId());
                 if (!reviewsPartido.isEmpty()) {
-                    log.info("[ADMIN]   → Eliminando {} reviews del partido {}", 
+                    log.info("[ADMIN]     → Eliminando {} reviews del partido {}", 
                             reviewsPartido.size(), partido.getId());
                     reviewRepository.deleteAll(reviewsPartido);
                 }
             }
-            // Luego eliminar los partidos
+            // Eliminar los partidos
             partidoRepository.deleteAll(partidosOrganizados);
         }
         
-        // 6. Finalmente, eliminar el usuario
-        log.warn("[ADMIN] Eliminando usuario {}", usuarioId);
+        // 9️⃣ USUARIO
+        log.warn("[ADMIN] 🗑️ Eliminando usuario {} DEFINITIVAMENTE", usuarioId);
         usuarioRepository.delete(usuario);
         
-        log.warn("[ADMIN] Usuario {} y todos sus datos relacionados eliminados permanentemente", usuarioId);
+        log.warn("[ADMIN] ✅ Usuario {} y TODOS sus datos eliminados permanentemente", usuarioId);
     }
     
     /**
