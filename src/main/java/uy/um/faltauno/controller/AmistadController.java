@@ -125,7 +125,7 @@ public class AmistadController {
     public ResponseEntity<ApiResponse<List<AmistadDTO>>> listarAmigosDeUsuario(
             @PathVariable UUID userId) {
         try {
-            log.debug("[AmistadController] GET /api/amistad/amigos/{}", userId);
+            log.debug("[AmistadController] GET /api/amistades/amigos/{}", userId);
             
             List<AmistadDTO> amigos = amistadService.listarAmigosDeUsuario(userId);
             
