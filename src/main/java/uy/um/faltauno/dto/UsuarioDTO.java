@@ -39,6 +39,8 @@ public class UsuarioDTO {
     
     private String genero; // Masculino o Femenino
     
+    private String rol; // USER o ADMIN
+    
     // TODO: Cédula deshabilitada temporalmente
     @JsonProperty("cedulaVerificada")
     private Boolean cedulaVerificada;

@@ -48,6 +48,13 @@ public class Usuario {
     private String genero;
     
     /**
+     * Rol del usuario: USER (normal) o ADMIN (administrador)
+     */
+    @Column(nullable = false)
+    @Builder.Default
+    private String rol = "USER";
+    
+    /**
      * Proveedor de autenticación (LOCAL para email/password, GOOGLE para OAuth, etc.)
      * - LOCAL: Usuario registrado con email y contraseña
      * - GOOGLE: Usuario registrado con Google OAuth (password = null)

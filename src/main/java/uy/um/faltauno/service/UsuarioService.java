@@ -1043,4 +1043,71 @@ public class UsuarioService {
 
         return getNotificationPreferences(usuarioId);
     }
+    
+    // ==================== MÉTODOS DE ADMINISTRADOR ====================
+    
+    /**
+     * Listar todos los usuarios incluso eliminados (solo para admin)
+     */
+    @Transactional(readOnly = true)
+    public List<UsuarioDTO> listarTodosInclusoEliminados() {
+        log.info("[ADMIN] Listando todos los usuarios (incluso eliminados)");
+        
+        List<Usuario> usuarios = usuarioRepository.findAll();
+        
+        return usuarios.stream()
+                .map(usuarioMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Contar usuarios activos (no eliminados)
+     */
+    @Transactional(readOnly = true)
+    public long contarUsuariosActivos() {
+        return usuarioRepository.countActiveUsers();
+    }
+    
+    /**
+     * Contar registros recientes (últimos N días)
+     */
+    @Transactional(readOnly = true)
+    public long contarRegistrosRecientes(int dias) {
+        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(dias);
+        return usuarioRepository.countByCreatedAtAfter(cutoffDate);
+    }
+    
+    /**
+     * Eliminar permanentemente un usuario (hard delete)
+     */
+    @Transactional
+    @CacheEvict(value = "usuarios", key = "#usuarioId")
+    public void eliminarPermanentemente(String usuarioId) {
+        log.warn("[ADMIN] Eliminando permanentemente usuario {}", usuarioId);
+        
+        UUID uuid = UUID.fromString(usuarioId);
+        Usuario usuario = usuarioRepository.findById(uuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        // Hard delete
+        usuarioRepository.delete(usuario);
+    }
+    
+    /**
+     * Cambiar rol de un usuario
+     */
+    @Transactional
+    @CacheEvict(value = "usuarios", key = "#usuarioId")
+    public UsuarioDTO cambiarRol(String usuarioId, String nuevoRol) {
+        log.warn("[ADMIN] Cambiando rol de usuario {} a {}", usuarioId, nuevoRol);
+        
+        UUID uuid = UUID.fromString(usuarioId);
+        Usuario usuario = usuarioRepository.findById(uuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        usuario.setRol(nuevoRol);
+        usuarioRepository.save(usuario);
+        
+        return usuarioMapper.toDTO(usuario);
+    }
 }

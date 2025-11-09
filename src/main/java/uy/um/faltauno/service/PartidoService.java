@@ -880,5 +880,57 @@ public class PartidoService {
     public Partido findById(UUID id){
         return partidoRepository.findById(id).orElse(null);
     }
+    
+    // ==================== MÉTODOS DE ADMINISTRADOR ====================
+    
+    /**
+     * Listar todos los partidos para admin (sin filtros)
+     */
+    @Transactional(readOnly = true)
+    public List<PartidoDTO> listarTodosParaAdmin() {
+        log.info("[ADMIN] Listando todos los partidos");
+        
+        List<Partido> partidos = partidoRepository.findAll();
+        
+        return partidos.stream()
+                .map(partidoMapper::toDto)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Contar todos los partidos
+     */
+    @Transactional(readOnly = true)
+    public long contarPartidos() {
+        return partidoRepository.count();
+    }
+    
+    /**
+     * Contar partidos de hoy
+     */
+    @Transactional(readOnly = true)
+    public long contarPartidosHoy() {
+        LocalDate today = LocalDate.now();
+        
+        return partidoRepository.findAll().stream()
+                .filter(p -> p.getFecha().equals(today))
+                .count();
+    }
+    
+    /**
+     * Eliminar partido (solo admin)
+     */
+    @Transactional
+    public void eliminarPartidoAdmin(Long id) {
+        log.warn("[ADMIN] Eliminando partido {}", id);
+        
+        Partido partido = partidoRepository.findAll().stream()
+                .filter(p -> p.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
+        
+        partidoRepository.delete(partido);
+    }
 }
+
 
