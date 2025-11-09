@@ -845,8 +845,8 @@ public class UsuarioService {
         Object picture = attrs != null ? attrs.get("picture") : null;
         if (picture != null) safeSet(u, "setFotoUrl", picture.toString());
 
-        // Podés marcar verificado si tu modelo lo contempla
-        safeSet(u, "setEmailVerificado", true);
+        // Marcar email como verificado (usuarios OAuth vienen verificados por Google)
+        u.setEmailVerified(true);
 
         // Si tenés un enum/provider, setealo (si no existe el método, no pasa nada)
         safeSet(u, "setProveedor", enumValueOfSafely("GOOGLE", "uy.um.faltauno.model.AuthProvider"));
