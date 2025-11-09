@@ -115,6 +115,26 @@ public class Usuario {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    /**
+     * Usuario baneado: fecha y hora del baneo.
+     * NULL = usuario no baneado, NOT NULL = usuario baneado.
+     * Los usuarios baneados no pueden iniciar sesión ni realizar acciones.
+     */
+    @Column(name = "banned_at")
+    private LocalDateTime bannedAt;
+
+    /**
+     * Razón del baneo
+     */
+    @Column(name = "ban_reason", length = 500)
+    private String banReason;
+
+    /**
+     * Admin que realizó el baneo
+     */
+    @Column(name = "banned_by")
+    private UUID bannedBy;
+
     // Preferencias de notificaciones por email
     @Column(name = "notif_email_invitaciones")
     @Builder.Default

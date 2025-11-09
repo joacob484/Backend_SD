@@ -1261,4 +1261,77 @@ public class UsuarioService {
         
         return usuarioMapper.toDTO(usuario);
     }
+    
+    /**
+     * Banear un usuario
+     */
+    @Transactional
+    @CacheEvict(value = "usuarios", key = "#usuarioId")
+    public UsuarioDTO banUser(String usuarioId, String adminId, String reason) {
+        log.warn("[ADMIN] Usuario {} baneando a usuario {}", adminId, usuarioId);
+        
+        UUID uuid = UUID.fromString(usuarioId);
+        UUID adminUuid = UUID.fromString(adminId);
+        
+        Usuario usuario = usuarioRepository.findByIdIncludingDeleted(uuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        if (usuario.getBannedAt() != null) {
+            log.warn("[ADMIN] Usuario {} ya está baneado", usuarioId);
+            throw new IllegalStateException("El usuario ya está baneado");
+        }
+        
+        usuario.setBannedAt(LocalDateTime.now());
+        usuario.setBanReason(reason);
+        usuario.setBannedBy(adminUuid);
+        
+        // Incrementar token version para invalidar sesiones activas
+        usuario.setTokenVersion(usuario.getTokenVersion() + 1);
+        
+        usuarioRepository.save(usuario);
+        
+        log.warn("[ADMIN] Usuario {} baneado exitosamente. Razón: {}", usuarioId, reason);
+        
+        return usuarioMapper.toDTO(usuario);
+    }
+    
+    /**
+     * Desbanear un usuario
+     */
+    @Transactional
+    @CacheEvict(value = "usuarios", key = "#usuarioId")
+    public UsuarioDTO unbanUser(String usuarioId, String adminId) {
+        log.warn("[ADMIN] Usuario {} desbaneando a usuario {}", adminId, usuarioId);
+        
+        UUID uuid = UUID.fromString(usuarioId);
+        
+        Usuario usuario = usuarioRepository.findByIdIncludingDeleted(uuid)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        if (usuario.getBannedAt() == null) {
+            log.warn("[ADMIN] Usuario {} no está baneado", usuarioId);
+            throw new IllegalStateException("El usuario no está baneado");
+        }
+        
+        usuario.setBannedAt(null);
+        usuario.setBanReason(null);
+        usuario.setBannedBy(null);
+        
+        usuarioRepository.save(usuario);
+        
+        log.warn("[ADMIN] Usuario {} desbaneado exitosamente", usuarioId);
+        
+        return usuarioMapper.toDTO(usuario);
+    }
+    
+    /**
+     * Verificar si un usuario está baneado
+     */
+    @Transactional(readOnly = true)
+    public boolean isUserBanned(String usuarioId) {
+        UUID uuid = UUID.fromString(usuarioId);
+        return usuarioRepository.findByIdIncludingDeleted(uuid)
+                .map(u -> u.getBannedAt() != null)
+                .orElse(false);
+    }
 }

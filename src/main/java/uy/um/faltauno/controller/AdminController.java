@@ -195,4 +195,59 @@ public class AdminController {
                     .body(new ApiResponse<>(null, "Error al cambiar rol", false));
         }
     }
+    
+    /**
+     * PUT /api/admin/usuarios/{id}/ban
+     * Banear un usuario
+     */
+    @PutMapping("/usuarios/{id}/ban")
+    public ResponseEntity<ApiResponse<UsuarioDTO>> banUser(
+            @AuthenticationPrincipal Usuario admin,
+            @PathVariable String id,
+            @RequestBody Map<String, String> request) {
+        try {
+            String reason = request.getOrDefault("reason", "Sin razón especificada");
+            
+            log.warn("[ADMIN] {} baneando usuario {}", admin.getEmail(), id);
+            
+            UsuarioDTO usuario = usuarioService.banUser(id, admin.getId().toString(), reason);
+            
+            return ResponseEntity.ok(new ApiResponse<>(usuario, 
+                    "Usuario baneado correctamente", 
+                    true));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[ADMIN] Error al banear usuario", e);
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(null, "Error al banear usuario", false));
+        }
+    }
+    
+    /**
+     * PUT /api/admin/usuarios/{id}/unban
+     * Desbanear un usuario
+     */
+    @PutMapping("/usuarios/{id}/unban")
+    public ResponseEntity<ApiResponse<UsuarioDTO>> unbanUser(
+            @AuthenticationPrincipal Usuario admin,
+            @PathVariable String id) {
+        try {
+            log.warn("[ADMIN] {} desbaneando usuario {}", admin.getEmail(), id);
+            
+            UsuarioDTO usuario = usuarioService.unbanUser(id, admin.getId().toString());
+            
+            return ResponseEntity.ok(new ApiResponse<>(usuario, 
+                    "Usuario desbaneado correctamente", 
+                    true));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[ADMIN] Error al desbanear usuario", e);
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(null, "Error al desbanear usuario", false));
+        }
+    }
 }

@@ -51,6 +51,11 @@ public class UsuarioDTO {
     @JsonProperty("emailVerified")
     private Boolean emailVerified;
     
+    // Ban information
+    private String bannedAt;
+    private String banReason;
+    private String bannedBy;
+    
     /**
      * Password solo para recepción en registro/login.
      * WRITE_ONLY previene que sea serializado en respuestas JSON.
