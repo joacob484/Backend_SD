@@ -2,6 +2,7 @@
 package uy.um.faltauno.config;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
@@ -18,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
   private final UsuarioService usuarioService;
@@ -29,16 +31,38 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
   @Override
   public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
-    DefaultOAuth2User principal = (DefaultOAuth2User) authentication.getPrincipal();
-    String email = principal.getAttribute("email");
-    String name  = principal.getAttribute("name");
+    try {
+      log.info("[OAuth2SuccessHandler] 🔐 OAuth success callback received");
+      
+      DefaultOAuth2User principal = (DefaultOAuth2User) authentication.getPrincipal();
+      String email = principal.getAttribute("email");
+      String name  = principal.getAttribute("name");
+      
+      log.info("[OAuth2SuccessHandler] 📧 Email: {}, Name: {}", email, name);
 
-    Usuario u = usuarioService.upsertGoogleUser(email, name, principal.getAttributes());
+      if (email == null || email.isBlank()) {
+        log.error("[OAuth2SuccessHandler] ❌ Email is null or blank from OAuth provider");
+        String errorTarget = frontend + "/login?error=oauth_no_email";
+        response.sendRedirect(errorTarget);
+        return;
+      }
 
-    // Usa la firma que tengas en JwtUtil con tokenVersion (estándar industria)
-    String jwt = jwtUtil.generateToken(u.getId(), email, u.getTokenVersion(), u.getRol());
+      Usuario u = usuarioService.upsertGoogleUser(email, name, principal.getAttributes());
+      log.info("[OAuth2SuccessHandler] ✅ User upserted: ID={}, Email={}", u.getId(), u.getEmail());
 
-    String target = frontend + "/oauth/success?token=" + URLEncoder.encode(jwt, StandardCharsets.UTF_8);
-    response.sendRedirect(target);
+      // Usa la firma que tengas en JwtUtil con tokenVersion (estándar industria)
+      String jwt = jwtUtil.generateToken(u.getId(), email, u.getTokenVersion(), u.getRol());
+      log.info("[OAuth2SuccessHandler] 🔑 JWT generated (length={})", jwt != null ? jwt.length() : 0);
+
+      String target = frontend + "/oauth/success?token=" + URLEncoder.encode(jwt, StandardCharsets.UTF_8);
+      log.info("[OAuth2SuccessHandler] ➡️ Redirecting to: {}", target);
+      
+      response.sendRedirect(target);
+      
+    } catch (Exception e) {
+      log.error("[OAuth2SuccessHandler] ❌ Error during OAuth success handling", e);
+      String errorTarget = frontend + "/login?error=oauth_error&message=" + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+      response.sendRedirect(errorTarget);
+    }
   }
 }
