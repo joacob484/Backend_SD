@@ -1090,18 +1090,78 @@ public class UsuarioService {
     
     /**
      * Eliminar permanentemente un usuario (hard delete)
+     * Elimina en cascada todos los datos relacionados:
+     * - Amistades
+     * - Mensajes enviados y recibidos
+     * - Reviews dadas y recibidas
+     * - Inscripciones a partidos
+     * - Partidos organizados
      */
     @Transactional
     @CacheEvict(value = "usuarios", key = "#usuarioId")
     public void eliminarPermanentemente(String usuarioId) {
-        log.warn("[ADMIN] Eliminando permanentemente usuario {}", usuarioId);
+        log.warn("[ADMIN] Eliminando permanentemente usuario {} y todos sus datos relacionados", usuarioId);
         
         UUID uuid = UUID.fromString(usuarioId);
         Usuario usuario = usuarioRepository.findById(uuid)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
         
-        // Hard delete
+        // 1. Eliminar amistades (donde el usuario es usuario1 o usuario2)
+        List<Amistad> amistades = amistadRepository.findAmigosByUsuarioId(uuid);
+        List<Amistad> solicitudesEnviadas = amistadRepository.findByUsuarioIdAndEstado(uuid, "PENDIENTE");
+        List<Amistad> solicitudesRecibidas = amistadRepository.findByAmigoIdAndEstado(uuid, "PENDIENTE");
+        
+        int totalAmistades = amistades.size() + solicitudesEnviadas.size() + solicitudesRecibidas.size();
+        if (totalAmistades > 0) {
+            log.info("[ADMIN] Eliminando {} amistades y solicitudes", totalAmistades);
+            amistadRepository.deleteAll(amistades);
+            amistadRepository.deleteAll(solicitudesEnviadas);
+            amistadRepository.deleteAll(solicitudesRecibidas);
+        }
+        
+        // 2. Eliminar mensajes (enviados y recibidos)
+        List<Mensaje> mensajesEnviados = mensajeRepository.findByEmisor(usuario);
+        List<Mensaje> mensajesRecibidos = mensajeRepository.findByReceptor(usuario);
+        int totalMensajes = mensajesEnviados.size() + mensajesRecibidos.size();
+        if (totalMensajes > 0) {
+            log.info("[ADMIN] Eliminando {} mensajes", totalMensajes);
+            mensajeRepository.deleteAll(mensajesEnviados);
+            mensajeRepository.deleteAll(mensajesRecibidas);
+        }
+        
+        // 3. Eliminar reviews (dadas y recibidas)
+        int reviewsEliminadas = reviewRepository.deleteByReviewerOrReviewee(usuario, usuario);
+        if (reviewsEliminadas > 0) {
+            log.info("[ADMIN] Eliminando {} reviews", reviewsEliminadas);
+        }
+        
+        // 4. Eliminar inscripciones a partidos
+        List<Inscripcion> inscripciones = inscripcionRepository.findByUsuario(usuario);
+        if (!inscripciones.isEmpty()) {
+            log.info("[ADMIN] Eliminando {} inscripciones", inscripciones.size());
+            inscripcionRepository.deleteAll(inscripciones);
+        }
+        
+        // 5. Eliminar partidos organizados por el usuario
+        List<Partido> partidosOrganizados = partidoRepository.findByOrganizador(usuario);
+        if (!partidosOrganizados.isEmpty()) {
+            log.info("[ADMIN] Eliminando {} partidos organizados", partidosOrganizados.size());
+            // Primero eliminar inscripciones a estos partidos
+            for (Partido partido : partidosOrganizados) {
+                List<Inscripcion> inscripcionesPartido = inscripcionRepository.findByPartido(partido);
+                if (!inscripcionesPartido.isEmpty()) {
+                    inscripcionRepository.deleteAll(inscripcionesPartido);
+                }
+            }
+            // Luego eliminar los partidos
+            partidoRepository.deleteAll(partidosOrganizados);
+        }
+        
+        // 6. Finalmente, eliminar el usuario
+        log.warn("[ADMIN] Eliminando usuario {}", usuarioId);
         usuarioRepository.delete(usuario);
+        
+        log.warn("[ADMIN] Usuario {} y todos sus datos relacionados eliminados permanentemente", usuarioId);
     }
     
     /**

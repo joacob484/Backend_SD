@@ -90,10 +90,20 @@ public class AdminController {
             return ResponseEntity.ok(new ApiResponse<>(null, 
                     "Usuario eliminado permanentemente", 
                     true));
+        } catch (IllegalArgumentException e) {
+            log.error("[ADMIN] Usuario no encontrado: {}", id);
+            return ResponseEntity.status(404)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            log.error("[ADMIN] No se puede eliminar usuario {} - tiene datos relacionados", id, e);
+            return ResponseEntity.status(400)
+                    .body(new ApiResponse<>(null, 
+                            "No se puede eliminar el usuario porque tiene datos relacionados (partidos, inscripciones, etc.). Use soft delete en su lugar.", 
+                            false));
         } catch (Exception e) {
-            log.error("[ADMIN] Error al eliminar usuario", e);
+            log.error("[ADMIN] Error al eliminar usuario {}", id, e);
             return ResponseEntity.status(500)
-                    .body(new ApiResponse<>(null, "Error al eliminar usuario", false));
+                    .body(new ApiResponse<>(null, "Error al eliminar usuario: " + e.getMessage(), false));
         }
     }
     
