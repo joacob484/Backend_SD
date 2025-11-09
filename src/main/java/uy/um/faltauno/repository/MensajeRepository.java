@@ -90,5 +90,16 @@ public interface MensajeRepository extends JpaRepository<Mensaje, UUID> {
      * Contar total de mensajes de un partido
      */
     long countByPartidoId(UUID partidoId);
+    
+    /**
+     * Contar mensajes de un partido después de cierta fecha, excluyendo los de un usuario
+     * Usado para calcular mensajes no leídos
+     */
+    @Query("SELECT COUNT(m) FROM Mensaje m WHERE m.partidoId = :partidoId " +
+           "AND m.createdAt > :cutoffTime AND m.remitenteId != :excludeUserId")
+    long countByPartidoIdAndCreatedAtAfterAndRemitenteIdNot(
+            @Param("partidoId") UUID partidoId,
+            @Param("cutoffTime") java.time.Instant cutoffTime,
+            @Param("excludeUserId") UUID excludeUserId);
 }
 ```

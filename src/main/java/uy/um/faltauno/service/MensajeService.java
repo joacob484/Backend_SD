@@ -357,24 +357,23 @@ public class MensajeService {
         // Buscar última visita
         var visitOpt = chatVisitRepository.findByUsuarioIdAndPartidoId(usuarioId, partidoId);
         
+        Instant cutoffTime;
         if (visitOpt.isEmpty()) {
-            // Nunca visitó, todos los mensajes son no leídos
-            long total = mensajeRepository.countByPartidoId(partidoId);
-            log.debug("[MensajeService] Sin visitas previas, {} mensajes no leídos", total);
-            return total;
+            // Si nunca visitó, usar fecha muy antigua para contar todos los mensajes
+            cutoffTime = Instant.ofEpochMilli(0); // 1970-01-01
+        } else {
+            // Convertir LocalDateTime a Instant
+            cutoffTime = visitOpt.get().getLastVisitAt()
+                .atZone(java.time.ZoneId.systemDefault())
+                .toInstant();
         }
         
-        LocalDateTime lastVisit = visitOpt.get().getLastVisitAt();
-        
-        // Contar mensajes después de la última visita, excluyendo los del propio usuario
-        long unread = mensajeRepository.findByPartidoIdOrderByCreatedAtDesc(partidoId, PageRequest.of(0, Integer.MAX_VALUE))
-                .stream()
-                .filter(m -> {
-                    // Convertir Instant a LocalDateTime para comparar
-                    LocalDateTime msgTime = LocalDateTime.ofInstant(m.getCreatedAt(), java.time.ZoneId.systemDefault());
-                    return msgTime.isAfter(lastVisit) && !m.getRemitenteId().equals(usuarioId);
-                })
-                .count();
+        // Contar mensajes después del cutoff, excluyendo los del propio usuario
+        long unread = mensajeRepository.countByPartidoIdAndCreatedAtAfterAndRemitenteIdNot(
+            partidoId, 
+            cutoffTime,
+            usuarioId
+        );
         
         log.debug("[MensajeService] ✅ {} mensajes no leídos", unread);
         return unread;
