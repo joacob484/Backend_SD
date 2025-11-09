@@ -192,13 +192,28 @@ public class UsuarioController {
     }
 
     @GetMapping(path = "/{id}/foto", produces = { MediaType.IMAGE_JPEG_VALUE, MediaType.APPLICATION_OCTET_STREAM_VALUE })
-    public ResponseEntity<byte[]> getFoto(@PathVariable("id") UUID id) {
-        Usuario u = usuarioService.findUsuarioEntityById(id);
-        if (u == null || u.getFotoPerfil() == null) return ResponseEntity.notFound().build();
+    public ResponseEntity<byte[]> getFoto(@PathVariable("id") String id) {
+        try {
+            UUID userId = UUID.fromString(id);
+            Usuario u = usuarioService.findUsuarioEntityById(userId);
+            
+            if (u == null) {
+                log.warn("[GET /foto] Usuario no encontrado: {}", id);
+                return ResponseEntity.notFound().build();
+            }
+            
+            if (u.getFotoPerfil() == null) {
+                log.debug("[GET /foto] Usuario {} no tiene foto", id);
+                return ResponseEntity.notFound().build();
+            }
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.IMAGE_JPEG);
-        return new ResponseEntity<>(u.getFotoPerfil(), headers, HttpStatus.OK);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_JPEG);
+            return new ResponseEntity<>(u.getFotoPerfil(), headers, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            log.error("[GET /foto] ID inválido: {}", id);
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     // ================================
