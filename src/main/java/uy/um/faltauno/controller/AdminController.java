@@ -7,10 +7,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import uy.um.faltauno.dto.ApiResponse;
 import uy.um.faltauno.dto.PartidoDTO;
+import uy.um.faltauno.dto.ReportDTO;
 import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.security.RequireAdmin;
 import uy.um.faltauno.service.PartidoService;
+import uy.um.faltauno.service.ReportService;
 import uy.um.faltauno.service.UsuarioService;
 
 import java.util.HashMap;
@@ -29,6 +31,7 @@ public class AdminController {
     
     private final UsuarioService usuarioService;
     private final PartidoService partidoService;
+    private final ReportService reportService;
     
     /**
      * GET /api/admin/usuarios
@@ -49,6 +52,28 @@ public class AdminController {
             log.error("[ADMIN] Error al listar usuarios", e);
             return ResponseEntity.status(500)
                     .body(new ApiResponse<>(null, "Error al listar usuarios", false));
+        }
+    }
+    
+    /**
+     * GET /api/admin/reports
+     * Listar todos los reportes
+     */
+    @GetMapping("/reports")
+    public ResponseEntity<ApiResponse<List<ReportDTO>>> listarTodosReportes(
+            @AuthenticationPrincipal Usuario admin) {
+        try {
+            log.info("[ADMIN] {} listando todos los reportes", admin.getEmail());
+            
+            List<ReportDTO> reports = reportService.getAllReports();
+            
+            return ResponseEntity.ok(new ApiResponse<>(reports, 
+                    String.format("Total: %d reportes", reports.size()), 
+                    true));
+        } catch (Exception e) {
+            log.error("[ADMIN] Error al listar reportes", e);
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(null, "Error al listar reportes", false));
         }
     }
     
