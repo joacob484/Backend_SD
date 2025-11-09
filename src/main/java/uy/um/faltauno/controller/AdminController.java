@@ -249,13 +249,31 @@ public class AdminController {
             log.info("[ADMIN] {} obteniendo estadísticas", admin.getEmail());
             
             Map<String, Object> stats = new HashMap<>();
-            // Total usuarios (no eliminados)
+            
+            // Estadísticas de usuarios
             stats.put("totalUsuarios", usuarioService.contarUsuariosActivos());
-            // Usuarios activos en los últimos 30 días (con actividad reciente)
             stats.put("usuariosActivos", usuarioService.contarUsuariosConActividadReciente(30));
             stats.put("registrosRecientes", usuarioService.contarRegistrosRecientes(7));
+            stats.put("usuariosEliminados", usuarioService.contarUsuariosEliminados());
+            stats.put("usuariosBaneados", usuarioService.contarUsuariosBaneados());
+            
+            // Estadísticas de partidos
             stats.put("totalPartidos", partidoService.contarPartidos());
             stats.put("partidosHoy", partidoService.contarPartidosHoy());
+            stats.put("partidosEstaSemana", partidoService.contarPartidosEstaSemana());
+            stats.put("partidosEsteMes", partidoService.contarPartidosEsteMes());
+            
+            // Estadísticas de reportes
+            stats.put("reportesPendientes", reportService.countPendingReports());
+            stats.put("reportesResueltos", reportService.countResolvedReports());
+            stats.put("reportesTotal", reportService.getAllReports().size());
+            
+            // Tasa de crecimiento (últimos 7 vs 30 días)
+            long registros7dias = usuarioService.contarRegistrosRecientes(7);
+            long registros30dias = usuarioService.contarRegistrosRecientes(30);
+            double tasaCrecimiento = registros30dias > 0 ? 
+                ((double) registros7dias / (registros30dias / 4.0)) * 100 : 0;
+            stats.put("tasaCrecimientoSemanal", Math.round(tasaCrecimiento * 100.0) / 100.0);
             
             return ResponseEntity.ok(new ApiResponse<>(stats, 
                     "Estadísticas obtenidas", 

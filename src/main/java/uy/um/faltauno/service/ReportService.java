@@ -123,6 +123,17 @@ public class ReportService {
     }
 
     /**
+     * Contar reportes resueltos
+     */
+    @Transactional(readOnly = true)
+    public long countResolvedReports() {
+        return reportRepository.findAll().stream()
+                .filter(r -> r.getStatus() == Report.ReportStatus.RESOLVED || 
+                            r.getStatus() == Report.ReportStatus.DISMISSED)
+                .count();
+    }
+
+    /**
      * Resolver un reporte
      */
     @Transactional

@@ -924,6 +924,34 @@ public class PartidoService {
     }
     
     /**
+     * Contar partidos de esta semana
+     */
+    @Transactional(readOnly = true)
+    public long contarPartidosEstaSemana() {
+        LocalDate today = LocalDate.now();
+        LocalDate startOfWeek = today.with(java.time.DayOfWeek.MONDAY);
+        LocalDate endOfWeek = today.with(java.time.DayOfWeek.SUNDAY);
+        
+        return partidoRepository.findAll().stream()
+                .filter(p -> !p.getFecha().isBefore(startOfWeek) && !p.getFecha().isAfter(endOfWeek))
+                .count();
+    }
+    
+    /**
+     * Contar partidos de este mes
+     */
+    @Transactional(readOnly = true)
+    public long contarPartidosEsteMes() {
+        LocalDate today = LocalDate.now();
+        LocalDate startOfMonth = today.withDayOfMonth(1);
+        LocalDate endOfMonth = today.withDayOfMonth(today.lengthOfMonth());
+        
+        return partidoRepository.findAll().stream()
+                .filter(p -> !p.getFecha().isBefore(startOfMonth) && !p.getFecha().isAfter(endOfMonth))
+                .count();
+    }
+    
+    /**
      * Eliminar partido (solo admin)
      */
     @Transactional

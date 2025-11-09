@@ -1102,6 +1102,22 @@ public class UsuarioService {
     }
     
     /**
+     * Contar usuarios eliminados (soft deleted)
+     */
+    @Transactional(readOnly = true)
+    public long contarUsuariosEliminados() {
+        return usuarioRepository.countByDeletedAtIsNotNull();
+    }
+    
+    /**
+     * Contar usuarios baneados
+     */
+    @Transactional(readOnly = true)
+    public long contarUsuariosBaneados() {
+        return usuarioRepository.countByBannedAtIsNotNull();
+    }
+    
+    /**
      * Eliminar permanentemente un usuario (hard delete)
      * Elimina en cascada TODOS los datos relacionados:
      * - Contactos (propios y referencias)

@@ -83,6 +83,18 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
     @Query("SELECT u FROM Usuario u WHERE u.celular IN :telefonos AND u.deletedAt IS NULL")
     java.util.List<Usuario> findByCelularIn(@Param("telefonos") java.util.List<String> telefonos);
 
+    /**
+     * Contar usuarios eliminados (soft deleted)
+     */
+    @Query("SELECT COUNT(u) FROM Usuario u WHERE u.deletedAt IS NOT NULL")
+    long countByDeletedAtIsNotNull();
+    
+    /**
+     * Contar usuarios baneados
+     */
+    @Query("SELECT COUNT(u) FROM Usuario u WHERE u.bannedAt IS NOT NULL AND u.deletedAt IS NULL")
+    long countByBannedAtIsNotNull();
+
     interface AuthProjection {
         UUID getId();
         String getEmail();
