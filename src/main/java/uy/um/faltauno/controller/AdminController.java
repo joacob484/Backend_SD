@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.*;
 import uy.um.faltauno.dto.ApiResponse;
 import uy.um.faltauno.dto.PartidoDTO;
 import uy.um.faltauno.dto.ReportDTO;
+import uy.um.faltauno.dto.ResolveReportRequest;
 import uy.um.faltauno.dto.UsuarioDTO;
+import uy.um.faltauno.entity.Report;
 import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.security.RequireAdmin;
 import uy.um.faltauno.service.PartidoService;
@@ -74,6 +76,81 @@ public class AdminController {
             log.error("[ADMIN] Error al listar reportes", e);
             return ResponseEntity.status(500)
                     .body(new ApiResponse<>(null, "Error al listar reportes", false));
+        }
+    }
+    
+    /**
+     * PUT /api/admin/reports/{id}/resolve
+     * Resolver un reporte
+     */
+    @PutMapping("/reports/{id}/resolve")
+    public ResponseEntity<ApiResponse<ReportDTO>> resolveReport(
+            @AuthenticationPrincipal Usuario admin,
+            @PathVariable String id,
+            @RequestBody ResolveReportRequest request) {
+        try {
+            log.info("[ADMIN] {} resolviendo reporte {}", admin.getEmail(), id);
+            
+            // Si la acción es banear usuario, ejecutar el baneo
+            if (request.getAction() == Report.ReportAction.USER_BANNED && 
+                Boolean.TRUE.equals(request.getBanUser())) {
+                
+                // Primero obtener el reporte para saber a quién banear
+                List<ReportDTO> reports = reportService.getAllReports();
+                ReportDTO report = reports.stream()
+                        .filter(r -> r.getId().equals(id))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("Reporte no encontrado"));
+                
+                String banReason = request.getBanReason() != null ? 
+                        request.getBanReason() : "Reportado por: " + report.getReason().getDisplayName();
+                
+                usuarioService.banUser(report.getReportedUser().getId(), admin.getId().toString(), banReason);
+            }
+            
+            ReportDTO resolvedReport = reportService.resolveReport(id, admin.getId().toString(), request);
+            
+            return ResponseEntity.ok(new ApiResponse<>(resolvedReport, 
+                    "Reporte resuelto correctamente", 
+                    true));
+        } catch (IllegalArgumentException e) {
+            log.error("[ADMIN] Error al resolver reporte: {}", e.getMessage());
+            return ResponseEntity.status(404)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[ADMIN] Error inesperado al resolver reporte", e);
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(null, "Error al resolver el reporte", false));
+        }
+    }
+    
+    /**
+     * PUT /api/admin/reports/{id}/dismiss
+     * Descartar un reporte
+     */
+    @PutMapping("/reports/{id}/dismiss")
+    public ResponseEntity<ApiResponse<ReportDTO>> dismissReport(
+            @AuthenticationPrincipal Usuario admin,
+            @PathVariable String id,
+            @RequestBody Map<String, String> body) {
+        try {
+            log.info("[ADMIN] {} descartando reporte {}", admin.getEmail(), id);
+            
+            String notes = body.getOrDefault("notes", "Reporte descartado sin notas");
+            
+            ReportDTO dismissedReport = reportService.dismissReport(id, admin.getId().toString(), notes);
+            
+            return ResponseEntity.ok(new ApiResponse<>(dismissedReport, 
+                    "Reporte descartado", 
+                    true));
+        } catch (IllegalArgumentException e) {
+            log.error("[ADMIN] Error al descartar reporte: {}", e.getMessage());
+            return ResponseEntity.status(404)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (Exception e) {
+            log.error("[ADMIN] Error inesperado al descartar reporte", e);
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(null, "Error al descartar el reporte", false));
         }
     }
     
