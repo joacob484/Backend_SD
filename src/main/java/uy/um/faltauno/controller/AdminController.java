@@ -104,15 +104,21 @@ public class AdminController {
     @DeleteMapping("/partidos/{id}")
     public ResponseEntity<ApiResponse<Void>> eliminarPartido(
             @AuthenticationPrincipal Usuario admin,
-            @PathVariable Long id) {
+            @PathVariable String id) {
         try {
             log.warn("[ADMIN] {} eliminando partido {}", admin.getEmail(), id);
             
-            partidoService.eliminarPartidoAdmin(id);
+            // Convertir String a Long
+            Long partidoId = Long.parseLong(id);
+            partidoService.eliminarPartidoAdmin(partidoId);
             
             return ResponseEntity.ok(new ApiResponse<>(null, 
                     "Partido eliminado", 
                     true));
+        } catch (NumberFormatException e) {
+            log.error("[ADMIN] ID de partido inválido: {}", id);
+            return ResponseEntity.badRequest()
+                    .body(new ApiResponse<>(null, "ID de partido inválido", false));
         } catch (Exception e) {
             log.error("[ADMIN] Error al eliminar partido", e);
             return ResponseEntity.status(500)
@@ -132,9 +138,10 @@ public class AdminController {
             
             Map<String, Object> stats = new HashMap<>();
             stats.put("totalUsuarios", usuarioService.contarUsuariosActivos());
+            stats.put("usuariosActivos", usuarioService.contarUsuariosActivos());
+            stats.put("registrosRecientes", usuarioService.contarRegistrosRecientes(7));
             stats.put("totalPartidos", partidoService.contarPartidos());
             stats.put("partidosHoy", partidoService.contarPartidosHoy());
-            stats.put("usuariosRegistradosUltimos7Dias", usuarioService.contarRegistrosRecientes(7));
             
             return ResponseEntity.ok(new ApiResponse<>(stats, 
                     "Estadísticas obtenidas", 
