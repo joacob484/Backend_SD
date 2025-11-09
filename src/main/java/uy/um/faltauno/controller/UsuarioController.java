@@ -199,12 +199,12 @@ public class UsuarioController {
             
             if (u == null) {
                 log.warn("[GET /foto] Usuario no encontrado: {}", id);
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.notFound().build(); // 404 - User doesn't exist
             }
             
             if (u.getFotoPerfil() == null) {
                 log.debug("[GET /foto] Usuario {} no tiene foto", id);
-                return ResponseEntity.notFound().build();
+                return ResponseEntity.noContent().build(); // 204 - User exists but has no photo
             }
 
             HttpHeaders headers = new HttpHeaders();
