@@ -61,7 +61,8 @@ public interface PartidoMapper {
             usuario.getId(),
             usuario.getNombre(),
             usuario.getApellido(),
-            fotoPerfil
+            fotoPerfil,
+            usuario.getDeletedAt() // Incluir deletedAt para que el frontend sepa si está eliminado
         );
     }
     
