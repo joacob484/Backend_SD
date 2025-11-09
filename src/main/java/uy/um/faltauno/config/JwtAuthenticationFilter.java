@@ -106,6 +106,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 usuario = userOpt.get();
             }
 
+            // 🚫 CHECK: Verificar si el usuario está baneado
+            if (usuario.getBannedAt() != null) {
+                log.warn("⛔ Banned user {} attempted access to: {}. Ban reason: {}", 
+                        usuario.getEmail(), path, usuario.getBanReason());
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             // Si ya hay autenticación en el contexto, no sobrescribir
             if (SecurityContextHolder.getContext().getAuthentication() != null) {
                 log.debug("⚠️ Authentication already exists in context");

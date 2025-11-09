@@ -111,6 +111,25 @@ public class AuthenticationController {
             HttpSession session = request.getSession(true);
             log.info("Login JSON exitoso para {}, session={}", req.email(), session != null ? session.getId() : "null");
 
+            // 🚫 CHECK: Verificar si el usuario está baneado
+            if (existingUser.getBannedAt() != null) {
+                log.warn("[AuthenticationController] ⛔ Usuario {} está BANEADO. Razón: {}", 
+                        req.email(), existingUser.getBanReason());
+                
+                SecurityContextHolder.clearContext();
+                if (session != null) session.invalidate();
+                
+                Map<String, Object> banInfo = new HashMap<>();
+                banInfo.put("errorCode", "USER_BANNED");
+                banInfo.put("bannedAt", existingUser.getBannedAt().toString());
+                banInfo.put("reason", existingUser.getBanReason() != null ? existingUser.getBanReason() : "Violación de términos de servicio");
+                
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiResponse<>(banInfo, 
+                                "Tu cuenta ha sido suspendida. " + (existingUser.getBanReason() != null ? existingUser.getBanReason() : ""), 
+                                false));
+            }
+
             UsuarioDTO dto = usuarioService.getUsuario(existingUser.getId());
             dto.setPassword(null);
             
