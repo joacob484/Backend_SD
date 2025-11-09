@@ -206,6 +206,38 @@ public class AmistadService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Listar amigos de un usuario específico (por ID)
+     * Para visualizar perfiles de otros usuarios
+     */
+    @Transactional(readOnly = true)
+    public List<AmistadDTO> listarAmigosDeUsuario(UUID userId) {
+        log.debug("[AmistadService] Listando amigos de usuarioId={}", userId);
+        
+        // Verificar que el usuario existe
+        if (!usuarioRepository.existsById(userId)) {
+            log.warn("[AmistadService] Usuario no encontrado: {}", userId);
+            throw new IllegalArgumentException("Usuario no encontrado");
+        }
+        
+        List<Amistad> amistades = amistadRepository.findAmigosByUsuarioId(userId);
+        
+        log.debug("[AmistadService] Encontrados {} amigos para usuario {}", amistades.size(), userId);
+
+        return amistades.stream()
+                .map(amistad -> {
+                    UUID otroUsuarioId = amistad.getUsuarioId().equals(userId) 
+                            ? amistad.getAmigoId() 
+                            : amistad.getUsuarioId();
+                    
+                    Usuario usuario = usuarioRepository.findById(userId).orElse(null);
+                    Usuario amigo = usuarioRepository.findById(otroUsuarioId).orElse(null);
+                    
+                    return convertToDTO(amistad, usuario, amigo);
+                })
+                .collect(Collectors.toList());
+    }
+
     @Transactional(readOnly = true)
     public List<AmistadDTO> listarSolicitudesPendientes(Authentication auth) {
         log.debug("[AmistadService] Listando solicitudes pendientes recibidas");

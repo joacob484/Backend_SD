@@ -116,6 +116,35 @@ public class AmistadController {
     }
 
     /**
+     * Listar amigos de un usuario específico (para ver perfiles)
+     * 
+     * @param userId ID del usuario
+     * @return Lista de amigos del usuario
+     */
+    @GetMapping("/amigos/{userId}")
+    public ResponseEntity<ApiResponse<List<AmistadDTO>>> listarAmigosDeUsuario(
+            @PathVariable UUID userId) {
+        try {
+            log.debug("[AmistadController] GET /api/amistad/amigos/{}", userId);
+            
+            List<AmistadDTO> amigos = amistadService.listarAmigosDeUsuario(userId);
+            
+            return ResponseEntity.ok(
+                    new ApiResponse<>(amigos, "Lista de amigos", true));
+                    
+        } catch (IllegalArgumentException e) {
+            log.warn("[AmistadController] Usuario no encontrado: {}", userId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+                    
+        } catch (Exception e) {
+            log.error("[AmistadController] Error listando amigos de usuario {}", userId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error al listar amigos", false));
+        }
+    }
+
+    /**
      * Listar solicitudes de amistad pendientes (recibidas)
      * 
      * @param auth Usuario autenticado
