@@ -415,6 +415,11 @@ public class AmistadController {
         }
         
         Object principal = auth.getPrincipal();
+        
+        // ✅ NUEVO: Soporte para Usuario como principal (usado en JWT auth)
+        if (principal instanceof uy.um.faltauno.entity.Usuario) {
+            return ((uy.um.faltauno.entity.Usuario) principal).getId();
+        }
         if (principal instanceof uy.um.faltauno.config.CustomUserDetailsService.UserPrincipal) {
             return ((uy.um.faltauno.config.CustomUserDetailsService.UserPrincipal) principal).getId();
         }

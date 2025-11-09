@@ -185,22 +185,32 @@ public class AuthenticationController {
                         .body(new ApiResponse<>(null, "No autenticado", false));
             }
 
-            String username = null;
             Object principal = auth.getPrincipal();
-            if (principal instanceof String) username = (String) principal;
+            Usuario u = null;
+            
+            // ✅ NUEVO: Soporte para Usuario como principal (JWT auth)
+            if (principal instanceof uy.um.faltauno.entity.Usuario) {
+                u = (uy.um.faltauno.entity.Usuario) principal;
+            } 
+            // Fallback: extraer username y buscar
             else {
-                try {
-                    var pd = (org.springframework.security.core.userdetails.UserDetails) principal;
-                    username = pd.getUsername();
-                } catch (ClassCastException ignored) { }
-            }
+                String username = null;
+                if (principal instanceof String) {
+                    username = (String) principal;
+                } else {
+                    try {
+                        var pd = (org.springframework.security.core.userdetails.UserDetails) principal;
+                        username = pd.getUsername();
+                    } catch (ClassCastException ignored) { }
+                }
 
-            if (username == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new ApiResponse<>(null, "No autenticado", false));
-            }
+                if (username == null) {
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(new ApiResponse<>(null, "No autenticado", false));
+                }
 
-            Usuario u = usuarioService.findByEmail(username);
+                u = usuarioService.findByEmail(username);
+            }
             if (u == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ApiResponse<>(null, "Usuario no encontrado", false));
