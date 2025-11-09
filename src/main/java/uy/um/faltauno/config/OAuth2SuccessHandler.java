@@ -36,7 +36,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     Usuario u = usuarioService.upsertGoogleUser(email, name, principal.getAttributes());
 
     // Usa la firma que tengas en JwtUtil con tokenVersion (estándar industria)
-    String jwt = jwtUtil.generateToken(u.getId(), email, u.getTokenVersion());
+    String jwt = jwtUtil.generateToken(u.getId(), email, u.getTokenVersion(), u.getRol());
 
     String target = frontend + "/oauth/success?token=" + URLEncoder.encode(jwt, StandardCharsets.UTF_8);
     response.sendRedirect(target);

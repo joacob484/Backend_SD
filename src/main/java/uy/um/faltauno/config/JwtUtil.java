@@ -39,22 +39,40 @@ public class JwtUtil {
      * @param userId UUID del usuario
      * @param email Email del usuario (usado como subject)
      * @param tokenVersion Versión actual del token del usuario
+     * @param rol Rol del usuario (USER o ADMIN)
      * @return Token JWT firmado
      */
-    public String generateToken(UUID userId, String email, Integer tokenVersion) {
+    public String generateToken(UUID userId, String email, Integer tokenVersion, String rol) {
         Date now = new Date();
         String jti = UUID.randomUUID().toString(); // JWT ID único por token
+        
+        // Determinar rol Spring Security basado en el rol del usuario
+        String springRole = "ADMIN".equals(rol) ? "ROLE_ADMIN" : "ROLE_USER";
         
         return Jwts.builder()
                 .subject(email) // Subject es el email (username)
                 .claim("userId", userId.toString()) // UUID como claim separado
                 .claim("tokenVersion", tokenVersion) // Versión del token (CRÍTICO)
                 .claim("jti", jti) // ID único del token
-                .claim("roles", List.of("ROLE_USER"))
+                .claim("rol", rol) // Rol del usuario (USER/ADMIN)
+                .claim("roles", List.of(springRole)) // Para Spring Security
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + EXPIRATION_TIME))
                 .signWith(getSigningKey())
                 .compact();
+    }
+    
+    /**
+     * Genera un token JWT para un usuario con token versioning (sin rol - deprecated).
+     * @param userId UUID del usuario
+     * @param email Email del usuario (usado como subject)
+     * @param tokenVersion Versión actual del token del usuario
+     * @return Token JWT firmado
+     * @deprecated Usar generateToken(UUID, String, Integer, String) para incluir el rol
+     */
+    @Deprecated
+    public String generateToken(UUID userId, String email, Integer tokenVersion) {
+        return generateToken(userId, email, tokenVersion, "USER");
     }
     
     /**
@@ -164,6 +182,21 @@ public class JwtUtil {
         }
     }
 
+    /**
+     * Extrae el rol del usuario desde el claim 'rol'.
+     * @param token Token JWT
+     * @return Rol del usuario (USER/ADMIN), o USER por defecto
+     */
+    public String extractRol(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            String rol = claims.get("rol", String.class);
+            return rol != null ? rol : "USER";
+        } catch (Exception e) {
+            return "USER";
+        }
+    }
+    
     /**
      * Extrae los roles desde el claim 'roles'.
      */

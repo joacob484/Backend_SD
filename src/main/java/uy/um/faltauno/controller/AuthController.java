@@ -251,7 +251,8 @@ public class AuthController {
             String token = jwtUtil.generateToken(
                 usuarioEntity.getId(), 
                 usuarioEntity.getEmail(), 
-                usuarioEntity.getTokenVersion()
+                usuarioEntity.getTokenVersion(),
+                usuarioEntity.getRol()
             );
 
             // 4. Agregar token al DTO de respuesta

@@ -112,7 +112,7 @@ public class VerificationController {
 
         // Generar token JWT
         uy.um.faltauno.entity.Usuario usuarioEntity = usuarioService.findUsuarioEntityById(usuario.getId());
-        String token = jwtUtil.generateToken(usuarioEntity.getId(), usuarioEntity.getEmail(), usuarioEntity.getTokenVersion());
+        String token = jwtUtil.generateToken(usuarioEntity.getId(), usuarioEntity.getEmail(), usuarioEntity.getTokenVersion(), usuarioEntity.getRol());
 
         // Limpiar pre-registro
         verificationService.limpiarPreRegistro(email);

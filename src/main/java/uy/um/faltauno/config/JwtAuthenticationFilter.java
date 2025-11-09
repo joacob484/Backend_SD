@@ -9,7 +9,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import uy.um.faltauno.config.CustomUserDetailsService.UserPrincipal;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -77,14 +76,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
             
-            // ✅ ESTÁNDAR INDUSTRIA: Validar tokenVersion contra DB
+            // ✅ ESTÁNDAR INDUSTRIA: Validar tokenVersion contra DB y cargar usuario completo
+            uy.um.faltauno.entity.Usuario usuario = null;
             if (tokenVersion != null) {
                 var userOpt = usuarioRepository.findById(userId);
                 if (userOpt.isPresent()) {
-                    var user = userOpt.get();
-                    if (!tokenVersion.equals(user.getTokenVersion())) {
+                    usuario = userOpt.get();
+                    if (!tokenVersion.equals(usuario.getTokenVersion())) {
                         log.warn("❌ Token version mismatch for user {}: token={}, db={}", 
-                                userId, tokenVersion, user.getTokenVersion());
+                                userId, tokenVersion, usuario.getTokenVersion());
                         log.warn("   Token was invalidated (password change, security issue, etc.)");
                         filterChain.doFilter(request, response);
                         return;
@@ -95,8 +95,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
             } else {
-                // Tokens viejos sin tokenVersion: permitir pero loggear warning
+                // Tokens viejos sin tokenVersion: cargar usuario pero loggear warning
                 log.warn("⚠️ Token without version for user {} - consider refreshing", userId);
+                var userOpt = usuarioRepository.findById(userId);
+                if (userOpt.isEmpty()) {
+                    log.warn("❌ User {} not found in database", userId);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                usuario = userOpt.get();
             }
 
             // Si ya hay autenticación en el contexto, no sobrescribir
@@ -112,18 +119,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
 
-            // ✅ CRÍTICO: Crear UserPrincipal con userId como principal
-            // Esto evita consultas a la BD en cada request
-            UserPrincipal userPrincipal = new UserPrincipal(
-                    userId,
-                    email,
-                    null, // No necesitamos el password para JWT auth
-                    authorities
-            );
-            
+            // ✅ CRÍTICO: Usar el Usuario completo como principal (no UserPrincipal)
+            // Esto permite que el AdminRoleInterceptor pueda verificar el rol
             UsernamePasswordAuthenticationToken authentication = 
                     new UsernamePasswordAuthenticationToken(
-                            userPrincipal, // Principal ahora es UserPrincipal, no String
+                            usuario, // Usuario completo como principal
                             null,
                             authorities
                     );
@@ -131,7 +131,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
             
-            log.info("✅ User authenticated via JWT: {} (userId: {}) for: {}", email, userId, path);
+            log.info("✅ User authenticated via JWT: {} (userId: {}, rol: {}) for: {}", 
+                    email, userId, usuario.getRol(), path);
 
         } catch (Exception ex) {
             SecurityContextHolder.clearContext();

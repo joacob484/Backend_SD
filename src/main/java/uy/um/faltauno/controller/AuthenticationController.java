@@ -118,7 +118,7 @@ public class AuthenticationController {
             dto.setPerfilCompleto(dto.getPerfilCompleto());
             dto.setCedulaVerificada(dto.getCedulaVerificada());
 
-            String token = jwtUtil.generateToken(existingUser.getId(), existingUser.getEmail(), existingUser.getTokenVersion());
+            String token = jwtUtil.generateToken(existingUser.getId(), existingUser.getEmail(), existingUser.getTokenVersion(), existingUser.getRol());
 
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("token", token);
