@@ -455,6 +455,10 @@ public class UsuarioController {
         Object principal = auth.getPrincipal();
 
         try {
+            // ✅ NUEVO: Soporte para Usuario como principal (usado en JWT auth)
+            if (principal instanceof Usuario) {
+                return ((Usuario) principal).getId();
+            }
             if (principal instanceof CustomUserDetailsService.UserPrincipal) {
                 return ((CustomUserDetailsService.UserPrincipal) principal).getId();
             }
