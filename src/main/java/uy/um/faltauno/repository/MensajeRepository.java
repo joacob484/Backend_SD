@@ -85,4 +85,10 @@ public interface MensajeRepository extends JpaRepository<Mensaje, UUID> {
     List<Mensaje> findMensajesDirectosEntreUsuarios(
             @Param("usuario1") UUID usuario1,
             @Param("usuario2") UUID usuario2);
+    
+    /**
+     * Contar total de mensajes de un partido
+     */
+    long countByPartidoId(UUID partidoId);
 }
+```

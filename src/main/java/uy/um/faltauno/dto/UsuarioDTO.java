@@ -56,6 +56,11 @@ public class UsuarioDTO {
     private String banReason;
     private String bannedBy;
     
+    // Activity tracking
+    private String lastActivityAt;
+    private String createdAt;
+    private String deletedAt;
+    
     /**
      * Password solo para recepción en registro/login.
      * WRITE_ONLY previene que sea serializado en respuestas JSON.

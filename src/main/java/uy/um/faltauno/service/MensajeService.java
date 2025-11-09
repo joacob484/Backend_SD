@@ -14,12 +14,15 @@ import uy.um.faltauno.entity.Inscripcion;
 import uy.um.faltauno.entity.Mensaje;
 import uy.um.faltauno.entity.Partido;
 import uy.um.faltauno.entity.Usuario;
+import uy.um.faltauno.entity.ChatVisit;
 import uy.um.faltauno.repository.InscripcionRepository;
 import uy.um.faltauno.repository.MensajeRepository;
 import uy.um.faltauno.repository.PartidoRepository;
 import uy.um.faltauno.repository.UsuarioRepository;
+import uy.um.faltauno.repository.ChatVisitRepository;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +38,7 @@ public class MensajeService {
     private final UsuarioRepository usuarioRepository;
     private final InscripcionRepository inscripcionRepository;
     private final NotificacionService notificacionService;
+    private final ChatVisitRepository chatVisitRepository;
 
     /**
      * Obtener mensajes del chat de un partido
@@ -313,4 +317,67 @@ public class MensajeService {
         log.error("[MensajeService] No se pudo obtener ID del usuario");
         throw new SecurityException("No se pudo obtener el ID del usuario");
     }
+    
+    /**
+     * Registrar que un usuario visitó el chat de un partido
+     * Esto actualiza la última visita para calcular mensajes no leídos
+     */
+    @Transactional
+    public void registrarVisitaChat(UUID partidoId, UUID usuarioId) {
+        log.debug("[MensajeService] Registrando visita al chat: partido={}, usuario={}", partidoId, usuarioId);
+        
+        Partido partido = partidoRepository.findById(partidoId)
+                .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
+        
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        // Buscar visita existente o crear nueva
+        ChatVisit visit = chatVisitRepository.findByUsuarioAndPartido(usuario, partido)
+                .orElse(ChatVisit.builder()
+                        .usuario(usuario)
+                        .partido(partido)
+                        .build());
+        
+        // Actualizar timestamp
+        visit.setLastVisitAt(LocalDateTime.now());
+        chatVisitRepository.save(visit);
+        
+        log.debug("[MensajeService] ✅ Visita registrada correctamente");
+    }
+    
+    /**
+     * Contar mensajes no leídos en un chat
+     * Cuenta los mensajes posteriores a la última visita del usuario
+     */
+    @Transactional(readOnly = true)
+    public long contarMensajesNoLeidos(UUID partidoId, UUID usuarioId) {
+        log.debug("[MensajeService] Contando mensajes no leídos: partido={}, usuario={}", partidoId, usuarioId);
+        
+        // Buscar última visita
+        var visitOpt = chatVisitRepository.findByUsuarioIdAndPartidoId(usuarioId, partidoId);
+        
+        if (visitOpt.isEmpty()) {
+            // Nunca visitó, todos los mensajes son no leídos
+            long total = mensajeRepository.countByPartidoId(partidoId);
+            log.debug("[MensajeService] Sin visitas previas, {} mensajes no leídos", total);
+            return total;
+        }
+        
+        LocalDateTime lastVisit = visitOpt.get().getLastVisitAt();
+        
+        // Contar mensajes después de la última visita, excluyendo los del propio usuario
+        long unread = mensajeRepository.findByPartidoIdOrderByCreatedAtDesc(partidoId, PageRequest.of(0, Integer.MAX_VALUE))
+                .stream()
+                .filter(m -> {
+                    // Convertir Instant a LocalDateTime para comparar
+                    LocalDateTime msgTime = LocalDateTime.ofInstant(m.getCreatedAt(), java.time.ZoneId.systemDefault());
+                    return msgTime.isAfter(lastVisit) && !m.getRemitenteId().equals(usuarioId);
+                })
+                .count();
+        
+        log.debug("[MensajeService] ✅ {} mensajes no leídos", unread);
+        return unread;
+    }
 }
+```

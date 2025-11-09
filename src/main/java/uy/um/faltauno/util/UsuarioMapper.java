@@ -9,6 +9,7 @@ import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.entity.Usuario;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 
@@ -23,6 +24,10 @@ public interface UsuarioMapper {
     @Mapping(source = "fotoPerfil", target = "fotoPerfil", qualifiedByName = "bytesToBase64")
     @Mapping(source = "fechaNacimiento", target = "fechaNacimiento", qualifiedByName = "localDateToString")
     @Mapping(source = "rol", target = "rol") // Mapear rol explícitamente
+    @Mapping(source = "lastActivityAt", target = "lastActivityAt", qualifiedByName = "localDateTimeToString")
+    @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "localDateTimeToString")
+    @Mapping(source = "deletedAt", target = "deletedAt", qualifiedByName = "localDateTimeToString")
+    @Mapping(source = "bannedAt", target = "bannedAt", qualifiedByName = "localDateTimeToString")
     @Mapping(target = "cedulaVerificada", ignore = true) // Calculated in DTO getter
     @Mapping(target = "perfilCompleto", ignore = true) // Calculated in DTO getter
     @Mapping(target = "hasFotoPerfil", ignore = true) // Set in @AfterMapping
@@ -35,6 +40,10 @@ public interface UsuarioMapper {
     @Mapping(source = "fotoPerfil", target = "fotoPerfil", ignore = true) // NO incluir foto
     @Mapping(source = "fechaNacimiento", target = "fechaNacimiento", qualifiedByName = "localDateToString")
     @Mapping(source = "rol", target = "rol")
+    @Mapping(source = "lastActivityAt", target = "lastActivityAt", qualifiedByName = "localDateTimeToString")
+    @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "localDateTimeToString")
+    @Mapping(source = "deletedAt", target = "deletedAt", qualifiedByName = "localDateTimeToString")
+    @Mapping(source = "bannedAt", target = "bannedAt", qualifiedByName = "localDateTimeToString")
     @Mapping(target = "cedulaVerificada", ignore = true)
     @Mapping(target = "perfilCompleto", ignore = true)
     @Mapping(target = "hasFotoPerfil", ignore = true) // Set in @AfterMapping
@@ -87,6 +96,12 @@ public interface UsuarioMapper {
     @Named("stringToLocalDate")
     default LocalDate mapStringToLocalDate(String date) {
         return (date != null && !date.isBlank()) ? LocalDate.parse(date, FORMATTER) : null;
+    }
+
+    // Conversores para LocalDateTime <-> String (ISO 8601)
+    @Named("localDateTimeToString")
+    default String mapLocalDateTimeToString(LocalDateTime dateTime) {
+        return dateTime != null ? dateTime.toString() : null;
     }
 
     // Conversores para byte[] <-> Base64

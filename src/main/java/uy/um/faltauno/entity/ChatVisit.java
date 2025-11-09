@@ -1,0 +1,53 @@
+package uy.um.faltauno.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+
+/**
+ * Registra la última vez que un usuario visitó el chat de un partido
+ * Usado para calcular mensajes no leídos de forma confiable
+ */
+@Entity
+@Table(name = "chat_visits", 
+       uniqueConstraints = @UniqueConstraint(columnNames = {"usuario_id", "partido_id"}),
+       indexes = {
+           @Index(name = "idx_chat_visit_usuario", columnList = "usuario_id"),
+           @Index(name = "idx_chat_visit_partido", columnList = "partido_id")
+       })
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ChatVisit {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_id", nullable = false)
+    private Usuario usuario;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "partido_id", nullable = false)
+    private Partido partido;
+    
+    /**
+     * Última vez que el usuario visitó este chat
+     * Se actualiza cada vez que el usuario abre el chat
+     */
+    @Column(name = "last_visit_at", nullable = false)
+    private LocalDateTime lastVisitAt;
+    
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+    
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+}
