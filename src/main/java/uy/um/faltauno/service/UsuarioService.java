@@ -1048,6 +1048,7 @@ public class UsuarioService {
     
     /**
      * Listar todos los usuarios incluso eliminados (solo para admin)
+     * Usa mapper ligero sin foto base64 para mejor performance
      */
     @Transactional(readOnly = true)
     public List<UsuarioDTO> listarTodosInclusoEliminados() {
@@ -1055,8 +1056,9 @@ public class UsuarioService {
         
         List<Usuario> usuarios = usuarioRepository.findAll();
         
+        // ⚡ OPTIMIZACIÓN: Usar mapper sin foto para listados
         return usuarios.stream()
-                .map(usuarioMapper::toDTO)
+                .map(usuarioMapper::toDTOWithoutPhoto)
                 .collect(Collectors.toList());
     }
     

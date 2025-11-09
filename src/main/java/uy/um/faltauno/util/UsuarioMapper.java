@@ -27,6 +27,18 @@ public interface UsuarioMapper {
     @Mapping(target = "perfilCompleto", ignore = true) // Calculated in DTO getter
     @Mapping(target = "hasFotoPerfil", ignore = true) // Set in @AfterMapping
     UsuarioDTO toDTO(Usuario usuario);
+    
+    /**
+     * DTO ligero para listados (SIN foto en base64 - solo flag hasFotoPerfil)
+     * Usar en endpoints que retornan listas de usuarios
+     */
+    @Mapping(source = "fotoPerfil", target = "fotoPerfil", ignore = true) // NO incluir foto
+    @Mapping(source = "fechaNacimiento", target = "fechaNacimiento", qualifiedByName = "localDateToString")
+    @Mapping(source = "rol", target = "rol")
+    @Mapping(target = "cedulaVerificada", ignore = true)
+    @Mapping(target = "perfilCompleto", ignore = true)
+    @Mapping(target = "hasFotoPerfil", ignore = true) // Set in @AfterMapping
+    UsuarioDTO toDTOWithoutPhoto(Usuario usuario);
 
     /**
      * ⚡ CRÍTICO: Post-procesamiento para setear campos calculados explícitamente
