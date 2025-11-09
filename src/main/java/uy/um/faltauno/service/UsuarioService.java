@@ -1120,10 +1120,13 @@ public class UsuarioService {
         log.warn("[ADMIN] ⚠️ Iniciando eliminación PERMANENTE de usuario {} y TODOS sus datos", usuarioId);
         
         UUID uuid = UUID.fromString(usuarioId);
-        Usuario usuario = usuarioRepository.findById(uuid)
+        // 🔥 IMPORTANTE: Buscar incluyendo soft-deleted para poder eliminar usuarios ya marcados como eliminados
+        Usuario usuario = usuarioRepository.findByIdIncludingDeleted(uuid)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
         
-        log.info("[ADMIN] 📋 Usuario: {} {} ({})", usuario.getNombre(), usuario.getApellido(), usuario.getEmail());
+        log.info("[ADMIN] 📋 Usuario: {} {} ({}) - Soft deleted: {}", 
+                usuario.getNombre(), usuario.getApellido(), usuario.getEmail(), 
+                usuario.getDeletedAt() != null ? "SÍ (" + usuario.getDeletedAt() + ")" : "NO");
         
         // 0️⃣ CONTACTOS
         log.info("[ADMIN] 📇 Eliminando contactos...");

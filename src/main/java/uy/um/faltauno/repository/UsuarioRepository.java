@@ -63,6 +63,13 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
      */
     @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM Usuario u WHERE u.id = :id")
     boolean existsByIdIncludingDeleted(@Param("id") UUID id);
+    
+    /**
+     * 🔥 ADMIN: Buscar usuario por ID incluyendo soft-deleted
+     * Usado para hard delete de usuarios ya eliminados
+     */
+    @Query("SELECT u FROM Usuario u WHERE u.id = :id")
+    Optional<Usuario> findByIdIncludingDeleted(@Param("id") UUID id);
 
     /**
      * Buscar usuarios eliminados hace más de 30 días (para cleanup físico)
