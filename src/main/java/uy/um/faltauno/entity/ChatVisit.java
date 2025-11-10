@@ -2,8 +2,6 @@ package uy.um.faltauno.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -42,11 +40,20 @@ public class ChatVisit {
     @Column(name = "last_visit_at", nullable = false)
     private LocalDateTime lastVisitAt;
     
-    @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     
-    @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

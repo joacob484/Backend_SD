@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import uy.um.faltauno.entity.Mensaje;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -99,7 +100,7 @@ public interface MensajeRepository extends JpaRepository<Mensaje, UUID> {
            "AND m.createdAt > :cutoffTime AND m.remitenteId != :excludeUserId")
     long countByPartidoIdAndCreatedAtAfterAndRemitenteIdNot(
             @Param("partidoId") UUID partidoId,
-            @Param("cutoffTime") java.time.Instant cutoffTime,
+            @Param("cutoffTime") Instant cutoffTime,
             @Param("excludeUserId") UUID excludeUserId);
 }
 ```
