@@ -1,5 +1,6 @@
 package uy.um.faltauno.controller;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,14 +21,11 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/partidos/{partidoId}/mensajes")
 @CrossOrigin(origins = "${FRONTEND_URL:https://faltauno-frontend-169771742214.us-central1.run.app}")
+@RequiredArgsConstructor
 @Slf4j
 public class MensajeController {
 
     private final MensajeService mensajeService;
-    
-    public MensajeController(MensajeService mensajeService) {
-        this.mensajeService = mensajeService;
-    }
 
     /**
      * Obtener mensajes del chat de un partido
