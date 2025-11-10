@@ -335,10 +335,12 @@ public class MensajeService {
         
         // Buscar visita existente o crear nueva
         ChatVisit visit = chatVisitRepository.findByUsuarioAndPartido(usuario, partido)
-                .orElse(ChatVisit.builder()
-                        .usuario(usuario)
-                        .partido(partido)
-                        .build());
+                .orElseGet(() -> {
+                    ChatVisit newVisit = new ChatVisit();
+                    newVisit.setUsuario(usuario);
+                    newVisit.setPartido(partido);
+                    return newVisit;
+                });
         
         // Actualizar timestamp
         visit.setLastVisitAt(LocalDateTime.now());

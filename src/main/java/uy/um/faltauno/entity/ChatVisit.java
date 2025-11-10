@@ -19,7 +19,6 @@ import java.time.LocalDateTime;
            @Index(name = "idx_chat_visit_partido", columnList = "partido_id")
        })
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChatVisit {
