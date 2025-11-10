@@ -24,9 +24,7 @@ import uy.um.faltauno.repository.ChatVisitRepository;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,6 +41,7 @@ public class MensajeService {
 
     /**
      * Obtener mensajes del chat de un partido
+     * OPTIMIZADO: Carga usuarios en batch para evitar N+1 queries
      */
     @Transactional(readOnly = true)
     public List<MensajeDTO> obtenerMensajesPartido(UUID partidoId, int limit, Authentication auth) {
@@ -63,9 +62,17 @@ public class MensajeService {
 
         log.debug("[MensajeService] ✅ Encontrados {} mensajes", mensajes.size());
 
-        // Convertir a DTO e invertir orden
+        // OPTIMIZACIÓN: Cargar todos los usuarios en una sola query
+        Set<UUID> usuarioIds = mensajes.stream()
+                .map(Mensaje::getRemitenteId)
+                .collect(Collectors.toSet());
+        
+        Map<UUID, Usuario> usuariosMap = usuarioRepository.findAllById(usuarioIds).stream()
+                .collect(Collectors.toMap(Usuario::getId, u -> u));
+
+        // Convertir a DTO usando el mapa de usuarios (evita N+1)
         List<MensajeDTO> mensajesDTO = mensajes.stream()
-                .map(this::convertirADTO)
+                .map(mensaje -> convertirADTOConUsuario(mensaje, usuariosMap))
                 .collect(Collectors.toList());
         
         Collections.reverse(mensajesDTO); // Más antiguos primero
@@ -219,6 +226,7 @@ public class MensajeService {
 
     /**
      * Validar que el usuario tenga acceso al chat del partido
+     * OPTIMIZADO: Query directa en vez de cargar todas las inscripciones
      */
     private void validarAccesoChat(Partido partido, UUID userId) {
         log.debug("[MensajeService] Validando acceso: partidoId={}, userId={}, organizadorId={}", 
@@ -230,29 +238,20 @@ public class MensajeService {
             return;
         }
 
-        // Verificar inscripción (con la nueva arquitectura, todos en inscripcion están aceptados)
-        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(partido.getId());
-        log.debug("[MensajeService] Total inscripciones encontradas: {}", inscripciones.size());
-        
-        // Log de cada inscripción para debug
-        inscripciones.forEach(i -> 
-            log.debug("[MensajeService] Inscripción: usuarioId={}", 
-                    i.getUsuario().getId())
-        );
-        
-        boolean estaInscrito = inscripciones.stream()
-                .anyMatch(i -> i.getUsuario().getId().equals(userId));
+        // OPTIMIZACIÓN: Query directa EXISTS en vez de cargar todas las inscripciones
+        boolean estaInscrito = inscripcionRepository.existeInscripcion(partido.getId(), userId);
 
         if (!estaInscrito) {
-            log.warn("[MensajeService] ❌ Acceso denegado: usuario no inscrito o no aceptado. UserId buscado: {}", userId);
+            log.warn("[MensajeService] ❌ Acceso denegado: usuario no inscrito. UserId: {}", userId);
             throw new SecurityException("No tienes acceso al chat de este partido");
         }
         
-        log.debug("[MensajeService] ✅ Acceso concedido: usuario inscrito y aceptado");
+        log.debug("[MensajeService] ✅ Acceso concedido: usuario inscrito");
     }
 
     /**
      * Convertir Mensaje a MensajeDTO
+     * DEPRECATED: Usar convertirADTOConUsuario para evitar N+1
      */
     private MensajeDTO convertirADTO(Mensaje mensaje) {
         MensajeDTO dto = MensajeDTO.builder()
@@ -286,6 +285,43 @@ public class MensajeService {
             }
         } catch (Exception e) {
             log.warn("[MensajeService] Error cargando usuario del mensaje: {}", e.getMessage());
+        }
+
+        return dto;
+    }
+
+    /**
+     * Convertir Mensaje a MensajeDTO usando mapa de usuarios precargados
+     * OPTIMIZADO: Evita N+1 query problem
+     */
+    private MensajeDTO convertirADTOConUsuario(Mensaje mensaje, Map<UUID, Usuario> usuariosMap) {
+        MensajeDTO dto = MensajeDTO.builder()
+                .id(mensaje.getId())
+                .usuarioId(mensaje.getRemitenteId())
+                .partidoId(mensaje.getPartidoId())
+                .contenido(mensaje.getContenido())
+                .createdAt(mensaje.getCreatedAt())
+                .leido(mensaje.getLeido())
+                .build();
+
+        // Cargar información del remitente desde el mapa (sin query adicional)
+        Usuario usuario = usuariosMap.get(mensaje.getRemitenteId());
+        if (usuario != null) {
+            String fotoPerfil = null;
+            if (usuario.getFotoPerfil() != null) {
+                try {
+                    fotoPerfil = java.util.Base64.getEncoder().encodeToString(usuario.getFotoPerfil());
+                } catch (Exception ex) {
+                    log.warn("[MensajeService] Error encoding foto: {}", ex.getMessage());
+                }
+            }
+            UsuarioMinDTO usuarioMin = new UsuarioMinDTO(
+                usuario.getId(),
+                usuario.getNombre(),
+                usuario.getApellido(),
+                fotoPerfil
+            );
+            dto.setUsuario(usuarioMin);
         }
 
         return dto;
