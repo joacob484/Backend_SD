@@ -8,6 +8,7 @@ import uy.um.faltauno.entity.ChatVisit;
 import uy.um.faltauno.entity.Partido;
 import uy.um.faltauno.entity.Usuario;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,4 +28,16 @@ public interface ChatVisitRepository extends JpaRepository<ChatVisit, Long> {
         @Param("usuarioId") UUID usuarioId, 
         @Param("partidoId") UUID partidoId
     );
+    
+    /**
+     * Encuentra todas las visitas de chat de un usuario
+     */
+    @Query("SELECT cv FROM ChatVisit cv WHERE cv.usuario.id = :usuarioId")
+    List<ChatVisit> findByUsuarioId(@Param("usuarioId") UUID usuarioId);
+    
+    /**
+     * Encuentra todas las visitas de chat de un partido
+     */
+    @Query("SELECT cv FROM ChatVisit cv WHERE cv.partido.id = :partidoId")
+    List<ChatVisit> findByPartidoId(@Param("partidoId") UUID partidoId);
 }

@@ -17,6 +17,7 @@ import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.util.UsuarioMapper;
 import uy.um.faltauno.entity.Amistad;
+import uy.um.faltauno.entity.ChatVisit;
 import uy.um.faltauno.entity.Contacto;
 import uy.um.faltauno.entity.Inscripcion;
 import uy.um.faltauno.entity.Mensaje;
@@ -27,6 +28,7 @@ import uy.um.faltauno.entity.Review;
 import uy.um.faltauno.entity.SolicitudPartido;
 import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.repository.AmistadRepository;
+import uy.um.faltauno.repository.ChatVisitRepository;
 import uy.um.faltauno.repository.ContactoRepository;
 import uy.um.faltauno.repository.InscripcionRepository;
 import uy.um.faltauno.repository.MensajeRepository;
@@ -62,6 +64,7 @@ public class UsuarioService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final SolicitudPartidoRepository solicitudPartidoRepository;
     private final NotificacionRepository notificacionRepository;
+    private final ChatVisitRepository chatVisitRepository;
 
     /**
      * Encuentra el ID de un usuario por email SIN cargar LOBs.
@@ -1176,6 +1179,12 @@ public class UsuarioService {
         log.info("[ADMIN]   → {} notificaciones", notificaciones.size());
         notificacionRepository.deleteAll(notificaciones);
         
+        // 2.5️⃣ CHAT VISITS
+        log.info("[ADMIN] 👁️ Eliminando visitas de chat...");
+        List<ChatVisit> chatVisits = chatVisitRepository.findByUsuarioId(uuid);
+        log.info("[ADMIN]   → {} visitas de chat", chatVisits.size());
+        chatVisitRepository.deleteAll(chatVisits);
+        
         // 3️⃣ SOLICITUDES DE PARTIDO
         log.info("[ADMIN] 📋 Eliminando solicitudes de partido...");
         List<SolicitudPartido> solicitudes = solicitudPartidoRepository.findByUsuarioId(uuid);
@@ -1239,6 +1248,14 @@ public class UsuarioService {
                     log.info("[ADMIN]     → Eliminando {} inscripciones del partido {}", 
                             inscripcionesPartido.size(), partido.getId());
                     inscripcionRepository.deleteAll(inscripcionesPartido);
+                }
+                
+                // Eliminar visitas de chat del partido
+                List<ChatVisit> chatVisitsPartido = chatVisitRepository.findByPartidoId(partido.getId());
+                if (!chatVisitsPartido.isEmpty()) {
+                    log.info("[ADMIN]     → Eliminando {} visitas de chat del partido {}", 
+                            chatVisitsPartido.size(), partido.getId());
+                    chatVisitRepository.deleteAll(chatVisitsPartido);
                 }
                 
                 // Eliminar reviews del partido
