@@ -301,6 +301,11 @@ public class EmailService {
      * Construir email de bienvenida
      */
     private String construirEmailBienvenida(Usuario usuario) {
+        // Usar nombre si está disponible, sino usar la parte del email antes del @
+        String nombreDisplay = (usuario.getNombre() != null && !usuario.getNombre().isBlank())
+                ? usuario.getNombre()
+                : usuario.getEmail().split("@")[0];
+        
         return """
             <!DOCTYPE html>
             <html lang="es">
@@ -379,7 +384,7 @@ public class EmailService {
                 </table>
             </body>
             </html>
-            """.formatted(frontendUrl, usuario.getNombre(), frontendUrl, frontendUrl, frontendUrl, frontendUrl);
+            """.formatted(frontendUrl, nombreDisplay, frontendUrl, frontendUrl, frontendUrl, frontendUrl);
     }
 
     /**
