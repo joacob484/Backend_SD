@@ -82,6 +82,8 @@ public class VerificationController {
             String email = request.get("email");
             String codigo = request.get("code");
 
+            log.info("[VerificationController] 📧 Iniciando verificación para email: {}", email);
+
             if (email == null || email.isBlank()) {
                 return ResponseEntity.badRequest()
                         .body(new ApiResponse<>(null, "Email requerido", false));
@@ -92,7 +94,9 @@ public class VerificationController {
                         .body(new ApiResponse<>(null, "Código requerido", false));
             }
 
+            log.info("[VerificationController] 🔍 Verificando código...");
             PendingRegistration preRegistro = verificationService.verificarCodigo(email, codigo.trim());
+            log.info("[VerificationController] ✅ Código verificado correctamente");
 
         // ===== NEW: Crear o actualizar usuario automáticamente para evitar que el
         // frontend deba llamar a otro endpoint si saltó el paso de "complete-register".
@@ -106,17 +110,24 @@ public class VerificationController {
         profileDto.setFechaNacimiento(request.get("fechaNacimiento"));
         profileDto.setCelular(request.get("celular"));
 
+        log.info("[VerificationController] 👤 Creando/actualizando usuario...");
         // Crear o actualizar usuario
         uy.um.faltauno.entity.Usuario usuario = 
             usuarioService.createOrUpdateUserAfterVerification(preRegistro.getEmail(), preRegistro.getPasswordHash(), profileDto);
+        log.info("[VerificationController] ✅ Usuario creado/actualizado: ID={}", usuario.getId());
 
+        log.info("[VerificationController] 🔑 Generando token JWT...");
         // Generar token JWT
         uy.um.faltauno.entity.Usuario usuarioEntity = usuarioService.findUsuarioEntityById(usuario.getId());
         String token = jwtUtil.generateToken(usuarioEntity.getId(), usuarioEntity.getEmail(), usuarioEntity.getTokenVersion(), usuarioEntity.getRol());
+        log.info("[VerificationController] ✅ Token generado");
 
+        log.info("[VerificationController] 🧹 Limpiando pre-registro...");
         // Limpiar pre-registro
         verificationService.limpiarPreRegistro(email);
+        log.info("[VerificationController] ✅ Pre-registro limpiado");
 
+        log.info("[VerificationController] 📦 Preparando respuesta...");
         // Preparar DTO para respuesta
         uy.um.faltauno.dto.UsuarioDTO usuarioDto = usuarioService.getUsuario(usuarioEntity.getId());
 

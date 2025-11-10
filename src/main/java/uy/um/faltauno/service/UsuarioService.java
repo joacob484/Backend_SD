@@ -147,7 +147,17 @@ public class UsuarioService {
             throw new IllegalArgumentException("Email y password son requeridos");
         }
 
-        if (usuarioRepository.existsByEmail(dto.getEmail())) {
+        // 🔒 PROTECCIÓN: Si viene de verificación (emailVerified=true) y ya existe, retornar el existente
+        if (dto.getEmailVerified() != null && dto.getEmailVerified()) {
+            Usuario existing = usuarioRepository.findByEmail(dto.getEmail()).orElse(null);
+            if (existing != null) {
+                log.warn("[UsuarioService] ⚠️ Usuario ya existe al crear desde verificación: {} - Retornando existente", dto.getEmail());
+                UsuarioDTO out = usuarioMapper.toDTO(existing);
+                out.setPassword(null);
+                return out;
+            }
+        } else if (usuarioRepository.existsByEmail(dto.getEmail())) {
+            // Solo lanzar error si NO viene de verificación
             throw new IllegalArgumentException("El email ya está registrado");
         }
 
@@ -610,6 +620,8 @@ public class UsuarioService {
      */
     @Transactional
     public Usuario createOrUpdateUserAfterVerification(String email, String passwordHash, UsuarioDTO profileDto) {
+        log.info("[UsuarioService] createOrUpdateUserAfterVerification - Iniciando para email: {}", email);
+        
         Usuario existing = usuarioRepository.findByEmail(email).orElse(null);
 
         if (existing != null) {
@@ -645,6 +657,32 @@ public class UsuarioService {
 
         // No existía: crear nuevo usuario mínimo usando el DTO de perfil y el passwordHash
         log.info("[UsuarioService] createOrUpdateUserAfterVerification - Usuario NO existe: {} -> creando nuevo usuario", email);
+        
+        // 🔒 PROTECCIÓN: Verificar una vez más por si hubo race condition
+        Usuario raceCheck = usuarioRepository.findByEmail(email).orElse(null);
+        if (raceCheck != null) {
+            log.warn("[UsuarioService] ⚠️ Race condition detectada - usuario creado entre verificaciones. Actualizando en su lugar.");
+            raceCheck.setEmailVerified(true);
+            if (raceCheck.getPassword() == null && passwordHash != null) {
+                raceCheck.setPassword(passwordHash);
+            }
+            if (profileDto != null) {
+                if (profileDto.getNombre() != null) raceCheck.setNombre(profileDto.getNombre());
+                if (profileDto.getApellido() != null) raceCheck.setApellido(profileDto.getApellido());
+                if (profileDto.getCelular() != null) raceCheck.setCelular(profileDto.getCelular());
+                if (profileDto.getFechaNacimiento() != null) {
+                    try {
+                        raceCheck.setFechaNacimiento(LocalDate.parse(profileDto.getFechaNacimiento(), UsuarioMapper.FORMATTER));
+                    } catch (Exception e) {
+                        log.warn("[UsuarioService] Fecha inválida: {}", profileDto.getFechaNacimiento());
+                    }
+                }
+            }
+            usuarioRepository.save(raceCheck);
+            usuarioRepository.flush();
+            return raceCheck;
+        }
+        
         UsuarioDTO dto = new UsuarioDTO();
         dto.setEmail(email);
         dto.setPassword(passwordHash);
