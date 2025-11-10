@@ -195,13 +195,8 @@ public class UsuarioService {
         log.info("[UsuarioService] 🔍 createUsuario - Usuario guardado. Foto en BD: {}", 
             usuario.getFotoPerfil() != null ? "SÍ (" + usuario.getFotoPerfil().length + " bytes)" : "NO");
 
-        // Enviar email de bienvenida de forma asíncrona
-        try {
-            emailService.enviarEmailBienvenida(usuario);
-        } catch (Exception e) {
-            // No fallar el registro si el email falla
-            // El log se maneja en EmailService
-        }
+        // ⏸️ NO enviar email de bienvenida aquí - se enviará después de completar perfil (teléfono + datos)
+        log.info("[UsuarioService] ⏸️ Email de bienvenida pendiente - se enviará al completar perfil");
 
         UsuarioDTO out = usuarioMapper.toDTO(usuario);
         
@@ -255,6 +250,15 @@ public class UsuarioService {
     public Usuario actualizarPerfil(UUID usuarioId, PerfilDTO perfilDTO) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+
+        // 🎯 DETECTAR SI ES PRIMERA VEZ COMPLETANDO PERFIL (celular es el último paso)
+        boolean esPrimeraVezCompletandoPerfil = (usuario.getCelular() == null || usuario.getCelular().isBlank()) 
+                                                 && perfilDTO.getCelular() != null 
+                                                 && !perfilDTO.getCelular().isBlank();
+        
+        if (esPrimeraVezCompletandoPerfil) {
+            log.info("[UsuarioService] 🎉 Primera vez completando perfil para: {} {}", usuario.getNombre(), usuario.getEmail());
+        }
 
         // ✅ Validaciones de campos
         if (perfilDTO.getNombre() != null && perfilDTO.getNombre().length() > 100) {
@@ -367,6 +371,18 @@ public class UsuarioService {
     Usuario saved = usuarioRepository.save(usuario);
     // Forzar flush para visibilidad inmediata en lecturas subsecuentes
     usuarioRepository.flush();
+    
+    // 📧 ENVIAR EMAIL DE BIENVENIDA si es la primera vez que completa el perfil
+    if (esPrimeraVezCompletandoPerfil) {
+        try {
+            log.info("[UsuarioService] 📧 Enviando email de bienvenida a {} (perfil completado por primera vez)", usuario.getEmail());
+            emailService.enviarEmailBienvenida(saved);
+        } catch (Exception e) {
+            log.error("[UsuarioService] ❌ Error enviando email de bienvenida (no crítico): {}", e.getMessage());
+            // No fallar la actualización si el email falla
+        }
+    }
+    
     return saved;
     }
 

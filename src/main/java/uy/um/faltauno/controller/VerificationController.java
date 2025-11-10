@@ -130,7 +130,7 @@ public class VerificationController {
             .body(new ApiResponse<>(responseData, "Email verificado y usuario creado/actualizado", true));
 
         } catch (IllegalArgumentException | IllegalStateException e) {
-            log.error("[VerificationController] Error de validación", e);
+            log.error("[VerificationController] Error de validación: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ApiResponse<>(
                             Map.of("verified", false),
@@ -139,9 +139,10 @@ public class VerificationController {
                     ));
                     
         } catch (Exception e) {
-            log.error("[VerificationController] Error verificando código", e);
+            log.error("[VerificationController] ❌ Error inesperado verificando código - Tipo: {} | Mensaje: {}", 
+                    e.getClass().getName(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(null, "Error al verificar el código", false));
+                    .body(new ApiResponse<>(null, "Error al verificar el código: " + e.getMessage(), false));
         }
     }
 
