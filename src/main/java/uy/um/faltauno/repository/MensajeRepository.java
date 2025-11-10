@@ -103,4 +103,3 @@ public interface MensajeRepository extends JpaRepository<Mensaje, UUID> {
             @Param("cutoffTime") Instant cutoffTime,
             @Param("excludeUserId") UUID excludeUserId);
 }
-```
