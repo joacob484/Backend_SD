@@ -1357,6 +1357,18 @@ public class UsuarioService {
             partidoRepository.deleteAll(partidosOrganizados);
         }
         
+        // 8.5️⃣ LIMPIAR REFERENCIAS DE BANNED_BY
+        // Si este usuario baneó a otros, quitar la referencia
+        log.info("[ADMIN] 🔗 Limpiando referencias de banned_by...");
+        List<Usuario> usuariosBaneadosPorEste = usuarioRepository.findAll().stream()
+            .filter(u -> u.getBannedBy() != null && u.getBannedBy().equals(uuid))
+            .collect(Collectors.toList());
+        log.info("[ADMIN]   → {} usuarios baneados por este admin", usuariosBaneadosPorEste.size());
+        if (!usuariosBaneadosPorEste.isEmpty()) {
+            usuariosBaneadosPorEste.forEach(u -> u.setBannedBy(null));
+            usuarioRepository.saveAll(usuariosBaneadosPorEste);
+        }
+        
         // 9️⃣ USUARIO
         log.warn("[ADMIN] 🗑️ Eliminando usuario {} DEFINITIVAMENTE", usuarioId);
         usuarioRepository.delete(usuario);
