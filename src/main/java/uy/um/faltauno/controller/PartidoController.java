@@ -3,6 +3,7 @@ package uy.um.faltauno.controller;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -21,6 +22,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RestController
@@ -65,18 +67,23 @@ public class PartidoController {
 
     /**
      * Obtener un partido por ID con toda su información
+     * ⚡ OPTIMIZADO: Caché HTTP de 10 segundos para reducir carga del servidor
      */
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<PartidoDTO>> obtenerPorId(@PathVariable("id") UUID id) {
         try {
             PartidoDTO partido = partidoService.obtenerPartidoCompleto(id);
-            return ResponseEntity.ok(new ApiResponse<>(partido, "Partido encontrado", true));
-        } catch (NoSuchElementException e) { // o EntityNotFoundException si prefieres
+            
+            // ⚡ Headers de caché para reducir carga
+            return ResponseEntity.ok()
+                    .cacheControl(CacheControl.maxAge(10, TimeUnit.SECONDS).cachePrivate())
+                    .body(new ApiResponse<>(partido, "Partido encontrado", true));
+        } catch (NoSuchElementException e) {
             log.warn("Partido no encontrado: {}", id);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new ApiResponse<>(null, "Partido no encontrado", false));
         } catch (Exception e) {
-            log.error("Error obteniendo partido {}", id, e); // <-- log con stacktrace
+            log.error("Error obteniendo partido {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(null, "Error al obtener el partido", false));
         }

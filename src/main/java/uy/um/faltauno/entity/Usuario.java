@@ -101,6 +101,32 @@ public class Usuario {
     private LocalDateTime verificationCodeExpiresAt;
 
     /**
+     * Indicador de si el celular ha sido verificado
+     */
+    @Column(name = "celular_verificado", nullable = false)
+    @Builder.Default
+    private Boolean celularVerificado = false;
+
+    /**
+     * Código de verificación de celular (6 dígitos)
+     */
+    @Column(name = "codigo_verificacion", length = 6)
+    private String codigoVerificacion;
+
+    /**
+     * Fecha de expiración del código de verificación de celular
+     */
+    @Column(name = "codigo_verificacion_expira")
+    private LocalDateTime codigoVerificacionExpira;
+
+    /**
+     * Contador de intentos fallidos de verificación de celular (máx 3)
+     */
+    @Column(name = "codigo_verificacion_intentos", nullable = false)
+    @Builder.Default
+    private Integer codigoVerificacionIntentos = 0;
+
+    /**
      * Última actividad del usuario (actualizada en cada request autenticado)
      * Permite calcular "Usuarios activos ahora" en tiempo real
      */
