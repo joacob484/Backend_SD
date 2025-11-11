@@ -10,8 +10,16 @@ ADD COLUMN IF NOT EXISTS banned_by UUID;
 CREATE INDEX IF NOT EXISTS idx_usuario_banned_at ON usuario(banned_at) WHERE banned_at IS NOT NULL;
 
 -- Add foreign key for banned_by (references another user - the admin who banned)
-ALTER TABLE usuario
-ADD CONSTRAINT fk_usuario_banned_by FOREIGN KEY (banned_by) REFERENCES usuario(id);
+-- Note: PostgreSQL doesn't support IF NOT EXISTS for constraints, so we check first
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_usuario_banned_by'
+    ) THEN
+        ALTER TABLE usuario
+        ADD CONSTRAINT fk_usuario_banned_by FOREIGN KEY (banned_by) REFERENCES usuario(id);
+    END IF;
+END $$;
 
 COMMENT ON COLUMN usuario.banned_at IS 'Timestamp when user was banned, NULL if not banned';
 COMMENT ON COLUMN usuario.ban_reason IS 'Reason provided by admin for banning this user';
