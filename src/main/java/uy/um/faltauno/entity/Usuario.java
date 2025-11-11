@@ -130,6 +130,12 @@ public class Usuario {
     private String banReason;
 
     /**
+     * Fecha hasta la cual el usuario está baneado (NULL = baneo permanente)
+     */
+    @Column(name = "ban_until")
+    private LocalDateTime banUntil;
+
+    /**
      * Admin que realizó el baneo
      */
     @Column(name = "banned_by")

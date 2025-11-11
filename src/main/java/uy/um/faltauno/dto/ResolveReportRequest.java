@@ -28,4 +28,10 @@ public class ResolveReportRequest {
      * Razón del baneo (si banUser = true)
      */
     private String banReason;
+    
+    /**
+     * Duración del baneo en días (si banUser = true)
+     * null o 0 = permanente
+     */
+    private Integer banDuration;
 }

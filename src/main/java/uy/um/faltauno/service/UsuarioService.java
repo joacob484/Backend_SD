@@ -1372,8 +1372,8 @@ public class UsuarioService {
      */
     @Transactional
     @CacheEvict(value = "usuarios", key = "#usuarioId")
-    public UsuarioDTO banUser(String usuarioId, String adminId, String reason) {
-        log.warn("[ADMIN] Usuario {} baneando a usuario {}", adminId, usuarioId);
+    public UsuarioDTO banUser(String usuarioId, String adminId, String reason, Integer durationDays) {
+        log.warn("[ADMIN] Usuario {} baneando a usuario {} por {} días", adminId, usuarioId, durationDays);
         
         UUID uuid = UUID.fromString(usuarioId);
         UUID adminUuid = UUID.fromString(adminId);
@@ -1386,9 +1386,19 @@ public class UsuarioService {
             throw new IllegalStateException("El usuario ya está baneado");
         }
         
-        usuario.setBannedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        usuario.setBannedAt(now);
         usuario.setBanReason(reason);
         usuario.setBannedBy(adminUuid);
+        
+        // Si durationDays es null o 0 = baneo permanente
+        if (durationDays != null && durationDays > 0) {
+            usuario.setBanUntil(now.plusDays(durationDays));
+            log.warn("[ADMIN] Baneo temporal: {} días, hasta {}", durationDays, usuario.getBanUntil());
+        } else {
+            usuario.setBanUntil(null); // Baneo permanente
+            log.warn("[ADMIN] Baneo PERMANENTE");
+        }
         
         // Incrementar token version para invalidar sesiones activas
         usuario.setTokenVersion(usuario.getTokenVersion() + 1);
@@ -1420,6 +1430,7 @@ public class UsuarioService {
         
         usuario.setBannedAt(null);
         usuario.setBanReason(null);
+        usuario.setBanUntil(null);
         usuario.setBannedBy(null);
         
         usuarioRepository.save(usuario);
@@ -1430,13 +1441,30 @@ public class UsuarioService {
     }
     
     /**
-     * Verificar si un usuario está baneado
+     * Verificar si un usuario está baneado (y desbanear si el baneo temporal ha expirado)
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public boolean isUserBanned(String usuarioId) {
         UUID uuid = UUID.fromString(usuarioId);
         return usuarioRepository.findByIdIncludingDeleted(uuid)
-                .map(u -> u.getBannedAt() != null)
+                .map(u -> {
+                    if (u.getBannedAt() == null) {
+                        return false; // No está baneado
+                    }
+                    
+                    // Si tiene banUntil y ya expiró, desbanear automáticamente
+                    if (u.getBanUntil() != null && LocalDateTime.now().isAfter(u.getBanUntil())) {
+                        log.info("[AUTO-UNBAN] Usuario {} desbaneado automáticamente (baneo temporal expirado)", usuarioId);
+                        u.setBannedAt(null);
+                        u.setBanReason(null);
+                        u.setBanUntil(null);
+                        u.setBannedBy(null);
+                        usuarioRepository.save(u);
+                        return false;
+                    }
+                    
+                    return true; // Sigue baneado
+                })
                 .orElse(false);
     }
 }

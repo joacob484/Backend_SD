@@ -54,6 +54,7 @@ public class UsuarioDTO {
     // Ban information
     private String bannedAt;
     private String banReason;
+    private String banUntil;
     private String bannedBy;
     
     // Activity tracking

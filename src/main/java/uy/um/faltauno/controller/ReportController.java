@@ -178,7 +178,10 @@ public class ReportController {
                 String banReason = request.getBanReason() != null ? 
                         request.getBanReason() : "Reportado por: " + report.getReason().getDisplayName();
                 
-                usuarioService.banUser(report.getReportedUser().getId(), admin.getId().toString(), banReason);
+                // Baneo de 7 días por defecto para reportes
+                Integer banDays = 7;
+                
+                usuarioService.banUser(report.getReportedUser().getId(), admin.getId().toString(), banReason, banDays);
             }
             
             ReportDTO resolvedReport = reportService.resolveReport(id, admin.getId().toString(), request);

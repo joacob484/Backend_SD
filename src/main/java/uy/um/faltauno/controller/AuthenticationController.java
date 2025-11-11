@@ -111,23 +111,35 @@ public class AuthenticationController {
             HttpSession session = request.getSession(true);
             log.info("Login JSON exitoso para {}, session={}", req.email(), session != null ? session.getId() : "null");
 
-            // 🚫 CHECK: Verificar si el usuario está baneado
+            // 🚫 CHECK: Verificar si el usuario está baneado (auto-desbanea si es temporal y expiró)
             if (existingUser.getBannedAt() != null) {
-                log.warn("[AuthenticationController] ⛔ Usuario {} está BANEADO. Razón: {}", 
-                        req.email(), existingUser.getBanReason());
-                
-                SecurityContextHolder.clearContext();
-                if (session != null) session.invalidate();
-                
-                Map<String, Object> banInfo = new HashMap<>();
-                banInfo.put("errorCode", "USER_BANNED");
-                banInfo.put("bannedAt", existingUser.getBannedAt().toString());
-                banInfo.put("reason", existingUser.getBanReason() != null ? existingUser.getBanReason() : "Violación de términos de servicio");
-                
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(new ApiResponse<>(banInfo, 
-                                "Tu cuenta ha sido suspendida. " + (existingUser.getBanReason() != null ? existingUser.getBanReason() : ""), 
-                                false));
+                // Verificar si el baneo temporal ha expirado
+                if (existingUser.getBanUntil() != null && java.time.LocalDateTime.now().isAfter(existingUser.getBanUntil())) {
+                    log.info("[AuthenticationController] 🔓 Baneo temporal de {} ha expirado, desbaneando automáticamente", req.email());
+                    usuarioService.unbanUser(existingUser.getId().toString(), "SYSTEM");
+                } else {
+                    log.warn("[AuthenticationController] ⛔ Usuario {} está BANEADO. Razón: {}", 
+                            req.email(), existingUser.getBanReason());
+                    
+                    SecurityContextHolder.clearContext();
+                    if (session != null) session.invalidate();
+                    
+                    Map<String, Object> banInfo = new HashMap<>();
+                    banInfo.put("errorCode", "USER_BANNED");
+                    banInfo.put("bannedAt", existingUser.getBannedAt().toString());
+                    banInfo.put("banUntil", existingUser.getBanUntil() != null ? existingUser.getBanUntil().toString() : null);
+                    banInfo.put("isPermanent", existingUser.getBanUntil() == null);
+                    banInfo.put("reason", existingUser.getBanReason() != null ? existingUser.getBanReason() : "Violación de términos de servicio");
+                    
+                    String banMessage = existingUser.getBanUntil() != null ? 
+                            "Tu cuenta ha sido suspendida temporalmente hasta " + existingUser.getBanUntil() + ". " :
+                            "Tu cuenta ha sido suspendida permanentemente. ";
+                    
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(new ApiResponse<>(banInfo, 
+                                    banMessage + (existingUser.getBanReason() != null ? existingUser.getBanReason() : ""), 
+                                    false));
+                }
             }
 
             UsuarioDTO dto = usuarioService.getUsuario(existingUser.getId());

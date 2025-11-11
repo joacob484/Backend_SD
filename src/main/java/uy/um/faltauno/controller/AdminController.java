@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import uy.um.faltauno.dto.ApiResponse;
+import uy.um.faltauno.dto.BanRequest;
 import uy.um.faltauno.dto.PartidoDTO;
 import uy.um.faltauno.dto.ReportDTO;
 import uy.um.faltauno.dto.ResolveReportRequest;
@@ -105,7 +106,10 @@ public class AdminController {
                 String banReason = request.getBanReason() != null ? 
                         request.getBanReason() : "Reportado por: " + report.getReason().getDisplayName();
                 
-                usuarioService.banUser(report.getReportedUser().getId(), admin.getId().toString(), banReason);
+                // Baneo de 7 días por defecto para reportes (configurable)
+                Integer banDays = request.getBanDuration() != null ? request.getBanDuration() : 7;
+                
+                usuarioService.banUser(report.getReportedUser().getId(), admin.getId().toString(), banReason, banDays);
             }
             
             ReportDTO resolvedReport = reportService.resolveReport(id, admin.getId().toString(), request);
@@ -324,17 +328,21 @@ public class AdminController {
     public ResponseEntity<ApiResponse<UsuarioDTO>> banUser(
             @AuthenticationPrincipal Usuario admin,
             @PathVariable String id,
-            @RequestBody Map<String, String> request) {
+            @RequestBody BanRequest request) {
         try {
-            String reason = request.getOrDefault("reason", "Sin razón especificada");
+            String reason = request.getReason() != null ? request.getReason() : "Sin razón especificada";
+            Integer durationDays = request.getDurationDays();
             
-            log.warn("[ADMIN] {} baneando usuario {}", admin.getEmail(), id);
+            log.warn("[ADMIN] {} baneando usuario {} - Razón: {}, Duración: {} días", 
+                    admin.getEmail(), id, reason, durationDays != null ? durationDays : "PERMANENTE");
             
-            UsuarioDTO usuario = usuarioService.banUser(id, admin.getId().toString(), reason);
+            UsuarioDTO usuario = usuarioService.banUser(id, admin.getId().toString(), reason, durationDays);
             
-            return ResponseEntity.ok(new ApiResponse<>(usuario, 
-                    "Usuario baneado correctamente", 
-                    true));
+            String message = durationDays != null && durationDays > 0 ? 
+                    String.format("Usuario baneado por %d días", durationDays) :
+                    "Usuario baneado permanentemente";
+            
+            return ResponseEntity.ok(new ApiResponse<>(usuario, message, true));
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest()
                     .body(new ApiResponse<>(null, e.getMessage(), false));
