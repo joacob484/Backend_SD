@@ -24,6 +24,7 @@ import uy.um.faltauno.entity.Mensaje;
 import uy.um.faltauno.entity.Notificacion;
 import uy.um.faltauno.entity.Partido;
 import uy.um.faltauno.entity.PasswordResetToken;
+import uy.um.faltauno.entity.Report;
 import uy.um.faltauno.entity.Review;
 import uy.um.faltauno.entity.SolicitudPartido;
 import uy.um.faltauno.entity.Usuario;
@@ -35,6 +36,7 @@ import uy.um.faltauno.repository.MensajeRepository;
 import uy.um.faltauno.repository.NotificacionRepository;
 import uy.um.faltauno.repository.PartidoRepository;
 import uy.um.faltauno.repository.PasswordResetTokenRepository;
+import uy.um.faltauno.repository.ReportRepository;
 import uy.um.faltauno.repository.ReviewRepository;
 import uy.um.faltauno.repository.SolicitudPartidoRepository;
 import uy.um.faltauno.repository.UsuarioRepository;
@@ -65,6 +67,7 @@ public class UsuarioService {
     private final SolicitudPartidoRepository solicitudPartidoRepository;
     private final NotificacionRepository notificacionRepository;
     private final ChatVisitRepository chatVisitRepository;
+    private final ReportRepository reportRepository;
 
     /**
      * Encuentra el ID de un usuario por email SIN cargar LOBs.
@@ -1298,6 +1301,18 @@ public class UsuarioService {
         log.info("[ADMIN]   → {} inscripciones", inscripciones.size());
         if (!inscripciones.isEmpty()) {
             inscripcionRepository.deleteAll(inscripciones);
+        }
+        
+        // 7.5️⃣ REPORTES (hechos o recibidos)
+        log.info("[ADMIN] 🚩 Eliminando reportes...");
+        List<Report> reportesHechos = reportRepository.findByReporterId(uuid);
+        List<Report> reportesRecibidos = reportRepository.findByReportedUserId(uuid);
+        int totalReportes = reportesHechos.size() + reportesRecibidos.size();
+        log.info("[ADMIN]   → {} reportes ({} hechos, {} recibidos)", 
+                totalReportes, reportesHechos.size(), reportesRecibidos.size());
+        if (totalReportes > 0) {
+            reportRepository.deleteAll(reportesHechos);
+            reportRepository.deleteAll(reportesRecibidos);
         }
         
         // 8️⃣ PARTIDOS ORGANIZADOS
