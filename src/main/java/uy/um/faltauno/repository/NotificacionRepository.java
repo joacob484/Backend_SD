@@ -66,6 +66,20 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, UUID
     int marcarTodasComoLeidas(@Param("usuarioId") UUID usuarioId, @Param("fecha") Instant fecha);
 
     /**
+     * Marcar notificaciones de inscripción relacionadas a un partido como leídas
+     * Incluye: NUEVA_SOLICITUD, INSCRIPCION_ACEPTADA, INSCRIPCION_RECHAZADA, JUGADOR_UNIDO, JUGADOR_SALIO
+     */
+    @Modifying
+    @Query("UPDATE Notificacion n SET n.leida = true, n.fechaLectura = :fecha " +
+           "WHERE n.usuarioId = :usuarioId AND n.entidadId = :partidoId AND n.leida = false " +
+           "AND n.tipo IN ('NUEVA_SOLICITUD', 'INSCRIPCION_ACEPTADA', 'INSCRIPCION_RECHAZADA', 'JUGADOR_UNIDO', 'JUGADOR_SALIO')")
+    int marcarNotificacionesInscripcionComoLeidas(
+        @Param("usuarioId") UUID usuarioId, 
+        @Param("partidoId") UUID partidoId, 
+        @Param("fecha") Instant fecha
+    );
+
+    /**
      * Eliminar notificaciones antiguas (más de X días)
      */
     @Modifying

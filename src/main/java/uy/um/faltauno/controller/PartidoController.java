@@ -14,6 +14,7 @@ import uy.um.faltauno.dto.PartidoDTO;
 import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.service.PartidoService;
 import uy.um.faltauno.service.InscripcionService;
+import uy.um.faltauno.service.NotificacionService;
 
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -29,10 +30,12 @@ public class PartidoController {
 
     private final PartidoService partidoService;
     private final InscripcionService inscripcionService;
+    private final NotificacionService notificacionService;
 
-    public PartidoController(PartidoService partidoService, InscripcionService inscripcionService) {
+    public PartidoController(PartidoService partidoService, InscripcionService inscripcionService, NotificacionService notificacionService) {
         this.partidoService = partidoService;
         this.inscripcionService = inscripcionService;
+        this.notificacionService = notificacionService;
     }
 
     /**
@@ -134,6 +137,15 @@ public class PartidoController {
         try {
             log.info("Obteniendo solicitudes pendientes para partido: {}", partidoId);
             List<InscripcionDTO> solicitudes = inscripcionService.obtenerSolicitudesPendientes(partidoId, auth);
+            
+            // Auto-marcar notificaciones de inscripción como leídas
+            try {
+                notificacionService.marcarNotificacionesInscripcionComoLeidas(partidoId, auth);
+                log.debug("Notificaciones de inscripción marcadas como leídas para partido: {}", partidoId);
+            } catch (Exception e) {
+                log.warn("Error marcando notificaciones como leídas (no crítico): {}", e.getMessage());
+            }
+            
             return ResponseEntity.ok(new ApiResponse<>(solicitudes, "Solicitudes pendientes", true));
         } catch (SecurityException e) {
             log.warn("Acceso denegado a solicitudes: {}", e.getMessage());

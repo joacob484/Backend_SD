@@ -43,6 +43,34 @@ public class NotificacionService {
     ) {
         log.debug("[NotificacionService] Creando notificación para usuario {}: tipo={}", usuarioId, tipo);
 
+        // 🎯 SISTEMA INTELIGENTE: Evitar duplicados recientes (últimas 24h)
+        // Ejemplo: Si ya existe "Nueva solicitud" para el mismo partido en las últimas 24h, 
+        // actualizamos el mensaje en lugar de crear duplicado
+        if (entidadId != null && debeValidarDuplicados(tipo)) {
+            Instant hace24h = Instant.now().minus(24, ChronoUnit.HOURS);
+            List<Notificacion> notificacionesRecientes = notificacionRepository.findByUsuarioIdOrderByCreatedAtDesc(usuarioId)
+                .stream()
+                .filter(n -> n.getCreatedAt().isAfter(hace24h))
+                .filter(n -> n.getTipo().equals(tipo))
+                .filter(n -> entidadId.equals(n.getEntidadId()))
+                .filter(n -> !n.getLeida()) // Solo actualizar si aún no fue leída
+                .limit(1)
+                .collect(Collectors.toList());
+            
+            if (!notificacionesRecientes.isEmpty()) {
+                Notificacion existente = notificacionesRecientes.get(0);
+                log.info("[NotificacionService] 🔄 Actualizando notificación existente en lugar de duplicar: id={}", existente.getId());
+                
+                // Actualizar mensaje para reflejar acumulación
+                existente.setMensaje(mensaje);
+                existente.setCreatedAt(Instant.now()); // Bump to top
+                existente.setPrioridad(prioridad != null ? prioridad : Notificacion.Prioridad.NORMAL);
+                
+                Notificacion actualizada = notificacionRepository.save(existente);
+                return notificacionMapper.toDTO(actualizada);
+            }
+        }
+
         Notificacion notificacion = Notificacion.builder()
                 .usuarioId(usuarioId)
                 .tipo(tipo)
@@ -70,6 +98,16 @@ public class NotificacionService {
         }
 
         return notificacionMapper.toDTO(guardada);
+    }
+
+    /**
+     * Determina si un tipo de notificación debe validar duplicados
+     * Solo aplicamos esta lógica a notificaciones que tienden a generarse en masa
+     */
+    private boolean debeValidarDuplicados(Notificacion.TipoNotificacion tipo) {
+        return tipo == Notificacion.TipoNotificacion.NUEVA_SOLICITUD ||
+               tipo == Notificacion.TipoNotificacion.JUGADOR_UNIDO ||
+               tipo == Notificacion.TipoNotificacion.NUEVO_MENSAJE;
     }
 
     /**
@@ -140,6 +178,24 @@ public class NotificacionService {
         int count = notificacionRepository.marcarTodasComoLeidas(usuarioId, Instant.now());
         
         log.info("[NotificacionService] {} notificaciones marcadas como leídas para usuario {}", count, usuarioId);
+        return count;
+    }
+
+    /**
+     * Marcar notificaciones de inscripción de un partido como leídas
+     * Se llama automáticamente cuando el organizador entra a gestión del partido
+     */
+    @Transactional
+    public int marcarNotificacionesInscripcionComoLeidas(UUID partidoId, Authentication auth) {
+        UUID usuarioId = getUserIdFromAuth(auth);
+        int count = notificacionRepository.marcarNotificacionesInscripcionComoLeidas(
+            usuarioId, 
+            partidoId, 
+            Instant.now()
+        );
+        
+        log.info("[NotificacionService] {} notificaciones de inscripción marcadas como leídas para partido {}", 
+                count, partidoId);
         return count;
     }
 
@@ -230,6 +286,34 @@ public class NotificacionService {
                 "PARTIDO",
                 "/matches/" + partidoId + "/manage",
                 Notificacion.Prioridad.ALTA
+        );
+    }
+
+    /**
+     * 🎯 VERSIÓN MEJORADA: Notificación inteligente que muestra cantidad de solicitudes
+     */
+    @Transactional
+    public void notificarNuevaSolicitudInscripcionMejorada(
+            UUID organizadorId, 
+            UUID solicitanteId, 
+            String mensajePersonalizado,
+            UUID partidoId, 
+            String nombrePartido,
+            long totalSolicitudes) {
+        
+        String titulo = totalSolicitudes == 1 
+            ? "Nueva solicitud de inscripción" 
+            : totalSolicitudes + " solicitudes pendientes";
+        
+        crearNotificacion(
+                organizadorId,
+                Notificacion.TipoNotificacion.NUEVA_SOLICITUD,
+                titulo,
+                mensajePersonalizado,
+                partidoId,
+                "PARTIDO",
+                "/matches/" + partidoId + "/manage",
+                totalSolicitudes >= 3 ? Notificacion.Prioridad.URGENTE : Notificacion.Prioridad.ALTA
         );
     }
 

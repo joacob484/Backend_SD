@@ -87,16 +87,27 @@ public class InscripcionService {
         SolicitudPartido guardada = solicitudPartidoRepository.save(solicitud);
         log.info("[InscripcionService] ✅ Solicitud creada: id={}", guardada.getId());
 
-        // Notificar al organizador
+        // Notificar al organizador con contador inteligente
         try {
-            notificacionService.notificarNuevaSolicitudInscripcion(
+            // Contar cuántas solicitudes tiene pendientes este partido
+            long solicitudesPendientes = solicitudPartidoRepository.countByPartidoId(partidoId);
+            
+            String mensajeInteligente;
+            if (solicitudesPendientes == 1) {
+                mensajeInteligente = usuario.getNombre() + " quiere unirse a " + partido.getNombreUbicacion();
+            } else {
+                mensajeInteligente = usuario.getNombre() + " y " + (solicitudesPendientes - 1) + " más quieren unirse a " + partido.getNombreUbicacion();
+            }
+            
+            notificacionService.notificarNuevaSolicitudInscripcionMejorada(
                     partido.getOrganizador().getId(),
                     usuarioId,
-                    usuario.getNombre(),
+                    mensajeInteligente,
                     partidoId,
-                    partido.getNombreUbicacion()
+                    partido.getNombreUbicacion(),
+                    solicitudesPendientes
             );
-            log.info("[InscripcionService] 📧 Notificación enviada al organizador");
+            log.info("[InscripcionService] 📧 Notificación enviada al organizador ({} solicitudes pendientes)", solicitudesPendientes);
         } catch (Exception e) {
             log.error("[InscripcionService] ⚠️ Error enviando notificación", e);
         }
