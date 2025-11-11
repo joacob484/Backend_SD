@@ -76,7 +76,8 @@ public interface UsuarioMapper {
     @Mapping(target = "createdAt", ignore = true) // Gestionado por @CreationTimestamp
     @Mapping(target = "deletedAt", ignore = true) // Gestionado por el servicio
     @Mapping(target = "lastActivityAt", ignore = true) // Gestionado automáticamente
-    @Mapping(target = "tokenVersion", ignore = true) // Gestionado por el servicio
+    @Mapping(target = "tokenVersion", ignore = true) // Gestionado por el servicio - usar default de entidad
+    @Mapping(target = "rol", ignore = true) // ⚡ CRÍTICO: ignorar para usar default de entidad "USER"
     @Mapping(target = "verificationCodeExpiresAt", ignore = true) // Gestionado por el servicio
     @Mapping(target = "provider", ignore = true) // No viene del DTO, se gestiona en el servicio
     @Mapping(target = "notifEmailGenerales", ignore = true) // Valores por defecto en la entidad

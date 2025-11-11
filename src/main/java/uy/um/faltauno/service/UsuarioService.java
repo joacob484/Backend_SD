@@ -198,6 +198,15 @@ public class UsuarioService {
         if (usuario.getCreatedAt() == null) {
             usuario.setCreatedAt(LocalDateTime.now());
         }
+        // ⚡ CRÍTICO: Asegurar que tokenVersion y rol NUNCA sean null
+        if (usuario.getTokenVersion() == null) {
+            usuario.setTokenVersion(1);
+            log.warn("[UsuarioService] ⚠️ tokenVersion era null, seteando a 1");
+        }
+        if (usuario.getRol() == null || usuario.getRol().isBlank()) {
+            usuario.setRol("USER");
+            log.warn("[UsuarioService] ⚠️ rol era null/vacío, seteando a USER");
+        }
 
         usuario = usuarioRepository.save(usuario);
         
@@ -694,10 +703,19 @@ public class UsuarioService {
             dto.setCelular(profileDto.getCelular());
         }
 
-    UsuarioDTO created = createUsuario(dto);
-    // Garantizar persistencia inmediata
-    usuarioRepository.flush();
-    return findUsuarioEntityById(created.getId());
+        UsuarioDTO created = createUsuario(dto);
+        // Garantizar persistencia inmediata
+        usuarioRepository.flush();
+        
+        // ⚡ FIX: Buscar con validación en lugar de confiar en orElse(null)
+        Usuario usuarioCreado = usuarioRepository.findById(created.getId())
+            .orElseThrow(() -> {
+                log.error("[UsuarioService] ❌ CRÍTICO: Usuario creado pero no encontrado en DB - ID: {}", created.getId());
+                return new IllegalStateException("Error crítico: usuario no encontrado después de creación");
+            });
+        
+        log.info("[UsuarioService] ✅ Usuario creado y recuperado exitosamente: ID={}", usuarioCreado.getId());
+        return usuarioCreado;
     }
 
     /**

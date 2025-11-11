@@ -114,12 +114,27 @@ public class VerificationController {
         // Crear o actualizar usuario
         uy.um.faltauno.entity.Usuario usuario = 
             usuarioService.createOrUpdateUserAfterVerification(preRegistro.getEmail(), preRegistro.getPasswordHash(), profileDto);
+        
+        // ⚡ CRÍTICO: Validar que el usuario fue creado correctamente
+        if (usuario == null) {
+            log.error("[VerificationController] ❌ Error: usuario retornado es null");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(null, "Error al crear usuario después de verificación", false));
+        }
+        
         log.info("[VerificationController] ✅ Usuario creado/actualizado: ID={}", usuario.getId());
 
         log.info("[VerificationController] 🔑 Generando token JWT...");
-        // Generar token JWT
-        uy.um.faltauno.entity.Usuario usuarioEntity = usuarioService.findUsuarioEntityById(usuario.getId());
-        String token = jwtUtil.generateToken(usuarioEntity.getId(), usuarioEntity.getEmail(), usuarioEntity.getTokenVersion(), usuarioEntity.getRol());
+        // ✅ FIX: Usar directamente el usuario retornado en lugar de hacer segunda consulta
+        // Validar campos requeridos antes de generar token
+        if (usuario.getTokenVersion() == null) {
+            usuario.setTokenVersion(1); // Default si no existe
+        }
+        if (usuario.getRol() == null || usuario.getRol().isBlank()) {
+            usuario.setRol("USER"); // Default si no existe
+        }
+        
+        String token = jwtUtil.generateToken(usuario.getId(), usuario.getEmail(), usuario.getTokenVersion(), usuario.getRol());
         log.info("[VerificationController] ✅ Token generado");
 
         log.info("[VerificationController] 🧹 Limpiando pre-registro...");
@@ -129,7 +144,7 @@ public class VerificationController {
 
         log.info("[VerificationController] 📦 Preparando respuesta...");
         // Preparar DTO para respuesta
-        uy.um.faltauno.dto.UsuarioDTO usuarioDto = usuarioService.getUsuario(usuarioEntity.getId());
+        uy.um.faltauno.dto.UsuarioDTO usuarioDto = usuarioService.getUsuario(usuario.getId());
 
         Map<String, Object> responseData = Map.of(
             "verified", true,
