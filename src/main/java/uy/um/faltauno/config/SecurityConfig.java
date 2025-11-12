@@ -29,7 +29,7 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
-@Profile("!dev") // Solo activo cuando NO es perfil dev
+@Profile({"default", "cloudrun"}) // Activo para perfiles default y cloudrun
 public class SecurityConfig {
 
     private final UserDetailsService userDetailsService;
