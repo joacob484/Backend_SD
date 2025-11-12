@@ -38,6 +38,7 @@ public class MensajeService {
     private final InscripcionRepository inscripcionRepository;
     private final NotificacionService notificacionService;
     private final ChatVisitRepository chatVisitRepository;
+    private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
 
     /**
      * Obtener mensajes del chat de un partido
@@ -127,10 +128,21 @@ public class MensajeService {
         log.info("[MensajeService] ✅ Mensaje enviado: id={}, partidoId={}, usuarioId={}", 
                 guardado.getId(), partidoId, userId);
 
+        // Convertir a DTO para retornar y notificar
+        MensajeDTO mensajeResultDTO = convertirADTO(guardado);
+
+        // 🔥 WebSocket: Notificar nuevo mensaje en tiempo real
+        try {
+            webSocketEventPublisher.notifyNewMessage(partidoId.toString(), mensajeResultDTO);
+            log.info("[MensajeService] 📡 WebSocket: Nuevo mensaje notificado en chat");
+        } catch (Exception e) {
+            log.error("[MensajeService] ⚠️ Error notificando WebSocket", e);
+        }
+
         // Notificar a los participantes del partido (excepto al remitente)
         notificarParticipantes(partido, userId, guardado);
         
-        return convertirADTO(guardado);
+        return mensajeResultDTO;
     }
 
     /**

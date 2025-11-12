@@ -45,6 +45,7 @@ public class PartidoService {
     private final InscripcionRepository inscripcionRepository;
     private final PartidoMapper partidoMapper;
     private final NotificacionService notificacionService;
+    private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
     // Pub/Sub publisher is optional in environments where Pub/Sub isn't configured.
     // Make it non-final so it's not required by Lombok's generated constructor.
     private Publisher pubSubPublisher;
@@ -375,7 +376,17 @@ public class PartidoService {
         Partido actualizado = partidoRepository.save(partido);
         log.info("Partido actualizado: id={}", id);
 
-        return entityToDtoCompleto(actualizado);
+        PartidoDTO result = entityToDtoCompleto(actualizado);
+        
+        // 🔥 WebSocket: Notificar actualización en tiempo real
+        try {
+            webSocketEventPublisher.notifyPartidoUpdated(id.toString(), result);
+            log.info("[PartidoService] 📡 WebSocket: Actualización de partido notificada");
+        } catch (Exception e) {
+            log.error("[PartidoService] ⚠️ Error notificando WebSocket", e);
+        }
+
+        return result;
     }
 
     /**
@@ -421,6 +432,14 @@ public class PartidoService {
         
         log.info("Notificaciones enviadas a {} jugadores sobre cancelación", usuariosIds.size());
 
+        // 🔥 WebSocket: Notificar cancelación en tiempo real
+        try {
+            webSocketEventPublisher.notifyPartidoCancelled(id.toString(), motivo);
+            log.info("[PartidoService] 📡 WebSocket: Cancelación de partido notificada");
+        } catch (Exception e) {
+            log.error("[PartidoService] ⚠️ Error notificando WebSocket", e);
+        }
+
         // 🔥 Publicar evento asíncrono
         publicarEvento("partidos.cancelado", Map.of(
             "event", "PARTIDO_CANCELADO",
@@ -460,6 +479,14 @@ public class PartidoService {
         notificacionService.notificarPartidoCompletado(usuariosIds, id, nombrePartido);
         
         log.info("Notificaciones de review enviadas a {} jugadores", usuariosIds.size());
+
+        // 🔥 WebSocket: Notificar partido completado en tiempo real
+        try {
+            webSocketEventPublisher.notifyPartidoCompleted(id.toString());
+            log.info("[PartidoService] 📡 WebSocket: Partido completado notificado");
+        } catch (Exception e) {
+            log.error("[PartidoService] ⚠️ Error notificando WebSocket", e);
+        }
 
         // 🔥 Publicar evento asíncrono
         publicarEvento("partidos.completado", Map.of(

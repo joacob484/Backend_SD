@@ -36,6 +36,7 @@ public class InscripcionService {
     private final InscripcionMapper inscripcionMapper;
     private final NotificacionService notificacionService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
 
     /**
      * Crear solicitud para unirse a un partido.
@@ -87,6 +88,22 @@ public class InscripcionService {
         SolicitudPartido guardada = solicitudPartidoRepository.save(solicitud);
         log.info("[InscripcionService] ✅ Solicitud creada: id={}", guardada.getId());
 
+        // Convertir solicitud a DTO (usando mapper de inscripción por compatibilidad)
+        InscripcionDTO dto = new InscripcionDTO();
+        dto.setId(guardada.getId());
+        dto.setPartidoId(partidoId);
+        dto.setUsuarioId(usuarioId);
+        dto.setCreatedAt(guardada.getCreatedAt());
+        dto.setEstado("PENDIENTE"); // Para compatibilidad con frontend
+
+        // 🔥 WebSocket: Notificar nueva inscripción en tiempo real
+        try {
+            webSocketEventPublisher.notifyInscripcionCreated(partidoId.toString(), dto);
+            log.info("[InscripcionService] 📡 WebSocket: Nueva inscripción notificada");
+        } catch (Exception e) {
+            log.error("[InscripcionService] ⚠️ Error notificando WebSocket", e);
+        }
+
         // Notificar al organizador con contador inteligente
         try {
             // Contar cuántas solicitudes tiene pendientes este partido
@@ -111,14 +128,6 @@ public class InscripcionService {
         } catch (Exception e) {
             log.error("[InscripcionService] ⚠️ Error enviando notificación", e);
         }
-
-        // Convertir solicitud a DTO (usando mapper de inscripción por compatibilidad)
-        InscripcionDTO dto = new InscripcionDTO();
-        dto.setId(guardada.getId());
-        dto.setPartidoId(partidoId);
-        dto.setUsuarioId(usuarioId);
-        dto.setCreatedAt(guardada.getCreatedAt());
-        dto.setEstado("PENDIENTE"); // Para compatibilidad con frontend
         
         return dto;
     }
@@ -317,6 +326,22 @@ public class InscripcionService {
         
         log.info("[InscripcionService] ✅ Solicitud aceptada y usuario inscrito: usuarioId={}", usuario.getId());
 
+        // Convertir a DTO
+        InscripcionDTO dto = inscripcionMapper.toDTO(guardada);
+        dto.setEstado("ACEPTADO"); // Para compatibilidad
+
+        // 🔥 WebSocket: Notificar cambio de estado en tiempo real
+        try {
+            webSocketEventPublisher.notifyInscripcionStatusChanged(
+                partido.getId().toString(), 
+                dto, 
+                "ACEPTADO"
+            );
+            log.info("[InscripcionService] 📡 WebSocket: Inscripción aceptada notificada");
+        } catch (Exception e) {
+            log.error("[InscripcionService] ⚠️ Error notificando WebSocket", e);
+        }
+
         // ✅ FIX RAÍZ: Publicar evento DESPUÉS del commit de la transacción
         // Las notificaciones se ejecutarán SOLO si la transacción es exitosa
         InscripcionAceptadaEvent evento = new InscripcionAceptadaEvent(
@@ -329,10 +354,7 @@ public class InscripcionService {
                 partido.getOrganizador().getId()
         );
         applicationEventPublisher.publishEvent(evento);
-
-        // Convertir a DTO
-        InscripcionDTO dto = inscripcionMapper.toDTO(guardada);
-        dto.setEstado("ACEPTADO"); // Para compatibilidad
+        
         return dto;
     }
 
@@ -363,6 +385,24 @@ public class InscripcionService {
         solicitudPartidoRepository.delete(solicitud);
         
         log.info("[InscripcionService] ✅ Solicitud rechazada y eliminada: usuarioId={}", usuario.getId());
+        
+        // 🔥 WebSocket: Notificar rechazo en tiempo real
+        try {
+            InscripcionDTO dto = new InscripcionDTO();
+            dto.setId(solicitudId);
+            dto.setPartidoId(partido.getId());
+            dto.setUsuarioId(usuario.getId());
+            dto.setEstado("RECHAZADO");
+            
+            webSocketEventPublisher.notifyInscripcionStatusChanged(
+                partido.getId().toString(), 
+                dto, 
+                "RECHAZADO"
+            );
+            log.info("[InscripcionService] 📡 WebSocket: Inscripción rechazada notificada");
+        } catch (Exception e) {
+            log.error("[InscripcionService] ⚠️ Error notificando WebSocket", e);
+        }
         
         // Notificar al usuario
         String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
@@ -423,6 +463,18 @@ public class InscripcionService {
         
         log.info("[InscripcionService] ✅ Usuario canceló inscripción: inscripcionId={}, usuarioId={}", 
                 inscripcionId, userId);
+        
+        // 🔥 WebSocket: Notificar cancelación en tiempo real
+        try {
+            webSocketEventPublisher.notifyInscripcionCancelled(
+                partido.getId().toString(), 
+                inscripcionId.toString(), 
+                userId.toString()
+            );
+            log.info("[InscripcionService] 📡 WebSocket: Cancelación de inscripción notificada");
+        } catch (Exception e) {
+            log.error("[InscripcionService] ⚠️ Error notificando WebSocket", e);
+        }
     }
 
     @Transactional(readOnly = true)
