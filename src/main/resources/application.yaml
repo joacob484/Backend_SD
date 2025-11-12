@@ -231,6 +231,10 @@ spring:
       on-profile: cloudrun
 
 # Perfil especial para Cloud Run - configuración optimizada
+
+  # ⚡ Server configuration para Cloud Run
+  application:
+    name: falta-uno-backend
   
   # ✅ Cache: usar Caffeine (in-memory) en Cloud Run para evitar dependencia de memorystore
   cache:
@@ -245,8 +249,8 @@ spring:
     enabled: true
     baseline-on-migrate: true
     validate-on-migrate: false  # ✅ Skip validation to speed up startup
-    connect-retries: 5  # ⚡ Más reintentos para Cloud Run
-    connect-retries-interval: 10  # ⚡ 10 segundos entre reintentos
+    connect-retries: 3  # ⚡ Reducido para Cloud Run (timeout rápido)
+    connect-retries-interval: 5  # ⚡ 5 segundos entre reintentos
   
   jpa:
     hibernate:

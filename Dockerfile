@@ -65,4 +65,5 @@ CMD ["sh", "-c", "exec java \
     -XX:TieredStopAtLevel=1 \
     -Djava.security.egd=file:/dev/./urandom \
     -Dspring.profiles.active=cloudrun \
+    -Dserver.port=${PORT:-8080} \
     -jar /app/app.jar"]
