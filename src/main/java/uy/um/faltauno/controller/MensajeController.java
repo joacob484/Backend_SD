@@ -29,15 +29,20 @@ public class MensajeController {
 
     /**
      * Obtener mensajes del chat de un partido
+     * ⚡ OPTIMIZADO: Caché HTTP agresivo + límite reducido
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<MensajeDTO>>> obtenerMensajes(
             @PathVariable UUID partidoId,
-            @RequestParam(required = false, defaultValue = "50") int limit,
+            @RequestParam(required = false, defaultValue = "30") int limit,
             Authentication auth) {
         try {
             List<MensajeDTO> mensajes = mensajeService.obtenerMensajesPartido(partidoId, limit, auth);
-            return ResponseEntity.ok(new ApiResponse<>(mensajes, "Mensajes del partido", true));
+            
+            // ⚡ OPTIMIZACIÓN: Caché HTTP 5 segundos para reducir llamadas repetidas
+            return ResponseEntity.ok()
+                    .header("Cache-Control", "max-age=5, must-revalidate")
+                    .body(new ApiResponse<>(mensajes, "Mensajes del partido", true));
         } catch (IllegalArgumentException e) {
             log.warn("[MensajeController] Recurso no encontrado: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND)

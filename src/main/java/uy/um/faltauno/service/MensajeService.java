@@ -41,20 +41,19 @@ public class MensajeService {
 
     /**
      * Obtener mensajes del chat de un partido
-     * OPTIMIZADO: Carga usuarios en batch para evitar N+1 queries
+     * ⚡ ULTRA OPTIMIZADO: Evita cargar partido completo + validación simplificada
      */
     @Transactional(readOnly = true)
     public List<MensajeDTO> obtenerMensajesPartido(UUID partidoId, int limit, Authentication auth) {
         log.debug("[MensajeService] Obteniendo mensajes: partidoId={}, limit={}", partidoId, limit);
         
-        Partido partido = partidoRepository.findById(partidoId)
-                .orElseThrow(() -> {
-                    log.error("[MensajeService] Partido no encontrado: {}", partidoId);
-                    return new IllegalArgumentException("Partido no encontrado");
-                });
-
         UUID userId = getUserIdFromAuth(auth);
-        validarAccesoChat(partido, userId);
+        
+        // ⚡ OPTIMIZACIÓN CRÍTICA: Solo verificar acceso sin cargar partido completo
+        if (!tieneAccesoChat(partidoId, userId)) {
+            log.error("[MensajeService] Usuario {} sin acceso al chat del partido {}", userId, partidoId);
+            throw new SecurityException("No tienes acceso a este chat");
+        }
 
         // Obtener mensajes con paginación
         PageRequest pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -222,6 +221,31 @@ public class MensajeService {
         } catch (Exception e) {
             log.error("[MensajeService] Error enviando notificaciones de mensaje: {}", e.getMessage());
         }
+    }
+
+    /**
+     * ⚡ OPTIMIZACIÓN CRÍTICA: Verificar acceso al chat sin cargar partido completo
+     * Usa queries directas ultra-rápidas
+     */
+    private boolean tieneAccesoChat(UUID partidoId, UUID userId) {
+        log.debug("[MensajeService] Verificando acceso rápido: partidoId={}, userId={}", partidoId, userId);
+        
+        // Query 1: Verificar si es organizador (JOIN directo)
+        boolean esOrganizador = partidoRepository.existsByIdAndOrganizadorId(partidoId, userId);
+        if (esOrganizador) {
+            log.debug("[MensajeService] ✅ Acceso: es organizador");
+            return true;
+        }
+        
+        // Query 2: Verificar si está inscrito
+        boolean estaInscrito = inscripcionRepository.existeInscripcion(partidoId, userId);
+        if (estaInscrito) {
+            log.debug("[MensajeService] ✅ Acceso: está inscrito");
+            return true;
+        }
+        
+        log.warn("[MensajeService] ❌ Sin acceso al chat");
+        return false;
     }
 
     /**

@@ -153,4 +153,15 @@ public interface PartidoRepository extends JpaRepository<Partido, UUID>, JpaSpec
         @Param("tipoPartido") String tipoPartido,
         Pageable pageable
     );
+    
+    /**
+     * ⚡ ULTRA OPTIMIZACIÓN: Verificar si partido tiene organizador específico
+     * Query EXISTS ultra rápido para validación de acceso
+     */
+    @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END " +
+           "FROM Partido p WHERE p.id = :partidoId AND p.organizador.id = :organizadorId")
+    boolean existsByIdAndOrganizadorId(
+        @Param("partidoId") UUID partidoId, 
+        @Param("organizadorId") UUID organizadorId
+    );
 }
