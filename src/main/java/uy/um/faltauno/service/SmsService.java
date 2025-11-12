@@ -1,8 +1,5 @@
 package uy.um.faltauno.service;
 
-import com.twilio.Twilio;
-import com.twilio.rest.api.v2010.account.Message;
-import com.twilio.type.PhoneNumber;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -14,12 +11,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Servicio para envío de SMS usando múltiples proveedores
+ * Servicio para envío de SMS usando Termii
  * 
- * Proveedores soportados:
- * - console: Modo desarrollo (gratis, muestra código en logs)
- * - termii: Termii API (10 SMS gratis/mes, sin verificación)
- * - twilio: Twilio API (trial requiere verificación)
+ * Termii: Servicio GRATUITO (10 SMS/mes) sin restricciones
+ * - API Docs: https://developers.termii.com/messaging
+ * - Dashboard: https://accounts.termii.com/
  * 
  * Configuración vía application.yaml:
  * app:
@@ -40,16 +36,6 @@ public class SmsService {
     @Value("${app.sms.provider:console}")
     private String smsProvider;
     
-    // Configuración Twilio
-    @Value("${twilio.account-sid:}")
-    private String twilioAccountSid;
-    
-    @Value("${twilio.auth-token:}")
-    private String twilioAuthToken;
-    
-    @Value("${twilio.from-number:}")
-    private String twilioFromNumber;
-    
     // Configuración Termii
     @Value("${termii.api-key:}")
     private String termiiApiKey;
@@ -60,7 +46,7 @@ public class SmsService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     /**
-     * Inicializar proveedores al arrancar el servicio
+     * Inicializar Termii al arrancar el servicio
      */
     @PostConstruct
     public void init() {
@@ -69,43 +55,17 @@ public class SmsService {
             return;
         }
         
-        switch (smsProvider.toLowerCase()) {
-            case "twilio":
-                initTwilio();
-                break;
-            case "termii":
-                initTermii();
-                break;
-            case "console":
-                log.info("[SMS] ℹ️ SMS modo: console (desarrollo)");
-                break;
-            default:
-                log.warn("[SMS] ⚠️ Proveedor desconocido: {}. Usando console.", smsProvider);
+        if ("termii".equalsIgnoreCase(smsProvider)) {
+            if (termiiApiKey.isBlank()) {
+                log.error("[SMS] ❌ Termii habilitado pero falta TERMII_API_KEY");
+                return;
+            }
+            
+            log.info("[SMS] ✅ Termii configurado - Sender ID: {}", termiiSenderId);
+            log.info("[SMS] ℹ️ Termii Plan Gratuito: 10 SMS/mes sin verificación");
+        } else {
+            log.info("[SMS] ℹ️ SMS modo: console (desarrollo)");
         }
-    }
-    
-    private void initTwilio() {
-        if (twilioAccountSid.isBlank() || twilioAuthToken.isBlank()) {
-            log.error("[SMS] ❌ Twilio habilitado pero falta configuración (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)");
-            return;
-        }
-        
-        try {
-            Twilio.init(twilioAccountSid, twilioAuthToken);
-            log.info("[SMS] ✅ Twilio inicializado correctamente");
-        } catch (Exception e) {
-            log.error("[SMS] ❌ Error inicializando Twilio", e);
-        }
-    }
-    
-    private void initTermii() {
-        if (termiiApiKey.isBlank()) {
-            log.error("[SMS] ❌ Termii habilitado pero falta TERMII_API_KEY");
-            return;
-        }
-        
-        log.info("[SMS] ✅ Termii configurado - Sender ID: {}", termiiSenderId);
-        log.info("[SMS] ℹ️ Termii Plan Gratuito: 10 SMS/mes sin verificación");
     }
 
     /**
@@ -122,22 +82,11 @@ public class SmsService {
         }
 
         try {
-            switch (smsProvider.toLowerCase()) {
-                case "console":
-                    enviarConConsole(phoneNumber, message);
-                    break;
-                    
-                case "termii":
-                    enviarConTermii(phoneNumber, message);
-                    break;
-                    
-                case "twilio":
-                    enviarConTwilio(phoneNumber, message);
-                    break;
-                    
-                default:
-                    log.warn("[SMS] ⚠️ Proveedor SMS desconocido: {}", smsProvider);
-                    enviarConConsole(phoneNumber, message);
+            if ("termii".equalsIgnoreCase(smsProvider)) {
+                enviarConTermii(phoneNumber, message);
+            } else {
+                // Default: console (desarrollo)
+                enviarConConsole(phoneNumber, message);
             }
         } catch (Exception e) {
             log.error("[SMS] ❌ Error enviando SMS a {}", phoneNumber, e);
@@ -230,35 +179,6 @@ public class SmsService {
         } catch (Exception e) {
             log.error("[SMS] ❌ Termii - Error enviando SMS", e);
             throw new RuntimeException("Error enviando SMS con Termii: " + e.getMessage(), e);
-        }
-    }
-    
-    /**
-     * Implementación con Twilio
-     */
-    private void enviarConTwilio(String phoneNumber, String message) {
-        log.info("[SMS] 📱 Twilio - Enviando a {}: {}", phoneNumber, message);
-        
-        try {
-            // Validar configuración
-            if (twilioFromNumber.isBlank()) {
-                throw new IllegalStateException("TWILIO_FROM_NUMBER no configurado");
-            }
-            
-            // Enviar SMS
-            Message twilioMessage = Message.creator(
-                new PhoneNumber(phoneNumber),  // To
-                new PhoneNumber(twilioFromNumber),  // From
-                message  // Body
-            ).create();
-            
-            log.info("[SMS] ✅ Twilio - SMS enviado exitosamente. SID: {}, Status: {}", 
-                    twilioMessage.getSid(), 
-                    twilioMessage.getStatus());
-            
-        } catch (Exception e) {
-            log.error("[SMS] ❌ Twilio - Error enviando SMS", e);
-            throw new RuntimeException("Error enviando SMS con Twilio: " + e.getMessage(), e);
         }
     }
 }

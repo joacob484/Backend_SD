@@ -103,23 +103,17 @@ app:
   # SMS configuration
   sms:
     enabled: ${SMS_ENABLED:false}  # true para habilitar SMS en producción
-    provider: ${SMS_PROVIDER:console}  # console, termii, twilio
+    provider: ${SMS_PROVIDER:console}  # console, termii
   
   # Phone verification
   phone:
     verification:
       enabled: ${PHONE_VERIFICATION_ENABLED:true}
 
-# Termii configuration (GRATIS - 10 SMS/mes)
+# Termii configuration (GRATIS - 10 SMS/mes sin restricciones)
 termii:
   api-key: ${TERMII_API_KEY:}
   sender-id: ${TERMII_SENDER_ID:FaltaUno}  # Máx 11 caracteres
-
-# Twilio configuration
-twilio:
-  account-sid: ${TWILIO_ACCOUNT_SID:}
-  auth-token: ${TWILIO_AUTH_TOKEN:}
-  from-number: ${TWILIO_FROM_NUMBER:}  # Formato: +1234567890
 
 server:
   # Support Cloud Run which provides PORT env var. Prefer explicit SERVER_PORT if set,
