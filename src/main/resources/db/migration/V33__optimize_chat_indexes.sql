@@ -36,9 +36,9 @@ ON partido(id, organizador_id);
 -- 5. Índice compuesto para verificar inscripción
 -- Ya existe idx_inscripcion_partido_usuario_unique pero aseguramos cobertura
 -- Cubre: existeInscripcion
+-- NOTA: Removido WHERE estado != 'CANCELADA' porque la columna puede no existir en producción
 CREATE INDEX IF NOT EXISTS idx_inscripcion_acceso 
-ON inscripcion(partido_id, usuario_id) 
-WHERE estado != 'CANCELADA';
+ON inscripcion(partido_id, usuario_id);
 
 -- ============================================
 -- ÍNDICES PARA TABLA CHAT_VISITS
