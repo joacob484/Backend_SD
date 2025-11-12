@@ -76,7 +76,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/verification/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
                 .requestMatchers("/api/novedades").permitAll()
-                .requestMatchers("/ws/**").permitAll()  // SockJS WebSocket endpoints
+                    .requestMatchers("/ws/**", "/ws/info/**", "/ws/info", "/ws/iframe.html", "/ws/iframe.html/**").permitAll()  // SockJS WebSocket endpoints and fallbacks
                 .requestMatchers("/public/**", "/actuator/health", "/error").permitAll()
                 .anyRequest().authenticated()
             )
