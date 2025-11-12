@@ -19,23 +19,6 @@ spring:
       leak-detection-threshold: 60000  # ✅ Detectar leaks después de 60 segundos
       pool-name: FaltaUnoHikariCP
 
-# ⚡ ACTUATOR - Health checks para Cloud Run
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-  endpoint:
-    health:
-      probes:
-        enabled: true
-      show-details: when-authorized
-  health:
-    livenessState:
-      enabled: true
-    readinessState:
-      enabled: true
-
   jpa:
     hibernate:
       ddl-auto: none  # ✅ Flyway maneja el schema
