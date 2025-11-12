@@ -103,12 +103,17 @@ app:
   # SMS configuration
   sms:
     enabled: ${SMS_ENABLED:false}  # true para habilitar SMS en producción
-    provider: ${SMS_PROVIDER:console}  # console, twilio
+    provider: ${SMS_PROVIDER:console}  # console, termii, twilio
   
   # Phone verification
   phone:
     verification:
       enabled: ${PHONE_VERIFICATION_ENABLED:true}
+
+# Termii configuration (GRATIS - 10 SMS/mes)
+termii:
+  api-key: ${TERMII_API_KEY:}
+  sender-id: ${TERMII_SENDER_ID:FaltaUno}  # Máx 11 caracteres
 
 # Twilio configuration
 twilio:
