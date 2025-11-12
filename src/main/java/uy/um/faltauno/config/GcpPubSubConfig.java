@@ -4,6 +4,7 @@ import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.ExecutorProvider;
 import com.google.api.gax.rpc.TransportChannelProvider;
 import com.google.cloud.spring.core.GcpProjectIdProvider;
+import com.google.cloud.spring.core.DefaultGcpProjectIdProvider;
 import com.google.cloud.spring.pubsub.core.PubSubConfiguration;
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import com.google.cloud.spring.pubsub.support.DefaultPublisherFactory;
@@ -16,6 +17,11 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class GcpPubSubConfig {
+
+    @Bean
+    public GcpProjectIdProvider gcpProjectIdProvider() {
+        return new DefaultGcpProjectIdProvider();
+    }
 
     @Bean
     public PubSubConfiguration pubSubConfiguration() {
