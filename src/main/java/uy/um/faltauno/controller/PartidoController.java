@@ -90,6 +90,40 @@ public class PartidoController {
     }
 
     /**
+     * Actualizar un partido (solo organizador)
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<PartidoDTO>> actualizar(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody PartidoDTO dto,
+            Authentication auth) {
+        try {
+            PartidoDTO partidoActualizado = partidoService.actualizarPartido(id, dto, auth);
+            return ResponseEntity.ok(new ApiResponse<>(partidoActualizado, "Partido actualizado exitosamente", true));
+        } catch (NoSuchElementException e) {
+            log.warn("Partido no encontrado al actualizar: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (SecurityException e) {
+            log.warn("Acceso denegado al actualizar partido: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (IllegalStateException e) {
+            log.warn("Estado inválido al actualizar partido: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, e.getMessage(), false));
+        } catch (IllegalArgumentException e) {
+            log.warn("Datos inválidos al actualizar partido: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ApiResponse<>(null, "Los datos enviados no son válidos", false));
+        } catch (Exception e) {
+            log.error("Error inesperado actualizando partido", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(null, "Error interno del servidor", false));
+        }
+    }
+
+    /**
      * Listar partidos con filtros y paginación
      */
     @GetMapping
@@ -162,35 +196,6 @@ public class PartidoController {
             log.error("Error obteniendo solicitudes del partido {}", partidoId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(null, "Error al obtener solicitudes", false));
-        }
-    }
-
-    /**
-     * Actualizar un partido (solo organizador)
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<PartidoDTO>> actualizar(
-            @PathVariable("id") UUID id,
-            @Valid @RequestBody PartidoDTO dto,
-            Authentication auth) {
-        try {
-            PartidoDTO actualizado = partidoService.actualizarPartido(id, dto, auth);
-            return ResponseEntity.ok(new ApiResponse<>(actualizado, "Partido actualizado", true));
-        } catch (IllegalArgumentException e) {
-            log.warn("[PartidoController] Recurso no encontrado al actualizar: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (IllegalStateException e) {
-            log.warn("[PartidoController] Estado inválido al actualizar: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (SecurityException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(new ApiResponse<>(null, e.getMessage(), false));
-        } catch (Exception e) {
-            log.error("[PartidoController] Error inesperado actualizando partido", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(null, "Error al actualizar partido", false));
         }
     }
 

@@ -307,6 +307,7 @@ public class PartidoService {
      * Actualizar un partido (solo organizador)
      */
    @Transactional
+   @CacheEvict(value = {CacheNames.PARTIDOS_V2, CacheNames.PARTIDOS_DISPONIBLES}, allEntries = true)
     public PartidoDTO actualizarPartido(UUID id, PartidoDTO dto, Authentication auth) {
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
