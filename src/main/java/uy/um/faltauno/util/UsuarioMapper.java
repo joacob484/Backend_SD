@@ -86,6 +86,10 @@ public interface UsuarioMapper {
     @Mapping(target = "notifEmailActualizacionesPartido", ignore = true)
     @Mapping(target = "notifEmailNuevosMensajes", ignore = true)
     @Mapping(target = "notifEmailSolicitudesReview", ignore = true)
+    @Mapping(target = "celularVerificado", ignore = true) // Gestionado por PhoneVerificationService
+    @Mapping(target = "codigoVerificacion", ignore = true) // Gestionado por PhoneVerificationService
+    @Mapping(target = "codigoVerificacionExpira", ignore = true) // Gestionado por PhoneVerificationService
+    @Mapping(target = "codigoVerificacionIntentos", ignore = true) // Gestionado por PhoneVerificationService
     Usuario toEntity(UsuarioDTO dto);
 
     // Conversores para LocalDate <-> String

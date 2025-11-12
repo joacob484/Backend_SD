@@ -3,7 +3,6 @@ package uy.um.faltauno.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uy.um.faltauno.entity.Usuario;
@@ -29,7 +28,6 @@ public class PhoneVerificationService {
     @Value("${app.phone.verification.enabled:true}")
     private boolean verificationEnabled;
     
-    private static final int CODE_LENGTH = 6;
     private static final int CODE_EXPIRY_MINUTES = 15;
     private static final int MAX_ATTEMPTS = 3;
 
@@ -173,17 +171,7 @@ public class PhoneVerificationService {
      */
     private String generarCodigoAleatorio() {
         Random random = new Random();
-        int codigo = 100000 + random.nextInt(900000); // Entre 100000 y 999999
+        int codigo = 100000 + random.nextInt(900000); // 100000-999999
         return String.valueOf(codigo);
-    }
-
-    /**
-     * Extraer ID de usuario de la autenticación
-     */
-    private UUID getUserIdFromAuth(Authentication auth) {
-        if (auth == null || auth.getName() == null) {
-            throw new IllegalStateException("Usuario no autenticado");
-        }
-        return UUID.fromString(auth.getName());
     }
 }
