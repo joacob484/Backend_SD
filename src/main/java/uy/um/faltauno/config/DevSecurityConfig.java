@@ -68,6 +68,7 @@ public class DevSecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
                 .requestMatchers("/api/novedades").permitAll()
+                .requestMatchers("/ws/info").permitAll()  // SockJS info endpoint
                 
                 // ⚠️ DEV ONLY: H2 Console y Actuator completo
                 .requestMatchers("/h2-console/**").permitAll()
