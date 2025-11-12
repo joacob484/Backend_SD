@@ -1,16 +1,26 @@
 package uy.um.faltauno.service;
 
+import com.twilio.Twilio;
+import com.twilio.rest.api.v2010.account.Message;
+import com.twilio.type.PhoneNumber;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+
 /**
- * Servicio para envío de SMS
- * Implementación placeholder que se puede integrar con:
- * - Twilio
- * - AWS SNS
- * - Firebase Cloud Messaging
- * - Cualquier otro proveedor de SMS
+ * Servicio para envío de SMS usando Twilio
+ * Configuración vía application.yaml:
+ * 
+ * app:
+ *   sms:
+ *     enabled: true
+ *     provider: twilio
+ * twilio:
+ *   account-sid: ${TWILIO_ACCOUNT_SID}
+ *   auth-token: ${TWILIO_AUTH_TOKEN}
+ *   from-number: ${TWILIO_FROM_NUMBER}
  */
 @Service
 @Slf4j
@@ -20,7 +30,39 @@ public class SmsService {
     private boolean smsEnabled;
     
     @Value("${app.sms.provider:console}")
-    private String smsProvider; // console, twilio, aws-sns, etc.
+    private String smsProvider;
+    
+    // Configuración Twilio
+    @Value("${twilio.account-sid:}")
+    private String twilioAccountSid;
+    
+    @Value("${twilio.auth-token:}")
+    private String twilioAuthToken;
+    
+    @Value("${twilio.from-number:}")
+    private String twilioFromNumber;
+
+    /**
+     * Inicializar Twilio al arrancar el servicio
+     */
+    @PostConstruct
+    public void init() {
+        if (smsEnabled && "twilio".equalsIgnoreCase(smsProvider)) {
+            if (twilioAccountSid.isBlank() || twilioAuthToken.isBlank()) {
+                log.error("[SMS] ❌ Twilio habilitado pero falta configuración (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)");
+                return;
+            }
+            
+            try {
+                Twilio.init(twilioAccountSid, twilioAuthToken);
+                log.info("[SMS] ✅ Twilio inicializado correctamente");
+            } catch (Exception e) {
+                log.error("[SMS] ❌ Error inicializando Twilio", e);
+            }
+        } else {
+            log.info("[SMS] ℹ️ SMS modo: {} (enabled: {})", smsProvider, smsEnabled);
+        }
+    }
 
     /**
      * Enviar SMS a un número de teléfono
@@ -38,83 +80,56 @@ public class SmsService {
         try {
             switch (smsProvider.toLowerCase()) {
                 case "console":
-                    // Solo log (útil para desarrollo)
-                    log.info("[SMS] 📱 Console - Enviando a {}: {}", phoneNumber, message);
+                    enviarConConsole(phoneNumber, message);
                     break;
                     
                 case "twilio":
-                    // TODO: Implementar con Twilio
                     enviarConTwilio(phoneNumber, message);
-                    break;
-                    
-                case "aws-sns":
-                    // TODO: Implementar con AWS SNS
-                    enviarConAwsSns(phoneNumber, message);
                     break;
                     
                 default:
                     log.warn("[SMS] ⚠️ Proveedor SMS desconocido: {}", smsProvider);
-                    log.info("[SMS] 📱 Fallback - SMS a {}: {}", phoneNumber, message);
+                    enviarConConsole(phoneNumber, message);
             }
         } catch (Exception e) {
             log.error("[SMS] ❌ Error enviando SMS a {}", phoneNumber, e);
-            throw new RuntimeException("Error al enviar SMS", e);
+            throw new RuntimeException("Error al enviar SMS: " + e.getMessage(), e);
         }
     }
 
     /**
-     * Implementación con Twilio (placeholder)
-     * 
-     * Para activar:
-     * 1. Agregar dependencia en pom.xml:
-     *    <dependency>
-     *        <groupId>com.twilio.sdk</groupId>
-     *        <artifactId>twilio</artifactId>
-     *        <version>9.14.1</version>
-     *    </dependency>
-     * 
-     * 2. Configurar en application.yaml:
-     *    app:
-     *      sms:
-     *        enabled: true
-     *        provider: twilio
-     *    twilio:
-     *      account-sid: your_account_sid
-     *      auth-token: your_auth_token
-     *      from-number: your_twilio_number
+     * Modo consola (desarrollo/testing)
      */
-    private void enviarConTwilio(String phoneNumber, String message) {
-        // TODO: Implementar cuando se agregue Twilio
-        log.info("[SMS] 📱 Twilio - Enviando a {}: {}", phoneNumber, message);
-        
-        /* Ejemplo de implementación:
-        Twilio.init(accountSid, authToken);
-        Message.creator(
-            new PhoneNumber(phoneNumber),
-            new PhoneNumber(fromNumber),
-            message
-        ).create();
-        */
+    private void enviarConConsole(String phoneNumber, String message) {
+        log.info("[SMS] 📱 Console - Enviando a {}: {}", phoneNumber, message);
     }
 
     /**
-     * Implementación con AWS SNS (placeholder)
+     * Implementación con Twilio
      */
-    private void enviarConAwsSns(String phoneNumber, String message) {
-        // TODO: Implementar cuando se agregue AWS SDK
-        log.info("[SMS] 📱 AWS SNS - Enviando a {}: {}", phoneNumber, message);
+    private void enviarConTwilio(String phoneNumber, String message) {
+        log.info("[SMS] 📱 Twilio - Enviando a {}: {}", phoneNumber, message);
         
-        /* Ejemplo de implementación:
-        SnsClient snsClient = SnsClient.builder()
-            .region(Region.US_EAST_1)
-            .build();
+        try {
+            // Validar configuración
+            if (twilioFromNumber.isBlank()) {
+                throw new IllegalStateException("TWILIO_FROM_NUMBER no configurado");
+            }
             
-        PublishRequest request = PublishRequest.builder()
-            .message(message)
-            .phoneNumber(phoneNumber)
-            .build();
+            // Enviar SMS
+            Message twilioMessage = Message.creator(
+                new PhoneNumber(phoneNumber),  // To
+                new PhoneNumber(twilioFromNumber),  // From
+                message  // Body
+            ).create();
             
-        snsClient.publish(request);
-        */
+            log.info("[SMS] ✅ Twilio - SMS enviado exitosamente. SID: {}, Status: {}", 
+                    twilioMessage.getSid(), 
+                    twilioMessage.getStatus());
+            
+        } catch (Exception e) {
+            log.error("[SMS] ❌ Twilio - Error enviando SMS", e);
+            throw new RuntimeException("Error enviando SMS con Twilio: " + e.getMessage(), e);
+        }
     }
 }

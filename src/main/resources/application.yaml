@@ -98,6 +98,24 @@ spring:
           writetimeout: 5000
     default-encoding: UTF-8
 
+# Application configuration
+app:
+  # SMS configuration
+  sms:
+    enabled: ${SMS_ENABLED:false}  # true para habilitar SMS en producción
+    provider: ${SMS_PROVIDER:console}  # console, twilio
+  
+  # Phone verification
+  phone:
+    verification:
+      enabled: ${PHONE_VERIFICATION_ENABLED:true}
+
+# Twilio configuration
+twilio:
+  account-sid: ${TWILIO_ACCOUNT_SID:}
+  auth-token: ${TWILIO_AUTH_TOKEN:}
+  from-number: ${TWILIO_FROM_NUMBER:}  # Formato: +1234567890
+
 server:
   # Support Cloud Run which provides PORT env var. Prefer explicit SERVER_PORT if set,
   # otherwise fall back to PORT (Cloud Run) and finally 8080.
