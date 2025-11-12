@@ -45,8 +45,10 @@ public class GcpPubSubConfig {
     }
 
     @Bean
-    public PubSubConfiguration pubSubConfiguration() {
-        return new PubSubConfiguration();
+    public PubSubConfiguration pubSubConfiguration(GcpProjectIdProvider gcpProjectIdProvider) {
+        PubSubConfiguration config = new PubSubConfiguration();
+        config.initialize(gcpProjectIdProvider.getProjectId());
+        return config;
     }
 
     @Bean
