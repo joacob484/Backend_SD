@@ -1,5 +1,6 @@
 -- V33: ⚡ OPTIMIZACIÓN CRÍTICA - Índices compuestos para chat ultra-rápido
 -- Reduce tiempo de carga de chats de 500ms a <50ms
+-- NOTA: Flyway no soporta CONCURRENTLY, pero IF NOT EXISTS evita errores
 
 -- ============================================
 -- ÍNDICES PARA TABLA MENSAJE
@@ -47,21 +48,3 @@ WHERE estado != 'CANCELADA';
 -- Cubre: findByUsuarioIdAndPartidoId
 CREATE INDEX IF NOT EXISTS idx_chat_visit_lookup 
 ON chat_visits(usuario_id, partido_id, last_visit_at);
-
--- ============================================
--- ESTADÍSTICAS Y COMENTARIOS
--- ============================================
-
--- Analizar tablas para actualizar estadísticas del optimizador
-ANALYZE mensaje;
-ANALYZE partido;
-ANALYZE inscripcion;
-ANALYZE chat_visits;
-
--- Comentarios
-COMMENT ON INDEX idx_mensaje_partido_fecha IS '⚡ Índice crítico para listar mensajes de chat ordenados';
-COMMENT ON INDEX idx_mensaje_partido_fecha_remitente IS '⚡ Índice para contar mensajes no leídos';
-COMMENT ON INDEX idx_mensaje_remitente IS 'Optimiza carga de usuarios en batch';
-COMMENT ON INDEX idx_partido_id_organizador IS '⚡ Validación rápida de organizador';
-COMMENT ON INDEX idx_inscripcion_acceso IS '⚡ Validación rápida de acceso al chat';
-COMMENT ON INDEX idx_chat_visit_lookup IS 'Buscar última visita de usuario';

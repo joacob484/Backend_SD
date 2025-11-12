@@ -19,6 +19,23 @@ spring:
       leak-detection-threshold: 60000  # ✅ Detectar leaks después de 60 segundos
       pool-name: FaltaUnoHikariCP
 
+# ⚡ ACTUATOR - Health checks para Cloud Run
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when-authorized
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+
   jpa:
     hibernate:
       ddl-auto: none  # ✅ Flyway maneja el schema
@@ -50,6 +67,8 @@ spring:
     validate-on-migrate: true
     locations: classpath:db/migration
     table: flyway_schema_history
+    connect-retries: 3  # ⚡ Reintentos para Cloud Run
+    connect-retries-interval: 10  # ⚡ 10 segundos entre reintentos
 
   # ✅ Cache con Caffeine (in-memory, simple, rápido)
   cache:
@@ -226,8 +245,8 @@ spring:
     enabled: true
     baseline-on-migrate: true
     validate-on-migrate: false  # ✅ Skip validation to speed up startup
-    connect-retries: 3
-    connect-retries-interval: 10
+    connect-retries: 5  # ⚡ Más reintentos para Cloud Run
+    connect-retries-interval: 10  # ⚡ 10 segundos entre reintentos
   
   jpa:
     hibernate:
