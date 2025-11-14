@@ -89,7 +89,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     "https://faltauno.com",            // Producción
                     "https://www.faltauno.com",        // Producción www
                     "https://*.faltauno.com",          // Subdominios
-                    "https://faltauno-*.web.app"       // Firebase hosting
+                    "https://faltauno-*.web.app",      // Firebase hosting
+                    "https://*.run.app"                // Google Cloud Run
                 )
                 .withSockJS();  // Fallback para navegadores sin WebSocket nativo
     }
