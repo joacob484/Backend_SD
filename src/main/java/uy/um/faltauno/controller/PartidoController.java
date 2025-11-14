@@ -91,11 +91,12 @@ public class PartidoController {
 
     /**
      * Actualizar un partido (solo organizador)
+     * Nota: @Valid removido para permitir actualizaciones parciales
      */
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<PartidoDTO>> actualizar(
             @PathVariable("id") UUID id,
-            @Valid @RequestBody PartidoDTO dto,
+            @RequestBody PartidoDTO dto,
             Authentication auth) {
         try {
             PartidoDTO partidoActualizado = partidoService.actualizarPartido(id, dto, auth);
