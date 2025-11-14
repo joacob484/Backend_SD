@@ -816,8 +816,10 @@ public class PartidoService {
 
     private void validarFechaFutura(LocalDate fecha, LocalTime hora) {
         LocalDateTime fechaHora = LocalDateTime.of(fecha, hora);
-        if (fechaHora.isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("La fecha y hora deben ser futuras");
+        // Permitir partidos con al menos 5 minutos de anticipación
+        LocalDateTime minimoPermitido = LocalDateTime.now().plusMinutes(5);
+        if (fechaHora.isBefore(minimoPermitido)) {
+            throw new IllegalArgumentException("La fecha y hora deben ser futuras (al menos 5 minutos de anticipación)");
         }
     }
 
