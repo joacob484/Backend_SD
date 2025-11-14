@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import uy.um.faltauno.validation.OnCreate;
+import uy.um.faltauno.validation.OnUpdate;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,8 +15,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * ✅ MEJORA: Validaciones agregadas con Bean Validation
- * Ahora usa @Valid en controllers para validar automáticamente
+ * ✅ MEJORA: Validaciones con grupos OnCreate y OnUpdate
+ * - OnCreate: Todos los campos requeridos son validados
+ * - OnUpdate: Validaciones opcionales, solo se validan si están presentes
  */
 @Data
 @Builder
@@ -25,7 +28,7 @@ public class PartidoDTO {
     private UUID id;
 
     @JsonProperty("tipo_partido")
-    @NotBlank(message = "El tipo de partido es requerido")
+    @NotBlank(message = "El tipo de partido es requerido", groups = OnCreate.class)
     @Pattern(regexp = "^(Fútbol 5|Fútbol 7|Fútbol 11|Fútbol Sala)$", 
              message = "Tipo de partido inválido")
     private String tipoPartido;
@@ -34,11 +37,11 @@ public class PartidoDTO {
     private String genero;
     
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    @NotNull(message = "La fecha es requerida")
+    @NotNull(message = "La fecha es requerida", groups = OnCreate.class)
     @FutureOrPresent(message = "La fecha debe ser hoy o en el futuro")
     private LocalDate fecha;
     
-    @NotNull(message = "La hora es requerida")
+    @NotNull(message = "La hora es requerida", groups = OnCreate.class)
     private LocalTime hora;
     
     @JsonProperty("duracion_minutos")
@@ -47,7 +50,7 @@ public class PartidoDTO {
     private Integer duracionMinutos;
     
     @JsonProperty("nombre_ubicacion")
-    @NotBlank(message = "El nombre de la ubicación es requerido")
+    @NotBlank(message = "El nombre de la ubicación es requerido", groups = OnCreate.class)
     @Size(max = 100, message = "El nombre de la ubicación no puede exceder 100 caracteres")
     private String nombreUbicacion;
     
@@ -64,7 +67,7 @@ public class PartidoDTO {
     private BigDecimal longitud;
     
     @JsonProperty("cantidad_jugadores")
-    @NotNull(message = "La cantidad de jugadores es requerida")
+    @NotNull(message = "La cantidad de jugadores es requerida", groups = OnCreate.class)
     @Min(value = 6, message = "Mínimo 6 jugadores")
     @Max(value = 22, message = "Máximo 22 jugadores")
     private Integer cantidadJugadores;

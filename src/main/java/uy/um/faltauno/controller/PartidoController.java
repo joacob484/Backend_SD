@@ -7,6 +7,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import uy.um.faltauno.dto.ApiResponse;
@@ -16,8 +17,9 @@ import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.service.PartidoService;
 import uy.um.faltauno.service.InscripcionService;
 import uy.um.faltauno.service.NotificacionService;
+import uy.um.faltauno.validation.OnCreate;
+import uy.um.faltauno.validation.OnUpdate;
 
-import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -45,7 +47,7 @@ public class PartidoController {
      */
     @PostMapping
     public ResponseEntity<ApiResponse<PartidoDTO>> crear(
-            @Valid @RequestBody PartidoDTO dto,
+            @Validated(OnCreate.class) @RequestBody PartidoDTO dto,
             Authentication auth) {
         try {
             log.info("Creando partido: tipo={}, fecha={}, organizadorId={}", 
@@ -91,12 +93,12 @@ public class PartidoController {
 
     /**
      * Actualizar un partido (solo organizador)
-     * Nota: @Valid removido para permitir actualizaciones parciales
+     * Nota: Usa OnUpdate validation group para validaciones opcionales
      */
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<PartidoDTO>> actualizar(
             @PathVariable("id") UUID id,
-            @RequestBody PartidoDTO dto,
+            @Validated(OnUpdate.class) @RequestBody PartidoDTO dto,
             Authentication auth) {
         try {
             PartidoDTO partidoActualizado = partidoService.actualizarPartido(id, dto, auth);
