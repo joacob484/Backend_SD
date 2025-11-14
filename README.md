@@ -2,7 +2,7 @@
 
 Backend REST API para la aplicación Falta Uno, desarrollado con Spring Boot 3.5.0 y Java 21.
 
-** Deployment Automático**: Cada push a `main` dispara deployment automático en Cloud Run via Cloud Build.
+**🚀 Deployment Automático**: Cada push a `main` dispara deployment automático en Cloud Run via Cloud Build.
 
 ---
 
