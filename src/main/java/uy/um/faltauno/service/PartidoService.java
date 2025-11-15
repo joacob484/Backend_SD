@@ -18,9 +18,12 @@ import uy.um.faltauno.dto.PartidoDTO;
 import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.entity.Inscripcion;
 import uy.um.faltauno.entity.Partido;
+import uy.um.faltauno.entity.Review;
 import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.repository.InscripcionRepository;
+import uy.um.faltauno.repository.MensajeRepository;
 import uy.um.faltauno.repository.PartidoRepository;
+import uy.um.faltauno.repository.ReviewRepository;
 import uy.um.faltauno.repository.UsuarioRepository;
 import uy.um.faltauno.util.PartidoMapper;
 
@@ -46,6 +49,8 @@ public class PartidoService {
     private final PartidoRepository partidoRepository;
     private final UsuarioRepository usuarioRepository;
     private final InscripcionRepository inscripcionRepository;
+    private final MensajeRepository mensajeRepository;
+    private final ReviewRepository reviewRepository;
     private final PartidoMapper partidoMapper;
     private final NotificacionService notificacionService;
     private final ReviewService reviewService;
@@ -1012,6 +1017,31 @@ public class PartidoService {
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
         
+        // Eliminar todas las relaciones en cascada para evitar errores de integridad referencial
+        
+        // 1. Eliminar reviews del partido
+        List<Review> reviews = reviewRepository.findByPartido_Id(id);
+        if (!reviews.isEmpty()) {
+            log.info("[ADMIN] Eliminando {} reviews del partido {}", reviews.size(), id);
+            reviewRepository.deleteAll(reviews);
+        }
+        
+        // 2. Eliminar mensajes del partido
+        long mensajesCount = mensajeRepository.countByPartidoId(id);
+        if (mensajesCount > 0) {
+            log.info("[ADMIN] Eliminando {} mensajes del partido {}", mensajesCount, id);
+            mensajeRepository.deleteByPartidoId(id);
+        }
+        
+        // 3. Eliminar inscripciones del partido
+        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(id);
+        if (!inscripciones.isEmpty()) {
+            log.info("[ADMIN] Eliminando {} inscripciones del partido {}", inscripciones.size(), id);
+            inscripcionRepository.deleteAll(inscripciones);
+        }
+        
+        // 4. Finalmente eliminar el partido
         partidoRepository.delete(partido);
+        log.info("[ADMIN] Partido {} eliminado exitosamente", id);
     }
 }
