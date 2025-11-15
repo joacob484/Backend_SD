@@ -201,7 +201,9 @@ public class AmistadService {
                     Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
                     Usuario amigo = usuarioRepository.findById(otroUsuarioId).orElse(null);
                     
-                    return convertToDTO(amistad, usuario, amigo);
+                    // ✅ FIX: Pasar amigo primero para que aparezca en el campo 'usuario' del DTO
+                    // El frontend espera ver la info del amigo en el campo 'usuario'
+                    return convertToDTO(amistad, amigo, usuario);
                 })
                 .collect(Collectors.toList());
     }
@@ -233,7 +235,8 @@ public class AmistadService {
                     Usuario usuario = usuarioRepository.findById(userId).orElse(null);
                     Usuario amigo = usuarioRepository.findById(otroUsuarioId).orElse(null);
                     
-                    return convertToDTO(amistad, usuario, amigo);
+                    // ✅ FIX: Pasar amigo primero para que aparezca en el campo 'usuario' del DTO
+                    return convertToDTO(amistad, amigo, usuario);
                 })
                 .collect(Collectors.toList());
     }
