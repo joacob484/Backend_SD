@@ -681,19 +681,10 @@ public class PartidoService {
             throw new IllegalStateException("El usuario ya está inscrito en este partido");
         }
         
-        // Nota: En la nueva arquitectura, las invitaciones deberían ir a solicitud_partido
-        // o crear una tabla separada para invitaciones. Por ahora, crearemos una inscripción directa
-        // ya que es el organizador quien invita (auto-aprobado).
+        // ✅ FIX: Solo enviar notificación, NO crear inscripción automática
+        // El usuario invitado deberá aceptar la invitación manualmente
         
-        // Crear inscripción directa (invitación del organizador = auto-aprobada)
-        Inscripcion invitacion = Inscripcion.builder()
-                .partido(partido)
-                .usuario(usuario)
-                .build();
-
-        inscripcionRepository.save(invitacion);
-        
-        log.info("Invitación creada exitosamente: partidoId={}, usuarioId={}", partidoId, usuarioId);
+        log.info("Invitación preparada para enviar: partidoId={}, usuarioId={}", partidoId, usuarioId);
         
         // Enviar notificación al usuario invitado
         String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();

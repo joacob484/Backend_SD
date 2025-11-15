@@ -48,6 +48,11 @@ public class ReviewService {
         Usuario calificado = usuarioRepository.findById(dto.getUsuarioCalificadoId())
                 .orElseThrow(() -> new IllegalArgumentException("Usuario calificado no encontrado"));
 
+        // ✅ FIX: Validar que el partido esté COMPLETADO (no CANCELADO)
+        if (!"COMPLETADO".equals(partido.getEstado())) {
+            throw new IllegalStateException("Solo puedes calificar partidos completados. Este partido está en estado: " + partido.getEstado());
+        }
+        
         // Validar que el partido ya haya pasado
         LocalDateTime fechaPartido = LocalDateTime.of(partido.getFecha(), partido.getHora());
         if (fechaPartido.isAfter(LocalDateTime.now())) {
@@ -181,6 +186,11 @@ public class ReviewService {
         for (Inscripcion miInsc : misInscripciones) {
             Partido partido = miInsc.getPartido();
 
+            // ✅ FIX: Solo partidos COMPLETADOS (no CANCELADOS)
+            if (!"COMPLETADO".equals(partido.getEstado())) {
+                continue;
+            }
+            
             // Solo partidos pasados
             LocalDateTime fechaPartido = LocalDateTime.of(partido.getFecha(), partido.getHora());
             if (fechaPartido.isAfter(LocalDateTime.now())) {
