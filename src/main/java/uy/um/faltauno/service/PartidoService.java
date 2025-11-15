@@ -48,6 +48,7 @@ public class PartidoService {
     private final InscripcionRepository inscripcionRepository;
     private final PartidoMapper partidoMapper;
     private final NotificacionService notificacionService;
+    private final ReviewService reviewService;
     private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
     // Pub/Sub publisher is optional in environments where Pub/Sub isn't configured.
     // Make it non-final so it's not required by Lombok's generated constructor.
@@ -61,6 +62,12 @@ public class PartidoService {
     @CacheEvict(value = CacheNames.PARTIDOS_DISPONIBLES, allEntries = true)
     public PartidoDTO crearPartido(PartidoDTO dto) {
         Timer.Sample sample = Timer.start(meterRegistry);
+        
+        // ✅ Validar que el organizador no tenga reviews pendientes
+        if (reviewService.tienePendingReviews(dto.getOrganizadorId())) {
+            throw new IllegalStateException("No puedes crear un partido hasta que califiques a todos los jugadores pendientes");
+        }
+        
         // Validaciones
         validarDatosPartido(dto);
 

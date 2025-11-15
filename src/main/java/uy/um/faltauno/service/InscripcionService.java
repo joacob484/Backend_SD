@@ -37,6 +37,7 @@ public class InscripcionService {
     private final PartidoRepository partidoRepository;
     private final InscripcionMapper inscripcionMapper;
     private final NotificacionService notificacionService;
+    private final ReviewService reviewService;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
     private final MeterRegistry meterRegistry;
@@ -55,6 +56,11 @@ public class InscripcionService {
             log.warn("[InscripcionService] Intento no autorizado: authUser={}, targetUser={}", 
                     authUserId, usuarioId);
             throw new SecurityException("No puedes inscribir a otro usuario");
+        }
+        
+        // ✅ Validar que el usuario no tenga reviews pendientes
+        if (reviewService.tienePendingReviews(usuarioId)) {
+            throw new IllegalStateException("No puedes inscribirte a un partido hasta que califiques a todos los jugadores pendientes");
         }
 
         Partido partido = partidoRepository.findById(partidoId)

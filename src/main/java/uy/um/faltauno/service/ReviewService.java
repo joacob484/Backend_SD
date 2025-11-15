@@ -241,6 +241,55 @@ public class ReviewService {
     }
 
     /**
+     * Verificar si el usuario tiene reviews pendientes por completar
+     */
+    @Transactional(readOnly = true)
+    public boolean tienePendingReviews(UUID usuarioId) {
+        // Obtener partidos donde participó (todos en inscripcion están aceptados)
+        List<Inscripcion> misInscripciones = inscripcionRepository
+                .findByUsuarioId(usuarioId);
+
+        for (Inscripcion miInsc : misInscripciones) {
+            Partido partido = miInsc.getPartido();
+
+            // Solo partidos COMPLETADOS
+            if (!"COMPLETADO".equals(partido.getEstado())) {
+                continue;
+            }
+            
+            // Solo partidos pasados
+            LocalDateTime fechaPartido = LocalDateTime.of(partido.getFecha(), partido.getHora());
+            if (fechaPartido.isAfter(LocalDateTime.now())) {
+                continue;
+            }
+
+            // Obtener otros jugadores del partido
+            List<Inscripcion> otrosJugadores = inscripcionRepository
+                    .findByPartidoId(partido.getId())
+                    .stream()
+                    .filter(i -> !i.getUsuario().getId().equals(usuarioId))
+                    .collect(Collectors.toList());
+
+            // Verificar si hay algún jugador que no haya calificado
+            for (Inscripcion otraInsc : otrosJugadores) {
+                UUID otroUsuarioId = otraInsc.getUsuario().getId();
+                
+                boolean yaCalificado = reviewRepository
+                        .existsByPartido_IdAndUsuarioQueCalifica_IdAndUsuarioCalificado_Id(
+                                partido.getId(), usuarioId, otroUsuarioId);
+
+                if (!yaCalificado) {
+                    // Encontró al menos una review pendiente
+                    return true;
+                }
+            }
+        }
+
+        // No tiene reviews pendientes
+        return false;
+    }
+
+    /**
      * Verificar si ya existe una review
      */
     @Transactional(readOnly = true)
