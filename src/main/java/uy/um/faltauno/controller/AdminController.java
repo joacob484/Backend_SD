@@ -19,6 +19,7 @@ import uy.um.faltauno.service.ReportService;
 import uy.um.faltauno.service.UsuarioService;
 
 import java.util.HashMap;
+import java.util.UUID;
 import java.util.List;
 import java.util.Map;
 
@@ -224,14 +225,14 @@ public class AdminController {
         try {
             log.warn("[ADMIN] {} eliminando partido {}", admin.getEmail(), id);
             
-            // Convertir String a Long
-            Long partidoId = Long.parseLong(id);
+            // Convertir String a UUID
+            UUID partidoId = UUID.fromString(id);
             partidoService.eliminarPartidoAdmin(partidoId);
             
             return ResponseEntity.ok(new ApiResponse<>(null, 
                     "Partido eliminado", 
                     true));
-        } catch (NumberFormatException e) {
+        } catch (IllegalArgumentException e) {
             log.error("[ADMIN] ID de partido inválido: {}", id);
             return ResponseEntity.badRequest()
                     .body(new ApiResponse<>(null, "ID de partido inválido", false));

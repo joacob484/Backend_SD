@@ -1006,16 +1006,12 @@ public class PartidoService {
      * Eliminar partido (solo admin)
      */
     @Transactional
-    public void eliminarPartidoAdmin(Long id) {
+    public void eliminarPartidoAdmin(UUID id) {
         log.warn("[ADMIN] Eliminando partido {}", id);
         
-        Partido partido = partidoRepository.findAll().stream()
-                .filter(p -> p.getId().equals(id))
-                .findFirst()
+        Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
         
         partidoRepository.delete(partido);
     }
 }
-
-
