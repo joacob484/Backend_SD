@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Spring profile-based configuration -->
+    
+    <!-- Desarrollo: Logs en consola con colores -->
+    <springProfile name="default,dev">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %msg%n</pattern>
+            </encoder>
+        </appender>
+        
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        
+        <!-- Logs más detallados para nuestro paquete -->
+        <logger name="uy.um" level="DEBUG"/>
+    </springProfile>
+
+    <!-- Producción: Logs JSON estructurados para Cloud Logging -->
+    <springProfile name="prod">
+        <!-- Cloud Logging Appender -->
+        <appender name="CLOUD_LOGGING" class="com.google.cloud.logging.logback.LoggingAppender">
+            <!-- Logs en formato JSON estructurado -->
+            <log>falta-uno-backend</log>
+            <resourceType>cloud_run_revision</resourceType>
+            <flushLevel>WARNING</flushLevel>
+            <!-- Añadir labels para filtrado -->
+            <enhancer>com.google.cloud.logging.logback.TraceLoggingEnhancer</enhancer>
+        </appender>
+
+        <!-- Fallback console con JSON encoder -->
+        <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeContext>true</includeContext>
+                <includeMdc>true</includeMdc>
+                <includeStructuredArguments>true</includeStructuredArguments>
+                <includeTags>true</includeTags>
+                <fieldNames>
+                    <timestamp>timestamp</timestamp>
+                    <message>message</message>
+                    <logger>logger</logger>
+                    <thread>thread</thread>
+                    <level>severity</level>
+                    <stackTrace>stack_trace</stackTrace>
+                </fieldNames>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CLOUD_LOGGING"/>
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+
+        <!-- Logs de nuestro paquete -->
+        <logger name="uy.um" level="INFO"/>
+        
+        <!-- Reducir logs verbosos de librerías -->
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="com.zaxxer.hikari" level="WARN"/>
+    </springProfile>
+
+    <!-- Staging: Similar a producción pero más verbose -->
+    <springProfile name="staging">
+        <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeContext>true</includeContext>
+                <includeMdc>true</includeMdc>
+            </encoder>
+        </appender>
+
+        <root level="DEBUG">
+            <appender-ref ref="JSON_CONSOLE"/>
+        </root>
+
+        <logger name="uy.um" level="DEBUG"/>
+    </springProfile>
+</configuration>

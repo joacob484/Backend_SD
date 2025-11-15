@@ -23,6 +23,8 @@ import uy.um.faltauno.util.InscripcionMapper;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +39,7 @@ public class InscripcionService {
     private final NotificacionService notificacionService;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
+    private final MeterRegistry meterRegistry;
 
     /**
      * Crear solicitud para unirse a un partido.
@@ -44,6 +47,7 @@ public class InscripcionService {
      */
     @Transactional
     public InscripcionDTO crearInscripcion(UUID partidoId, UUID usuarioId, Authentication auth) {
+        Timer.Sample sample = Timer.start(meterRegistry);
         log.info("[InscripcionService] Creando solicitud: partidoId={}, usuarioId={}", partidoId, usuarioId);
         
         UUID authUserId = getUserIdFromAuth(auth);
@@ -129,6 +133,8 @@ public class InscripcionService {
             log.error("[InscripcionService] ⚠️ Error enviando notificación", e);
         }
         
+        meterRegistry.counter("faltauno_inscripciones_created_total").increment();
+        sample.stop(meterRegistry.timer("faltauno_inscripcion_create_duration_seconds"));
         return dto;
     }
 
@@ -285,6 +291,7 @@ public class InscripcionService {
      */
     @Transactional
     public InscripcionDTO aceptarInscripcion(UUID solicitudId, Authentication auth) {
+        Timer.Sample sample = Timer.start(meterRegistry);
         log.info("[InscripcionService] Aceptando solicitud: id={}", solicitudId);
         
         // Buscar solicitud
@@ -355,6 +362,8 @@ public class InscripcionService {
         );
         applicationEventPublisher.publishEvent(evento);
         
+        meterRegistry.counter("faltauno_inscripciones_accepted_total").increment();
+        sample.stop(meterRegistry.timer("faltauno_inscripcion_accept_duration_seconds"));
         return dto;
     }
 
@@ -363,6 +372,7 @@ public class InscripcionService {
      */
     @Transactional
     public void rechazarInscripcion(UUID solicitudId, String motivo, Authentication auth) {
+        Timer.Sample sample = Timer.start(meterRegistry);
         log.info("[InscripcionService] Rechazando solicitud: id={}", solicitudId);
         
         // Buscar solicitud
@@ -412,10 +422,14 @@ public class InscripcionService {
                 nombrePartido,
                 motivo
         );
+        
+        meterRegistry.counter("faltauno_inscripciones_rejected_total").increment();
+        sample.stop(meterRegistry.timer("faltauno_inscripcion_reject_duration_seconds"));
     }
 
     @Transactional
     public void cancelarInscripcion(UUID inscripcionId, Authentication auth) {
+        Timer.Sample sample = Timer.start(meterRegistry);
         log.info("[InscripcionService] Cancelando inscripción: id={}", inscripcionId);
         
         Inscripcion inscripcion = inscripcionRepository.findById(inscripcionId)
@@ -475,6 +489,9 @@ public class InscripcionService {
         } catch (Exception e) {
             log.error("[InscripcionService] ⚠️ Error notificando WebSocket", e);
         }
+        
+        meterRegistry.counter("faltauno_inscripciones_cancelled_total").increment();
+        sample.stop(meterRegistry.timer("faltauno_inscripcion_cancel_duration_seconds"));
     }
 
     @Transactional(readOnly = true)

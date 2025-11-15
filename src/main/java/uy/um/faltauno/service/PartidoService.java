@@ -33,6 +33,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.Counter;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,13 +52,15 @@ public class PartidoService {
     // Pub/Sub publisher is optional in environments where Pub/Sub isn't configured.
     // Make it non-final so it's not required by Lombok's generated constructor.
     private Publisher pubSubPublisher;
-
+    
+    private final MeterRegistry meterRegistry;
     /**
      * Crear un nuevo partido
      */
     @Transactional
     @CacheEvict(value = CacheNames.PARTIDOS_DISPONIBLES, allEntries = true)
     public PartidoDTO crearPartido(PartidoDTO dto) {
+        Timer.Sample sample = Timer.start(meterRegistry);
         // Validaciones
         validarDatosPartido(dto);
 
@@ -94,7 +99,7 @@ public class PartidoService {
         log.info("Inscripción automática creada para organizador: partidoId={}, userId={}", 
                 guardado.getId(), organizador.getId());
 
-        // �🔥 Publicar evento asíncrono
+        // 🔥 Publicar evento asíncrono
         publicarEvento("partidos.created", Map.of(
             "event", "PARTIDO_CREADO",
             "partidoId", guardado.getId().toString(),
@@ -104,7 +109,10 @@ public class PartidoService {
             "ubicacion", guardado.getNombreUbicacion()
         ));
 
-        return entityToDtoCompleto(guardado);
+        PartidoDTO result = entityToDtoCompleto(guardado);
+        meterRegistry.counter("faltauno_partidos_created_total").increment();
+        sample.stop(meterRegistry.timer("faltauno_partido_create_duration_seconds"));
+        return result;
     }
 
     /**
@@ -309,6 +317,7 @@ public class PartidoService {
    @Transactional
    @CacheEvict(value = {CacheNames.PARTIDOS_V2, CacheNames.PARTIDOS_DISPONIBLES}, allEntries = true)
     public PartidoDTO actualizarPartido(UUID id, PartidoDTO dto, Authentication auth) {
+         Timer.Sample sample = Timer.start(meterRegistry);
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
@@ -377,9 +386,9 @@ public class PartidoService {
         Partido actualizado = partidoRepository.save(partido);
         log.info("Partido actualizado: id={}", id);
 
-        PartidoDTO result = entityToDtoCompleto(actualizado);
-        
-        // 🔥 WebSocket: Notificar actualización en tiempo real
+         PartidoDTO result = entityToDtoCompleto(actualizado);
+         
+         // 🔥 WebSocket: Notificar actualización en tiempo real
         try {
             webSocketEventPublisher.notifyPartidoUpdated(id.toString(), result);
             log.info("[PartidoService] 📡 WebSocket: Actualización de partido notificada");
@@ -387,7 +396,9 @@ public class PartidoService {
             log.error("[PartidoService] ⚠️ Error notificando WebSocket", e);
         }
 
-        return result;
+         meterRegistry.counter("faltauno_partidos_updated_total").increment();
+         sample.stop(meterRegistry.timer("faltauno_partido_update_duration_seconds"));
+         return result;
     }
 
     /**
@@ -396,6 +407,7 @@ public class PartidoService {
     @Transactional
     @CacheEvict(cacheNames = {CacheNames.PARTIDOS_V2, CacheNames.PARTIDOS_DISPONIBLES}, allEntries = true)
     public void cancelarPartido(UUID id, String motivo, Authentication auth) {
+        Timer.Sample sample = Timer.start(meterRegistry);
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
@@ -449,6 +461,8 @@ public class PartidoService {
             "motivo", motivo != null ? motivo : "Sin motivo especificado",
             "jugadoresAfectados", String.valueOf(usuariosIds.size())
         ));
+        meterRegistry.counter("faltauno_partidos_cancelled_total").increment();
+        sample.stop(meterRegistry.timer("faltauno_partido_cancel_duration_seconds"));
     }
 
     /**
@@ -456,6 +470,7 @@ public class PartidoService {
      */
     @Transactional
     public void completarPartido(UUID id, Authentication auth) {
+        Timer.Sample sample = Timer.start(meterRegistry);
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
@@ -496,6 +511,8 @@ public class PartidoService {
             "organizadorId", userId.toString(),
             "jugadoresParticipantes", String.valueOf(usuariosIds.size())
         ));
+        meterRegistry.counter("faltauno_partidos_completed_total").increment();
+        sample.stop(meterRegistry.timer("faltauno_partido_complete_duration_seconds"));
     }
 
     /**
@@ -504,6 +521,7 @@ public class PartidoService {
      */
     @Transactional
     public void confirmarPartido(UUID id, Authentication auth) {
+        Timer.Sample sample = Timer.start(meterRegistry);
         Partido partido = partidoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
@@ -546,6 +564,8 @@ public class PartidoService {
             "organizadorId", userId.toString(),
             "jugadoresInscritos", String.valueOf(usuariosIds.size())
         ));
+        meterRegistry.counter("faltauno_partidos_confirmed_total").increment();
+        sample.stop(meterRegistry.timer("faltauno_partido_confirm_duration_seconds"));
     }
 
     /**
@@ -575,6 +595,7 @@ public class PartidoService {
      */
     @Transactional
     public void removerJugador(UUID partidoId, UUID jugadorId, Authentication auth) {
+        Timer.Sample sample = Timer.start(meterRegistry);
         Partido partido = partidoRepository.findById(partidoId)
                 .orElseThrow(() -> new IllegalArgumentException("Partido no encontrado"));
 
@@ -597,6 +618,8 @@ public class PartidoService {
 
         inscripcionRepository.delete(inscripcion);
         log.info("[PartidoService] Jugador removido del partido: partidoId={}, jugadorId={}", partidoId, jugadorId);
+        meterRegistry.counter("faltauno_partidos_player_removed_total").increment();
+        sample.stop(meterRegistry.timer("faltauno_partido_remove_player_duration_seconds"));
 
         // Notificar al jugador
         String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();

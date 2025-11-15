@@ -171,6 +171,26 @@
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
 
+    <!-- Micrometer Prometheus Registry para métricas -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
+
+    <!-- Google Cloud Logging (Logback appender) -->
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-logging-logback</artifactId>
+      <version>0.131.5-alpha</version>
+    </dependency>
+
+    <!-- Logback JSON encoder para logs estructurados -->
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+      <version>8.0</version>
+    </dependency>
+
     <!-- Flyway -->
     <dependency>
       <groupId>org.flywaydb</groupId>
