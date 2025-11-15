@@ -167,13 +167,12 @@ management:
     export:
       prometheus:
         enabled: true
-        # Grafana Cloud Prometheus endpoint (for push-based integration)
-        # Note: Use Grafana Agent for scraping in production (recommended)
+        # Grafana Cloud Prometheus endpoint (push-based integration)
         pushgateway:
-          enabled: false  # Enable only if using push-gateway
-          base-url: ${GRAFANA_PROMETHEUS_URL:https://prometheus-prod-13-prod-us-east-0.grafana.net/api/prom/push}
+          enabled: true
+          base-url: ${GRAFANA_PROMETHEUS_URL:https://prometheus-prod-56-prod-us-east-2.grafana.net/api/prom/push}
           job: faltauno-backend
-          username: ${GRAFANA_PROMETHEUS_USER:1439066}
+          username: ${GRAFANA_PROMETHEUS_USER:2802365}
           password: ${GRAFANA_API_KEY:}
           push-rate: 1m  # Push every minute
     distribution:
