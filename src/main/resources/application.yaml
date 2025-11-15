@@ -167,12 +167,24 @@ management:
     export:
       prometheus:
         enabled: true
+        # Grafana Cloud Prometheus endpoint (for push-based integration)
+        # Note: Use Grafana Agent for scraping in production (recommended)
+        pushgateway:
+          enabled: false  # Enable only if using push-gateway
+          base-url: ${GRAFANA_PROMETHEUS_URL:https://prometheus-prod-13-prod-us-east-0.grafana.net/api/prom/push}
+          job: faltauno-backend
+          username: ${GRAFANA_PROMETHEUS_USER:1439066}
+          password: ${GRAFANA_API_KEY:}
+          push-rate: 1m  # Push every minute
     distribution:
       percentiles-histogram:
         http.server.requests: true
+        faltauno.partido: true
+        faltauno.inscripcion: true
     tags:
       application: ${spring.application.name}
       environment: ${spring.profiles.active:default}
+      instance: ${HOSTNAME:localhost}
   health:
     livenessstate:
       enabled: true
