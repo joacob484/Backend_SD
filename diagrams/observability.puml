@@ -1,0 +1,18 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+actor Browser
+node Frontend
+cloud Backend
+database CloudSQL
+cloud Prometheus
+cloud GrafanaCloud
+cloud CloudLogging
+
+Browser -> Frontend : page requests, metrics push (/api/metrics)
+Frontend -> Backend : REST calls
+Backend -> Prometheus : /actuator/prometheus (scrape)
+Prometheus -> GrafanaCloud : remote_write
+Backend -> CloudLogging : structured logs (logback -> cloud logging)
+CloudLogging -> GrafanaCloud : logs-based metrics
+
+@enduml

@@ -1,0 +1,27 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+actor Browser
+node "Frontend Instance A" as F1
+node "Frontend Instance B" as F2
+cloud "Cloud Run - Backend Instance 1" as B1
+cloud "Cloud Run - Backend Instance 2" as B2
+cloud "RabbitMQ (STOMP Relay)" as Rabbit
+
+Browser -> F1 : open page
+F1 -> B1 : WS connect (/ws) via SockJS
+Browser -> F2 : open page
+F2 -> B2 : WS connect (/ws)
+
+B1 -> Rabbit : connect STOMP relay
+B2 -> Rabbit : connect STOMP relay
+
+B1 -> Rabbit : publish /topic/partidos/{id}
+Rabbit -> B2 : relay message
+B2 -> F2 : deliver to subscribed clients
+
+note right of Rabbit
+  RabbitMQ acts as the central broker
+  to distribute messages across instances
+end note
+
+@enduml

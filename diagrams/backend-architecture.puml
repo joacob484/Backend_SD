@@ -1,0 +1,22 @@
+@startuml
+!define AWSPUML https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v14.0/LATEST/AWSPUML
+skinparam backgroundColor #FFFFFF
+actor Browser
+node "Frontend (Next.js)" as Frontend
+cloud "Cloud Run (Backend)" as Backend
+database "Cloud SQL (Postgres)" as DB
+cloud "RabbitMQ / CloudAMQP" as Rabbit
+cloud "Grafana Cloud / Prometheus" as Grafana
+cloud "Google Cloud Logging" as GL
+
+Browser -> Frontend : HTTP(S) / WebSocket (STOMP over SockJS)
+Frontend -> Backend : HTTP(S) REST / OAuth2 redirects
+Frontend -> Backend : WS / STOMP -> /ws
+Backend -> DB : JDBC (Cloud SQL Socket Factory)
+Backend -> Rabbit : STOMP relay (publish/subscribe)
+Backend -> Grafana : metrics (Prometheus endpoint / pushgateway)
+Backend -> GL : structured logs (logback json + cloud-logging appender)
+Grafana ..> Backend : scrape / remote_write
+GL ..> Backend : log based metrics
+
+@enduml
