@@ -77,7 +77,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
                 .requestMatchers("/api/novedades").permitAll()
                     .requestMatchers("/ws/**", "/ws/info/**", "/ws/info", "/ws/iframe.html", "/ws/iframe.html/**").permitAll()  // SockJS WebSocket endpoints and fallbacks
-                .requestMatchers("/public/**", "/actuator/health", "/error").permitAll()
+                .requestMatchers("/public/**", "/actuator/health", "/actuator/prometheus", "/actuator/metrics", "/error").permitAll()  // ✅ Métricas para Grafana
                 .anyRequest().authenticated()
             )
 

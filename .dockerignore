@@ -9,11 +9,18 @@ target/
 **/target/
 
 # ────────────────────────────────────────────────────────────
+# Maven local repository (se descarga en cada build)
+# ────────────────────────────────────────────────────────────
+.m2/
+**/.m2/
+
+# ────────────────────────────────────────────────────────────
 # Git y control de versiones
 # ────────────────────────────────────────────────────────────
 .git/
 .gitignore
 .github/
+.gitattributes
 
 # ────────────────────────────────────────────────────────────
 # IDEs y editores
@@ -24,6 +31,10 @@ target/
 *.ipr
 *.iws
 .DS_Store
+.settings/
+.project
+.classpath
+.factorypath
 
 # ────────────────────────────────────────────────────────────
 # Variables de entorno y configuración local
@@ -31,6 +42,9 @@ target/
 .env
 .env.*
 *.local
+application-local.yaml
+application-local.yml
+application-local.properties
 
 # ────────────────────────────────────────────────────────────
 # Logs y temporales
@@ -39,6 +53,10 @@ target/
 logs/
 tmp/
 temp/
+*.tmp
+*.swp
+*.swo
+*~
 
 # ────────────────────────────────────────────────────────────
 # Archivos de deployment y documentación
@@ -46,16 +64,20 @@ temp/
 *.md
 !README.md
 *.sh
+*.ps1
+# Excepciones: scripts necesarios para runtime
 !wait-for-services.sh
 !cloudrun-entrypoint.sh
 
 # ────────────────────────────────────────────────────────────
 # Docker y Cloud Build
 # ────────────────────────────────────────────────────────────
+# Dockerfile  # ✅ NO excluir el Dockerfile principal
 Dockerfile.prod
+Dockerfile.dev
 docker-compose*.yml
-cloudbuild-ci.yaml
-cloudbuild-retag.yaml
+# .dockerignore  # ✅ NO excluir .dockerignore
+cloudbuild*.yaml
 
 # ────────────────────────────────────────────────────────────
 # Node modules (si existen)
@@ -64,8 +86,20 @@ node_modules/
 **/node_modules/
 
 # ────────────────────────────────────────────────────────────
-# Otros directorios de build/deploy
+# Otros directorios de build/deploy/scripts
 # ────────────────────────────────────────────────────────────
 ci/
 deploy/
 scripts/
+
+# ────────────────────────────────────────────────────────────
+# SQL de reparación (solo development)
+# ────────────────────────────────────────────────────────────
+*.sql
+!src/main/resources/db/**/*.sql
+
+# ────────────────────────────────────────────────────────────
+# Test files (ya que hacemos -DskipTests)
+# ────────────────────────────────────────────────────────────
+src/test/
+**/src/test/
