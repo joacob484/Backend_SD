@@ -281,7 +281,7 @@ spring:
   
   # ✅ Cloud SQL connection
   datasource:
-    url: jdbc:postgresql:///faltauno_db?cloudSqlInstance=master-might-274420:us-central1:faltauno-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory&ipTypes=PUBLIC&connectTimeout=30&socketTimeout=30
+    url: jdbc:postgresql:///faltauno_db?cloudSqlInstance=${CLOUD_SQL_INSTANCE:master-might-274420:us-central1:faltauno-db}&socketFactory=com.google.cloud.sql.postgres.SocketFactory&ipTypes=PUBLIC&connectTimeout=30&socketTimeout=30
     username: ${SPRING_DATASOURCE_USERNAME:app}
     password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:

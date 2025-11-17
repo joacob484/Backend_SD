@@ -4,11 +4,13 @@ import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@ConditionalOnProperty(name = "gcp.pubsub.enabled", havingValue = "true")
 public class PubSubService {
 
     private final PubSubTemplate pubSubTemplate;

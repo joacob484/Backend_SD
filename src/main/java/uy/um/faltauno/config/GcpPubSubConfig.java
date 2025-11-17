@@ -17,10 +17,11 @@ import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import org.springframework.context.annotation.Bean;
-
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@ConditionalOnProperty(name = "gcp.pubsub.enabled", havingValue = "true")
 public class GcpPubSubConfig {
 
     @Bean

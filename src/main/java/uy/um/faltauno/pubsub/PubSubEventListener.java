@@ -5,6 +5,7 @@ package uy.um.faltauno.pubsub;
 import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import uy.um.faltauno.service.EmailService;
 import uy.um.faltauno.service.PushNotificationService;
@@ -14,6 +15,7 @@ import javax.annotation.PostConstruct;
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@ConditionalOnProperty(name = "gcp.pubsub.enabled", havingValue = "true")
 public class PubSubEventListener {
 
     private final PubSubTemplate pubSubTemplate;
