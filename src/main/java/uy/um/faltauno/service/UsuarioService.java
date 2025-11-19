@@ -61,7 +61,6 @@ public class UsuarioService {
     private final InscripcionRepository inscripcionRepository;
     private final PartidoRepository partidoRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
     private final ContactoRepository contactoRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final SolicitudPartidoRepository solicitudPartidoRepository;
@@ -273,15 +272,6 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
-        // 🎯 DETECTAR SI ES PRIMERA VEZ COMPLETANDO PERFIL (celular es el último paso)
-        boolean esPrimeraVezCompletandoPerfil = (usuario.getCelular() == null || usuario.getCelular().isBlank()) 
-                                                 && perfilDTO.getCelular() != null 
-                                                 && !perfilDTO.getCelular().isBlank();
-        
-        if (esPrimeraVezCompletandoPerfil) {
-            log.info("[UsuarioService] 🎉 Primera vez completando perfil para: {} {}", usuario.getNombre(), usuario.getEmail());
-        }
-
         // ✅ Validaciones de campos
         if (perfilDTO.getNombre() != null && perfilDTO.getNombre().length() > 100) {
             throw new IllegalArgumentException("Nombre demasiado largo (máx 100 caracteres)");
@@ -320,11 +310,6 @@ public class UsuarioService {
         }
         if (apellido != null && !apellido.trim().isEmpty()) {
             usuario.setApellido(apellido);
-        }
-        
-        // ⚡ CRÍTICO: Solo actualizar celular si viene en el request (no sobrescribir con null)
-        if (perfilDTO.getCelular() != null) {
-            usuario.setCelular(perfilDTO.getCelular());
         }
         
         // ⚡ CRÍTICO: Solo actualizar posicion si viene en el request
@@ -394,17 +379,6 @@ public class UsuarioService {
     // Forzar flush para visibilidad inmediata en lecturas subsecuentes
     usuarioRepository.flush();
     
-    // 📧 ENVIAR EMAIL DE BIENVENIDA si es la primera vez que completa el perfil
-    if (esPrimeraVezCompletandoPerfil) {
-        try {
-            log.info("[UsuarioService] 📧 Enviando email de bienvenida a {} (perfil completado por primera vez)", usuario.getEmail());
-            emailService.enviarEmailBienvenida(saved);
-        } catch (Exception e) {
-            log.error("[UsuarioService] ❌ Error enviando email de bienvenida (no crítico): {}", e.getMessage());
-            // No fallar la actualización si el email falla
-        }
-    }
-    
     return saved;
     }
 
@@ -457,51 +431,30 @@ public class UsuarioService {
     }
 
     /**
-     * Buscar usuarios por números de teléfono (para sincronización de contactos)
-     * Normaliza los números antes de buscar
+     * Buscar usuarios por emails (para sincronización de contactos)
+     * Busca coincidencias exactas de email
      */
     @Transactional(readOnly = true)
-    public List<UsuarioDTO> buscarPorTelefonos(List<String> telefonos) {
-        if (telefonos == null || telefonos.isEmpty()) {
+    public List<UsuarioDTO> buscarPorEmails(List<String> emails) {
+        if (emails == null || emails.isEmpty()) {
             return Collections.emptyList();
         }
 
-        log.info("Buscando usuarios para {} números", telefonos.size());
+        log.info("Buscando usuarios para {} emails", emails.size());
 
-        // Normalizar números: quitar espacios, + inicial, etc. para buscar
-        List<String> telefonosNormalizados = telefonos.stream()
-                .map(tel -> tel.replaceAll("[\\s\\-\\(\\)\\+]", "")) // Quitar formato
-                .filter(tel -> !tel.isEmpty())
+        // Normalizar emails: convertir a minúsculas y filtrar vacíos
+        List<String> emailsNormalizados = emails.stream()
+                .map(String::toLowerCase)
+                .map(String::trim)
+                .filter(email -> !email.isEmpty())
                 .distinct()
                 .collect(Collectors.toList());
 
-        log.info("Números normalizados: {}", telefonosNormalizados.size());
+        log.info("Emails normalizados: {}", emailsNormalizados.size());
 
         // Buscar en la base de datos
-        // Hacemos búsqueda flexible: buscar tanto con + como sin +
         List<Usuario> usuarios = usuarioRepository.findAllActive().stream()
-                .filter(u -> {
-                    if (u.getCelular() == null || u.getCelular().isEmpty()) {
-                        return false;
-                    }
-                    String celularNormalizado = u.getCelular().replaceAll("[\\s\\-\\(\\)\\+]", "");
-                    
-                    // Buscar coincidencia exacta o coincidencia de sufijo (últimos 8-10 dígitos)
-                    return telefonosNormalizados.stream().anyMatch(tel -> {
-                        // Coincidencia exacta
-                        if (celularNormalizado.equals(tel)) {
-                            return true;
-                        }
-                        // Coincidencia de sufijo (últimos 8-10 dígitos)
-                        int minLength = Math.min(8, Math.min(celularNormalizado.length(), tel.length()));
-                        if (celularNormalizado.length() >= minLength && tel.length() >= minLength) {
-                            String sufijoCelular = celularNormalizado.substring(celularNormalizado.length() - minLength);
-                            String sufijoTel = tel.substring(tel.length() - minLength);
-                            return sufijoCelular.equals(sufijoTel);
-                        }
-                        return false;
-                    });
-                })
+                .filter(u -> u.getEmail() != null && emailsNormalizados.contains(u.getEmail().toLowerCase()))
                 .collect(Collectors.toList());
 
         log.info("Encontrados {} usuarios", usuarios.size());
@@ -649,7 +602,6 @@ public class UsuarioService {
                         log.warn("[UsuarioService] Fecha de nacimiento inválida al actualizar: {}", profileDto.getFechaNacimiento());
                     }
                 }
-                if (profileDto.getCelular() != null) existing.setCelular(profileDto.getCelular());
             }
 
             // Marcar email verificado
@@ -681,7 +633,6 @@ public class UsuarioService {
             if (profileDto != null) {
                 if (profileDto.getNombre() != null) raceCheck.setNombre(profileDto.getNombre());
                 if (profileDto.getApellido() != null) raceCheck.setApellido(profileDto.getApellido());
-                if (profileDto.getCelular() != null) raceCheck.setCelular(profileDto.getCelular());
                 if (profileDto.getFechaNacimiento() != null) {
                     try {
                         raceCheck.setFechaNacimiento(LocalDate.parse(profileDto.getFechaNacimiento(), UsuarioMapper.FORMATTER));
@@ -703,7 +654,6 @@ public class UsuarioService {
             dto.setNombre(profileDto.getNombre());
             dto.setApellido(profileDto.getApellido());
             dto.setFechaNacimiento(profileDto.getFechaNacimiento());
-            dto.setCelular(profileDto.getCelular());
         }
 
         UsuarioDTO created = createUsuario(dto);
@@ -736,11 +686,6 @@ public class UsuarioService {
     @Transactional(readOnly = true)
     public boolean existsByEmail(String email) {
         return usuarioRepository.existsByEmail(email);
-    }
-
-    @Transactional(readOnly = true)
-    public boolean existsByCelular(String celular) {
-        return usuarioRepository.existsByCelular(celular);
     }
 
     @Transactional

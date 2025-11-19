@@ -18,9 +18,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
     @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM Usuario u WHERE u.email = :email AND u.deletedAt IS NULL")
     boolean existsByEmail(@Param("email") String email);
     
-    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM Usuario u WHERE u.celular = :celular AND u.deletedAt IS NULL")
-    boolean existsByCelular(@Param("celular") String celular);
-    
     @Query("SELECT u FROM Usuario u WHERE u.id = :id AND u.deletedAt IS NULL")
     Optional<Usuario> findById(@Param("id") UUID id);
     
@@ -76,12 +73,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
      */
     @Query("SELECT u FROM Usuario u WHERE u.deletedAt IS NOT NULL AND u.deletedAt < :cutoffDate")
     java.util.List<Usuario> findExpiredDeletedUsers(@Param("cutoffDate") LocalDateTime cutoffDate);
-    
-    /**
-     * Buscar usuarios por lista de números de teléfono (para sincronización de contactos)
-     */
-    @Query("SELECT u FROM Usuario u WHERE u.celular IN :telefonos AND u.deletedAt IS NULL")
-    java.util.List<Usuario> findByCelularIn(@Param("telefonos") java.util.List<String> telefonos);
 
     /**
      * Contar usuarios eliminados (soft deleted)

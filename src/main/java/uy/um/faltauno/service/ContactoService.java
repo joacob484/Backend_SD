@@ -55,7 +55,7 @@ public class ContactoService {
      * Sincronizar contactos del dispositivo con la base de datos
      * @param usuario Usuario que sincroniza
      * @param contactosRequest Lista de contactos del dispositivo con formato:
-     *                         [{"nombre": "Juan", "apellido": "Perez", "celular": "+59899123456"}, ...]
+     *                         [{"nombre": "Juan", "apellido": "Perez", "email": "juan@example.com"}, ...]
      * @return Lista de contactos sincronizados con información de cuáles están en la app
      */
     @Transactional
@@ -65,28 +65,32 @@ public class ContactoService {
         // Eliminar contactos anteriores
         contactoRepository.deleteByUsuarioId(usuario.getId());
         
-        // Extraer números de teléfono
-        List<String> telefonos = contactosRequest.stream()
-                .map(c -> c.get("celular"))
-                .filter(t -> t != null && !t.trim().isEmpty())
+        // Extraer emails
+        List<String> emails = contactosRequest.stream()
+                .map(c -> c.get("email"))
+                .filter(e -> e != null && !e.trim().isEmpty())
+                .map(String::toLowerCase)
                 .distinct()
                 .collect(Collectors.toList());
         
-        log.info("Buscando {} números de teléfono únicos en la app", telefonos.size());
+        log.info("Buscando {} emails únicos en la app", emails.size());
         
-        // Buscar usuarios existentes por teléfono
-        List<Usuario> usuariosEnApp = usuarioRepository.findByCelularIn(telefonos);
-        Map<String, Usuario> usuariosPorTelefono = usuariosEnApp.stream()
-                .collect(Collectors.toMap(Usuario::getCelular, u -> u));
+        // Buscar usuarios existentes por email usando el método ya existente en repository
+        List<Usuario> usuariosEnApp = usuarioRepository.findAllActive().stream()
+                .filter(u -> u.getEmail() != null && emails.contains(u.getEmail().toLowerCase()))
+                .collect(Collectors.toList());
+        
+        Map<String, Usuario> usuariosPorEmail = usuariosEnApp.stream()
+                .collect(Collectors.toMap(u -> u.getEmail().toLowerCase(), u -> u));
         
         log.info("Encontrados {} usuarios en la app", usuariosEnApp.size());
         
         // Crear contactos
         List<Contacto> contactos = new ArrayList<>();
         for (Map<String, String> contactoData : contactosRequest) {
-            String celular = contactoData.get("celular");
+            String email = contactoData.get("email");
             
-            if (celular == null || celular.trim().isEmpty()) {
+            if (email == null || email.trim().isEmpty()) {
                 continue;
             }
             
@@ -94,10 +98,10 @@ public class ContactoService {
             contacto.setUsuario(usuario);
             contacto.setNombre(contactoData.getOrDefault("nombre", ""));
             contacto.setApellido(contactoData.getOrDefault("apellido", ""));
-            contacto.setCelular(celular);
+            contacto.setCelular(email); // Reusamos el campo celular para guardar el email
             
             // Verificar si el contacto está en la app
-            Usuario usuarioApp = usuariosPorTelefono.get(celular);
+            Usuario usuarioApp = usuariosPorEmail.get(email.toLowerCase());
             if (usuarioApp != null) {
                 contacto.setUsuarioApp(usuarioApp);
                 contacto.setIsOnApp(true);
@@ -122,15 +126,16 @@ public class ContactoService {
      */
     @Transactional
     public void actualizarContactosConNuevoUsuario(Usuario nuevoUsuario) {
-        if (nuevoUsuario.getCelular() == null) {
+        if (nuevoUsuario.getEmail() == null) {
             return;
         }
         
-        log.info("Actualizando contactos para nuevo usuario con teléfono: {}", nuevoUsuario.getCelular());
+        log.info("Actualizando contactos para nuevo usuario con email: {}", nuevoUsuario.getEmail());
         
-        // Buscar todos los contactos que tengan este número
+        // Buscar todos los contactos que tengan este email (guardado en campo celular)
+        String emailLower = nuevoUsuario.getEmail().toLowerCase();
         List<Contacto> contactosAActualizar = contactoRepository.findAll().stream()
-                .filter(c -> nuevoUsuario.getCelular().equals(c.getCelular()))
+                .filter(c -> c.getCelular() != null && emailLower.equals(c.getCelular().toLowerCase()))
                 .collect(Collectors.toList());
         
         log.info("Encontrados {} contactos a actualizar", contactosAActualizar.size());
