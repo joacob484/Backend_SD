@@ -108,7 +108,6 @@ public class VerificationController {
         profileDto.setNombre(request.get("nombre"));
         profileDto.setApellido(request.get("apellido"));
         profileDto.setFechaNacimiento(request.get("fechaNacimiento"));
-        profileDto.setCelular(request.get("celular"));
 
         log.info("[VerificationController] 👤 Creando/actualizando usuario...");
         // Crear o actualizar usuario
