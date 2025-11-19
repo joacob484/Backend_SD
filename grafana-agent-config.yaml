@@ -1,0 +1,21 @@
+server:
+  log_level: info
+
+metrics:
+  global:
+    scrape_interval: 30s
+    remote_write:
+      - url: https://prometheus-prod-56-prod-us-east-2.grafana.net/api/prom/push
+        basic_auth:
+          username: ${GRAFANA_USERNAME}
+          password: ${GRAFANA_API_TOKEN}
+  
+  configs:
+    - name: faltauno_backend
+      scrape_configs:
+        - job_name: 'faltauno-backend'
+          scheme: https
+          metrics_path: '/actuator/prometheus'
+          static_configs:
+            - targets:
+                - 'faltauno-backend-169771742214.us-central1.run.app'

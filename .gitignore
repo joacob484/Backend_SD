@@ -26,12 +26,14 @@ buildNumber.properties
 *.log
 logs/
 *.log.*
+nohup.out
 
 # ==============================================
 # Environment & Configuration
 # ==============================================
 .env
 .env.*
+!.env.*.example
 .env.local
 .env.*.local
 application-local.yaml
@@ -126,7 +128,8 @@ replay_pid*
 uploads/
 *.jpg
 *.jpeg
-*.png
+# Allow diagram PNGs in /diagrams folder
+!diagrams/*.png
 *.gif
 *.pdf
 !src/main/resources/static/**
@@ -137,6 +140,7 @@ uploads/
 *.db
 *.sqlite
 *.h2.db
+data-agent/
 
 # ==============================================
 # Docker

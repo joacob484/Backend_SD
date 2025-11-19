@@ -1,0 +1,28 @@
+// Grafana Alloy configuration for FaltaUno Backend
+// Scrapes metrics from Cloud Run and sends to Grafana Cloud
+
+prometheus.scrape "faltauno_backend" {
+  targets = [
+    {
+      "__address__" = "faltauno-backend-169771742214.us-central1.run.app",
+      "__scheme__"  = "https",
+      "__metrics_path__" = "/actuator/prometheus",
+    },
+  ]
+  
+  forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+  
+  scrape_interval = "30s"
+  scrape_timeout  = "10s"
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = "https://prometheus-prod-56-prod-us-east-2.grafana.net/api/prom/push"
+    
+    basic_auth {
+      username = env("GRAFANA_USERNAME")
+      password = env("GRAFANA_SERVICE_ACCOUNT_TOKEN")
+    }
+  }
+}
