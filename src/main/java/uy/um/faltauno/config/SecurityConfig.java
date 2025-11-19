@@ -74,6 +74,7 @@ public class SecurityConfig {
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/verification/**").permitAll()
+                .requestMatchers("/api/cedula/verify").permitAll()  // ✅ Verificación pública de cédula
                 .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
                 .requestMatchers("/api/novedades").permitAll()
                     .requestMatchers("/ws/**", "/ws/info/**", "/ws/info", "/ws/iframe.html", "/ws/iframe.html/**").permitAll()  // SockJS WebSocket endpoints and fallbacks
