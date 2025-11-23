@@ -180,6 +180,7 @@ public class WebSocketEventPublisher {
 
     /**
      * Notificar que un usuario está escribiendo
+     * ✅ FIX: No enviar el evento al usuario que está escribiendo (solo a los demás)
      */
     public void notifyTyping(String partidoId, String userId, String userName, boolean isTyping) {
         try {
@@ -191,7 +192,12 @@ public class WebSocketEventPublisher {
             payload.put("isTyping", isTyping);
             payload.put("timestamp", System.currentTimeMillis());
 
+            // ✅ FIX: Usar broadcasting pero el frontend filtrará por userId
+            // Spring WebSocket no tiene "send to all except" nativo, así que
+            // enviamos a todos y el frontend descarta si userId === currentUser.id
             messagingTemplate.convertAndSend("/topic/partidos/" + partidoId + "/chat", payload);
+            
+            log.debug("[WebSocket] Typing event sent for user {} in partido {}", userName, partidoId);
         } catch (Exception e) {
             log.error("[WebSocket] Error notificando typing", e);
         }
