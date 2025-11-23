@@ -261,6 +261,13 @@
       <version>1.123.0</version>
     </dependency>
 
+    <!-- Google Cloud Vision API for photo validation -->
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-vision</artifactId>
+      <version>3.7.0</version>
+    </dependency>
+
     <!-- Tests -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
