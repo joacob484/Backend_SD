@@ -26,7 +26,7 @@ public class VerificationService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     
-    private static final int CODE_EXPIRATION_MINUTES = 15;
+    private static final int CODE_EXPIRATION_MINUTES = 5;
     private static final Random RANDOM = new Random();
 
     /**
