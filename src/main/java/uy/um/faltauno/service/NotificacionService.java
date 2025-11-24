@@ -103,11 +103,14 @@ public class NotificacionService {
     /**
      * Determina si un tipo de notificación debe validar duplicados
      * Solo aplicamos esta lógica a notificaciones que tienden a generarse en masa
+     * o que pueden ser enviadas por múltiples instancias de la aplicación
      */
     private boolean debeValidarDuplicados(Notificacion.TipoNotificacion tipo) {
         return tipo == Notificacion.TipoNotificacion.NUEVA_SOLICITUD ||
                tipo == Notificacion.TipoNotificacion.JUGADOR_UNIDO ||
-               tipo == Notificacion.TipoNotificacion.NUEVO_MENSAJE;
+               tipo == Notificacion.TipoNotificacion.NUEVO_MENSAJE ||
+               tipo == Notificacion.TipoNotificacion.INSCRIPCION_ACEPTADA || // ✅ FIX: Prevenir emails duplicados
+               tipo == Notificacion.TipoNotificacion.INSCRIPCION_RECHAZADA;
     }
 
     /**
