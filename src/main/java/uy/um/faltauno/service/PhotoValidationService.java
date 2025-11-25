@@ -62,7 +62,8 @@ public class PhotoValidationService {
                     .build();
             }
 
-        } catch (IOException e) {
+        } catch (Exception e) {
+            // ⚠️ Capturar TODAS las excepciones (IOException, RuntimeException, etc.)
             log.error("[PhotoValidation] Error validating photo", e);
             
             // ⚠️ CRITICAL: NO permitir fotos si la validación falla
