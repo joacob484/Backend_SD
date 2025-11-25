@@ -83,6 +83,7 @@ jobs:
           --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }} \
           --update-secrets=SPRING_DATASOURCE_PASSWORD=termii-sender-id:latest \
             --update-secrets=/secrets/google-credentials.json=google-vision-credentials:latest \
+            --set-env-vars=GOOGLE_APPLICATION_CREDENTIALS=/secrets/google-credentials.json \
           --clear-vpc-connector \
           --no-traffic \
           --tag=candidate \

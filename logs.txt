@@ -1,0 +1,13 @@
+﻿
+Default STARTUP TCP probe failed 1 time consecutively for container "faltauno-backend-1" on port 8080. The instance was not started.
+Connection failed with status DEADLINE_EXCEEDED.
+16:43:47,424 |-WARN in Logger[uy.um.faltauno.FaltaUnoApplication] - No appenders present in context [default] for logger [uy.um.faltauno.FaltaUnoApplication].
+ :: Spring Boot ::                (v3.5.0)
+ =========|_|==============|___/=/_/_/_/
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+  .   ____          _            __ _ _
+16:43:46.078 [main] INFO uy.um.faltauno.FaltaUnoApplication -- ? Falta Uno Backend - v3.0 - PRODUCTION READY ?
+Starting new instance. Reason: DEPLOYMENT_ROLLOUT - Instance started due to traffic shifting between revisions due to deployment, traffic split adjustment, or deployment health check.

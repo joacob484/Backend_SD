@@ -18,10 +18,8 @@ import java.util.List;
  * - Contenido apropiado (no adulto, violento, etc.)
  * 
  * @version 1.1 - Google Cloud Vision API integration with proper error handling
- * 
- * TEMPORARILY DISABLED - Will re-enable after successful deployment
  */
-// @Service  // TODO: Re-enable after deployment succeeds
+@Service
 @Slf4j
 public class PhotoValidationService {
 
