@@ -71,7 +71,6 @@ jobs:
             --set-env-vars=SPRING_PROFILES_ACTIVE=cloudrun,GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }},GOOGLE_APPLICATION_CREDENTIALS=/secrets/google-credentials.json \
           --cpu-throttling \
           --cpu-boost \
-          --set-env-vars=SPRING_PROFILES_ACTIVE=cloudrun,SMS_ENABLED=true,SMS_PROVIDER=termii,PHONE_VERIFICATION_ENABLED=true,GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
           --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }} \
           --update-secrets=SPRING_DATASOURCE_PASSWORD=termii-sender-id:latest \
             --update-secrets=/secrets/google-credentials.json=google-vision-credentials:latest \
