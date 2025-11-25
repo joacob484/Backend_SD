@@ -60,7 +60,7 @@ jobs:
         gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
           --source=. \
             --cpu-boost \
-            --timeout=300 \${{ env.GCP_PROJECT_ID }},GOOGLE_APPLICATION_CREDENTIALS=/secrets/google-credentials.json \
+            --timeout=300 \
           --region=${{ env.GCP_REGION }} \
           --platform=managed \
           --allow-unauthenticated \
