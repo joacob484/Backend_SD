@@ -19,7 +19,7 @@ import java.util.List;
  * 
  * @version 1.1 - Google Cloud Vision API integration with proper error handling
  */
-@Service
+// @Service // TEMPORARILY DISABLED - Testing deployment without Vision API
 @Slf4j
 public class PhotoValidationService {
 
