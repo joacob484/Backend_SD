@@ -64,14 +64,28 @@ public class PhotoValidationService {
 
         } catch (IOException e) {
             log.error("[PhotoValidation] Error validating photo", e);
-            // En caso de error, permitir la foto (graceful degradation)
+            
+            // ⚠️ CRITICAL: NO permitir fotos si la validación falla
+            // Si Google Cloud Vision API no está configurado o falla, RECHAZAR la foto
+            String errorMessage = "No se pudo validar la foto. ";
+            
+            if (e.getMessage() != null && e.getMessage().contains("credentials")) {
+                errorMessage += "El servicio de validación no está configurado correctamente.";
+                log.error("[PhotoValidation] ❌ Google Cloud Vision API credentials not configured");
+            } else if (e.getMessage() != null && e.getMessage().contains("quota")) {
+                errorMessage += "Se ha excedido el límite de validaciones. Intenta más tarde.";
+                log.error("[PhotoValidation] ❌ Google Cloud Vision API quota exceeded");
+            } else {
+                errorMessage += "Por favor intenta con otra foto o contacta soporte.";
+            }
+            
             return PhotoValidationResult.builder()
-                .valid(true) // Permitir en caso de error
-                .hasFace(true)
-                .faceCount(1)
-                .isAppropriate(true)
+                .valid(false) // ✅ RECHAZAR si hay error
+                .hasFace(false)
+                .faceCount(0)
+                .isAppropriate(false)
                 .confidence(0.0)
-                .message("Validación no disponible temporalmente, foto aceptada")
+                .message(errorMessage)
                 .reason("API_ERROR")
                 .build();
         }
