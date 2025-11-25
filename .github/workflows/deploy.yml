@@ -70,8 +70,6 @@ jobs:
           --min-instances=0 \
             --update-env-vars=SPRING_PROFILES_ACTIVE=cloudrun \
             --update-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
-            --remove-env-vars=GOOGLE_APPLICATION_CREDENTIALS \
-            --update-env-vars=GOOGLE_APPLICATION_CREDENTIALS=/secrets/google-credentials.json \
           --cpu-throttling \
           --cpu-boost \
           --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }} \
