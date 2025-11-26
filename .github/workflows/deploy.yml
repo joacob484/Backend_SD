@@ -58,6 +58,7 @@ jobs:
         
         # Deploy nueva revision SIN trafico primero (para validar)
         gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
+
         gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
           --source=. \
           --region=${{ env.GCP_REGION }} \
@@ -72,6 +73,7 @@ jobs:
           --cpu-throttling \
           --update-env-vars=SPRING_PROFILES_ACTIVE=cloudrun \
           --update-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
+          --update-env-vars=CLOUD_SQL_INSTANCE=${{ env.CLOUDSQL_INSTANCE }} \
           --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }} \
           --update-secrets=SPRING_DATASOURCE_PASSWORD=termii-sender-id:latest \
           --update-secrets=/secrets/google-credentials.json=google-vision-credentials:latest \
@@ -79,7 +81,7 @@ jobs:
           --no-traffic \
           --tag=candidate \
           --quiet
-        echo "? New revision deployed!"
+
         
         # Obtener nombre de la nueva revision
         NEW_REVISION=$(gcloud run revisions list \
