@@ -59,8 +59,7 @@ jobs:
         # Deploy nueva revision SIN trafico primero (para validar)
         gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
 
-        gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
-          --source=. \
+        --image=${{ env.IMAGE }} \
           --region=${{ env.GCP_REGION }} \
           --platform=managed \
           --allow-unauthenticated \
