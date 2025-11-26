@@ -72,7 +72,6 @@ jobs:
             --update-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
           --cpu-throttling \
           --cpu-boost \
-            --startup-probe-period=60 \
           --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }} \
           --update-secrets=SPRING_DATASOURCE_PASSWORD=termii-sender-id:latest \
             --update-secrets=/secrets/google-credentials.json=google-vision-credentials:latest \
