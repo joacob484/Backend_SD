@@ -1,4 +1,4 @@
-name: Deploy to Google Cloud Run
+ï»¿name: Deploy to Google Cloud Run
 permissions:
   contents: read
   issues: write
@@ -48,6 +48,34 @@ jobs:
     - name: Build and Deploy to Cloud Run
       run: |
         echo "========================================"
+        echo "=========================================="
+        echo " BUILDING DOCKER IMAGE"
+        echo "=========================================="
+        echo ""
+        
+        # Build Docker image
+        docker build \
+          --platform linux/amd64 \
+          --tag ${{ env.IMAGE }} \
+          --build-arg BUILDKIT_INLINE_CACHE=1 \
+          .
+        
+        echo ""
+        echo " Image built: ${{ env.IMAGE }}"
+        echo ""
+        
+        echo "=========================================="
+        echo " PUSHING TO ARTIFACT REGISTRY"
+        echo "=========================================="
+        echo ""
+        
+        # Push to Artifact Registry
+        docker push ${{ env.IMAGE }}
+        
+        echo ""
+        echo " Image pushed successfully"
+        echo ""
+        
         echo "?? DEPLOYING TO CLOUD RUN"
         echo "========================================"
         echo ""
@@ -58,7 +86,6 @@ jobs:
         
         # Deploy nueva revision SIN trafico primero (para validar)
         gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
-
         --image=${{ env.IMAGE }} \
           --region=${{ env.GCP_REGION }} \
           --platform=managed \
@@ -115,7 +142,7 @@ jobs:
         PUBSUB_CHANGED=false
         if git diff --name-only HEAD~1 HEAD | grep -iE "(pubsub|PubSub|EventPublisher|EventSubscriber)" > /dev/null 2>&1; then
           PUBSUB_CHANGED=true
-          echo "? Cambios detectados en código de Pub/Sub"
+          echo "? Cambios detectados en cÃ³digo de Pub/Sub"
         fi
         
         echo "pubsub_changed=$PUBSUB_CHANGED" >> $GITHUB_OUTPUT
@@ -126,31 +153,31 @@ jobs:
     - name: Verify Pub/Sub Setup
       if: steps.detect-changes.outputs.pubsub_changed == 'true' || env.GCP_PUBSUB_ENABLED == 'true'
       run: |
-        echo "=ƒöä Verificando configuraci+¦n de Pub/Sub..."
+        echo "=Æ’Ã¶Ã¤ Verificando configuraci+Â¦n de Pub/Sub..."
         echo ""
         
         # Crear topic si no existe
         if ! gcloud pubsub topics describe ${{ env.GCP_PUBSUB_TOPIC }} --project=${{ env.GCP_PROJECT_ID }} > /dev/null 2>&1; then
-          echo "=ƒô¥ Creando topic: ${{ env.GCP_PUBSUB_TOPIC }}"
+          echo "=Æ’Ã´Â¥ Creando topic: ${{ env.GCP_PUBSUB_TOPIC }}"
           gcloud pubsub topics create ${{ env.GCP_PUBSUB_TOPIC }} --project=${{ env.GCP_PROJECT_ID }}
         else
-          echo "G£à Topic existe: ${{ env.GCP_PUBSUB_TOPIC }}"
+          echo "GÂ£Ã  Topic existe: ${{ env.GCP_PUBSUB_TOPIC }}"
         fi
         
         # Crear subscription si no existe
         if ! gcloud pubsub subscriptions describe ${{ env.GCP_PUBSUB_SUBSCRIPTION }} --project=${{ env.GCP_PROJECT_ID }} > /dev/null 2>&1; then
-          echo "=ƒô¥ Creando subscription: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
+          echo "=Æ’Ã´Â¥ Creando subscription: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
           gcloud pubsub subscriptions create ${{ env.GCP_PUBSUB_SUBSCRIPTION }} \
             --topic=${{ env.GCP_PUBSUB_TOPIC }} \
             --ack-deadline=60 \
             --message-retention-duration=7d \
             --project=${{ env.GCP_PROJECT_ID }}
         else
-          echo "G£à Subscription existe: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
+          echo "GÂ£Ã  Subscription existe: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
         fi
         
         echo ""
-        echo "G£à Pub/Sub configurado correctamente"
+        echo "GÂ£Ã  Pub/Sub configurado correctamente"
     - name: Notify on Failure (create issue)
       if: failure()
       uses: actions/github-script@v6
