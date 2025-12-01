@@ -18,8 +18,8 @@
         <logger name="uy.um" level="DEBUG"/>
     </springProfile>
 
-    <!-- Producción: Logs JSON estructurados para Cloud Logging -->
-    <springProfile name="prod">
+    <!-- Cloud Run / Producción: Logs JSON estructurados para Cloud Logging -->
+    <springProfile name="prod,cloudrun">
         <!-- Cloud Logging Appender -->
         <appender name="CLOUD_LOGGING" class="com.google.cloud.logging.logback.LoggingAppender">
             <!-- Logs en formato JSON estructurado -->
