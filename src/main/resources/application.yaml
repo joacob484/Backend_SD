@@ -265,8 +265,8 @@ spring:
     enabled: true
     baseline-on-migrate: true
     validate-on-migrate: false  # ✅ Skip validation to speed up startup
-    connect-retries: 1  # ⚡ Fail fast instead of hanging
-    connect-retries-interval: 2  # ⚡ 2 seconds between retries
+    out-of-order: true  # ✅ Allow out-of-order migrations
+    connect-retries: 0  # ⚡ No retries - fail immediately
     fail-on-missing-locations: false
   
   jpa:
