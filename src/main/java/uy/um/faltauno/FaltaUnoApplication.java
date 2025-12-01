@@ -1,10 +1,11 @@
 package uy.um.faltauno;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -24,7 +25,7 @@ public class FaltaUnoApplication {
         SpringApplication.run(FaltaUnoApplication.class, args);
     }
     
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     public void scheduleStartupCheck() {
         logStartupAsync();
     }
