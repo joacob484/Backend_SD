@@ -76,7 +76,7 @@ jobs:
           --remove-env-vars=SMS_ENABLED,SMS_PROVIDER,PHONE_VERIFICATION_ENABLED \
           --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }} \
           --update-secrets=SPRING_DATASOURCE_PASSWORD=db-password:latest,JWT_SECRET=jwt-secret:latest,GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,MAIL_USERNAME=mail-username:latest,MAIL_PASSWORD=mail-password:latest,/secrets/google-credentials.json=google-vision-credentials:latest \
-          --remove-secrets=TERMII_API_KEY,TERMII_SENDER_ID \
+          --remove-secrets=TERMII_API_KEY,TERMII_SENDER_ID,GOOGLE_APPLICATION_CREDENTIALS \
           --clear-vpc-connector \
           --port=8080 \
           --quiet
