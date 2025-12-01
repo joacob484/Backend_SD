@@ -37,7 +37,6 @@ jobs:
       with:
         workload_identity_provider: 'projects/169771742214/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
         service_account: 'deploy-cicd@master-might-274420.iam.gserviceaccount.com'
-        audience: 'https://github.com/joacob484/Backend_SD'
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v3
       with:
