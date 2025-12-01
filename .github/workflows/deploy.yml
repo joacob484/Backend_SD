@@ -48,9 +48,8 @@ jobs:
     - name: Build and Deploy to Cloud Run
       run: |
         echo "========================================"
-        echo "=========================================="
         echo " BUILDING DOCKER IMAGE"
-        echo "=========================================="
+        echo "========================================"
         echo ""
         
         # Build Docker image
@@ -61,32 +60,33 @@ jobs:
           .
         
         echo ""
-        echo " Image built: ${{ env.IMAGE }}"
+        echo "Image built: ${{ env.IMAGE }}"
         echo ""
         
-        echo "=========================================="
+        echo "========================================"
         echo " PUSHING TO ARTIFACT REGISTRY"
-        echo "=========================================="
+        echo "========================================"
         echo ""
         
         # Push to Artifact Registry
         docker push ${{ env.IMAGE }}
         
         echo ""
-        echo " Image pushed successfully"
+        echo "Image pushed successfully"
         echo ""
         
-        echo "?? DEPLOYING TO CLOUD RUN"
+        echo "========================================"
+        echo " DEPLOYING TO CLOUD RUN"
         echo "========================================"
         echo ""
-        echo "? Build with Dockerfile"
-        echo "? Zero-downtime deployment"
-        echo "? Automatic traffic migration"
+        echo "Build with Dockerfile"
+        echo "Zero-downtime deployment"
+        echo "Automatic traffic migration"
         echo ""
         
-        # Deploy nueva revision SIN trafico primero (para validar)
+        # Deploy new revision without traffic first (for validation)
         gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
-        --image=${{ env.IMAGE }} \
+          --image=${{ env.IMAGE }} \
           --region=${{ env.GCP_REGION }} \
           --platform=managed \
           --allow-unauthenticated \
@@ -107,9 +107,8 @@ jobs:
           --no-traffic \
           --tag=candidate \
           --quiet
-
         
-        # Obtener nombre de la nueva revision
+        # Get new revision name
         NEW_REVISION=$(gcloud run revisions list \
           --service=${{ env.CLOUD_RUN_SERVICE }} \
           --region=${{ env.GCP_REGION }} \
@@ -117,67 +116,67 @@ jobs:
           --sort-by='~metadata.creationTimestamp' \
           --limit=1)
         
-        echo "?? New revision: $NEW_REVISION"
+        echo "New revision: $NEW_REVISION"
         
-        # Migrar 100% del trafico a la nueva revision
-        echo "?? Migrating 100% traffic to $NEW_REVISION..."
+        # Migrate 100% traffic to new revision
+        echo "Migrating 100% traffic to $NEW_REVISION..."
         gcloud run services update-traffic ${{ env.CLOUD_RUN_SERVICE }} \
           --region=${{ env.GCP_REGION }} \
           --to-revisions=$NEW_REVISION=100 \
           --quiet
         
         echo ""
-        echo "? Deployment complete!"
-        echo "? Traffic migrated to new revision: $NEW_REVISION"
-        echo "?? Service URL:"
+        echo "Deployment complete!"
+        echo "Traffic migrated to new revision: $NEW_REVISION"
+        echo "Service URL:"
         gcloud run services describe ${{ env.CLOUD_RUN_SERVICE }} \
           --region=${{ env.GCP_REGION }} \
           --format='value(status.url)'
     - name: Detect Service Changes
       id: detect-changes
       run: |
-        echo "?? Detectando cambios en servicios..."
+        echo "Detecting service changes..."
         
-        # Detectar cambios en archivos relacionados con Pub/Sub
+        # Detect changes in Pub/Sub related files
         PUBSUB_CHANGED=false
         if git diff --name-only HEAD~1 HEAD | grep -iE "(pubsub|PubSub|EventPublisher|EventSubscriber)" > /dev/null 2>&1; then
           PUBSUB_CHANGED=true
-          echo "? Cambios detectados en código de Pub/Sub"
+          echo "Changes detected in Pub/Sub code"
         fi
         
         echo "pubsub_changed=$PUBSUB_CHANGED" >> $GITHUB_OUTPUT
         
         echo ""
-        echo "?? Resumen de cambios:"
+        echo "Summary of changes:"
         echo "  Pub/Sub: $PUBSUB_CHANGED"
     - name: Verify Pub/Sub Setup
       if: steps.detect-changes.outputs.pubsub_changed == 'true' || env.GCP_PUBSUB_ENABLED == 'true'
       run: |
-        echo "=ƒöä Verificando configuraci+¦n de Pub/Sub..."
+        echo "Verifying Pub/Sub configuration..."
         echo ""
         
-        # Crear topic si no existe
+        # Create topic if it doesn't exist
         if ! gcloud pubsub topics describe ${{ env.GCP_PUBSUB_TOPIC }} --project=${{ env.GCP_PROJECT_ID }} > /dev/null 2>&1; then
-          echo "=ƒô¥ Creando topic: ${{ env.GCP_PUBSUB_TOPIC }}"
+          echo "Creating topic: ${{ env.GCP_PUBSUB_TOPIC }}"
           gcloud pubsub topics create ${{ env.GCP_PUBSUB_TOPIC }} --project=${{ env.GCP_PROJECT_ID }}
         else
-          echo "G£à Topic existe: ${{ env.GCP_PUBSUB_TOPIC }}"
+          echo "Topic exists: ${{ env.GCP_PUBSUB_TOPIC }}"
         fi
         
-        # Crear subscription si no existe
+        # Create subscription if it doesn't exist
         if ! gcloud pubsub subscriptions describe ${{ env.GCP_PUBSUB_SUBSCRIPTION }} --project=${{ env.GCP_PROJECT_ID }} > /dev/null 2>&1; then
-          echo "=ƒô¥ Creando subscription: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
+          echo "Creating subscription: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
           gcloud pubsub subscriptions create ${{ env.GCP_PUBSUB_SUBSCRIPTION }} \
             --topic=${{ env.GCP_PUBSUB_TOPIC }} \
             --ack-deadline=60 \
             --message-retention-duration=7d \
             --project=${{ env.GCP_PROJECT_ID }}
         else
-          echo "G£à Subscription existe: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
+          echo "Subscription exists: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
         fi
         
         echo ""
-        echo "G£à Pub/Sub configurado correctamente"
+        echo "Pub/Sub configured correctly"
     - name: Notify on Failure (create issue)
       if: failure()
       uses: actions/github-script@v6

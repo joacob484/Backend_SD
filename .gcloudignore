@@ -1,53 +1,48 @@
-# ═══════════════════════════════════════════════════════════
-# GCLOUDIGNORE - Control de qué se sube a Cloud Build
-# ═══════════════════════════════════════════════════════════
-# ESTRATEGIA: Ignorar todo, luego permitir SOLO lo necesario
+# GCLOUDIGNORE - Files to exclude from Cloud Build uploads
+# This file specifies files intentionally untracked by gcloud
 
-# ────────────────────────────────────────────────────────────
-# IGNORAR TODO POR DEFECTO
-# ────────────────────────────────────────────────────────────
-**
-
-# ────────────────────────────────────────────────────────────
-# PERMITIR: Archivos de código fuente
-# ────────────────────────────────────────────────────────────
-!pom.xml
-!src/**
-
-# ──────────────────────────────────────────────────────────────────
-# PERMITIR: Dockerfiles y scripts de build
-# ──────────────────────────────────────────────────────────────────
-!Dockerfile
-!Dockerfile.cloudrun
-!cloudbuild-cloudrun.yaml
-!cloudrun-entrypoint.sh
-!wait-for-services.sh
-
-# ────────────────────────────────────────────────────────────
-# PERMITIR: Scripts de deployment
-# ────────────────────────────────────────────────────────────
-!scripts/cloudrun-deploy.sh
-
-# ────────────────────────────────────────────────────────────
-# EXCLUIR EXPLÍCITAMENTE: Archivos que NUNCA deben subirse
-# ────────────────────────────────────────────────────────────
+# Git files
 .git/
-.git/**
-.env
-.env.*
-.idea/
-.vscode/
-node_modules/
-**/node_modules/
+.github/
+.gitignore
 
-# ────────────────────────────────────────────────────────────
-# CRÍTICO: EXCLUIR target/ para FORZAR rebuild desde cero
-# ────────────────────────────────────────────────────────────
+# IDE files
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Build artifacts (will be rebuilt in Cloud Build)
 target/
 **/target/
+*.jar.original
 
-# ────────────────────────────────────────────────────────────
-# EXCLUIR: Logs y temporales
+# Maven wrapper
+.mvn/
+
+# Documentation
+README.md
+*.md
+diagrams/
+
+# Local environment files
+.env
+.env.*
+
+# Monitoring/observability config files
+alloy-config.alloy
+grafana-agent-config.yaml
+GRAFANA_CONFIG.md
+service.yaml
+service_config.json
+
+# Docker ignore file itself
+.dockerignore
+
+# Logs and temporary files
+*.log
+*.tmp
 # ────────────────────────────────────────────────────────────
 *.log
 .DS_Store
