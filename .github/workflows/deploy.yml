@@ -72,12 +72,9 @@ jobs:
           --min-instances=0 \
           --max-instances=10 \
           --no-cpu-throttling \
-          --update-env-vars=SPRING_PROFILES_ACTIVE=cloudrun \
-          --update-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
-          --update-env-vars=CLOUD_SQL_INSTANCE=${{ env.CLOUDSQL_INSTANCE }} \
+          --update-env-vars=SPRING_PROFILES_ACTIVE=cloudrun,GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }},CLOUD_SQL_INSTANCE=${{ env.CLOUDSQL_INSTANCE }} \
           --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }} \
-          --update-secrets=SPRING_DATASOURCE_PASSWORD=termii-sender-id:latest \
-          --update-secrets=/secrets/google-credentials.json=google-vision-credentials:latest \
+          --update-secrets=SPRING_DATASOURCE_PASSWORD=termii-sender-id:latest,/secrets/google-credentials.json=google-vision-credentials:latest \
           --clear-vpc-connector \
           --port=8080 \
           --no-traffic \
