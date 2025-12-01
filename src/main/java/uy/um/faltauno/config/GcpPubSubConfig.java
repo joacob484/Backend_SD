@@ -30,8 +30,23 @@ public class GcpPubSubConfig {
     }
 
     @Bean
-    public CredentialsProvider credentialsProvider() throws IOException {
-        return () -> GoogleCredentials.getApplicationDefault();
+    public CredentialsProvider credentialsProvider() {
+        // Lazy initialization - credentials are loaded on first use, not during bean creation
+        return new CredentialsProvider() {
+            private volatile GoogleCredentials credentials;
+            
+            @Override
+            public GoogleCredentials getCredentials() throws IOException {
+                if (credentials == null) {
+                    synchronized (this) {
+                        if (credentials == null) {
+                            credentials = GoogleCredentials.getApplicationDefault();
+                        }
+                    }
+                }
+                return credentials;
+            }
+        };
     }
 
     @Bean
@@ -46,10 +61,10 @@ public class GcpPubSubConfig {
     }
 
     @Bean
-    public PubSubConfiguration pubSubConfiguration(GcpProjectIdProvider gcpProjectIdProvider) {
-        PubSubConfiguration config = new PubSubConfiguration();
-        config.initialize(gcpProjectIdProvider.getProjectId());
-        return config;
+    public PubSubConfiguration pubSubConfiguration() {
+        // Don't initialize - just return empty config
+        // The SubscriberFactory will handle initialization when first used
+        return new PubSubConfiguration();
     }
 
     @Bean
