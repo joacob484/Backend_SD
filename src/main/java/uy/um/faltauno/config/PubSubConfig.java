@@ -6,6 +6,7 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ public class PubSubConfig implements DisposableBean {
     private String pubsubTopic;
 
     @Bean
+    @Lazy  // Don't initialize until first use - prevents blocking startup
     public Publisher publisher() throws IOException {
         if (pubsubTopic == null || pubsubTopic.isEmpty()) {
             throw new IllegalStateException("gcp.pubsub.topic must be set when gcp.pubsub.enabled=true");
