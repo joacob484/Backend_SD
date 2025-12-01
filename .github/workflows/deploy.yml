@@ -74,7 +74,7 @@ jobs:
           --no-cpu-throttling \
           --update-env-vars=SPRING_PROFILES_ACTIVE=cloudrun,GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }},CLOUD_SQL_INSTANCE=${{ env.CLOUDSQL_INSTANCE }} \
           --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }} \
-          --update-secrets=SPRING_DATASOURCE_PASSWORD=termii-sender-id:latest,/secrets/google-credentials.json=google-vision-credentials:latest \
+          --update-secrets=SPRING_DATASOURCE_PASSWORD=db-password:latest,/secrets/google-credentials.json=google-vision-credentials:latest \
           --clear-vpc-connector \
           --port=8080 \
           --quiet
