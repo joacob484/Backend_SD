@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -28,7 +29,12 @@ public class NotificationListener implements MessageReceiver {
     private Subscriber subscriber;
 
     @PostConstruct
-    public void startPubSubListener() {
+    public void scheduleStartup() {
+        startPubSubListenerAsync();
+    }
+    
+    @Async
+    public void startPubSubListenerAsync() {
         try {
             ProjectSubscriptionName subscriptionName = ProjectSubscriptionName.of(projectId, subscriptionId);
             log.info("🚀 Starting Pub/Sub listener for subscription: {}", subscriptionName);

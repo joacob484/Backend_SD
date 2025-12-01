@@ -6,6 +6,7 @@ import com.google.cloud.spring.pubsub.core.PubSubTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import uy.um.faltauno.service.EmailService;
 import uy.um.faltauno.service.PushNotificationService;
@@ -23,7 +24,13 @@ public class PubSubEventListener {
     private final PushNotificationService pushService;
 
     @PostConstruct
-    public void subscribe() {
+    public void scheduleSubscribe() {
+        subscribeAsync();
+    }
+    
+    @Async
+    public void subscribeAsync() {
+        log.info("🚀 Starting PubSub subscription (async)...");
         pubSubTemplate.subscribe("faltauno-events-sub", (message) -> {
             String data = message.getPubsubMessage().getData().toStringUtf8();
             log.info("[PubSub] Mensaje recibido: {}", data);

@@ -3,19 +3,17 @@ package uy.um.faltauno.config;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 /**
  * Database Index Optimizer
  * 
  * Crea índices en la base de datos para optimizar queries frecuentes
- * Se ejecuta al iniciar la aplicación
- * DISABLED in cloudrun profile - indexes should be created via Flyway migrations
+ * Se ejecuta asíncronamente al iniciar la aplicación para no bloquear el startup
  */
 @Component
-@ConditionalOnProperty(name = "database.index.optimizer.enabled", havingValue = "true", matchIfMissing = false)
 @RequiredArgsConstructor
 @Slf4j
 public class DatabaseIndexOptimizer {
@@ -23,8 +21,13 @@ public class DatabaseIndexOptimizer {
     private final JdbcTemplate jdbcTemplate;
 
     @PostConstruct
-    public void createOptimizationIndexes() {
-        log.info("🔧 Optimizando índices de base de datos...");
+    public void scheduleIndexCreation() {
+        createOptimizationIndexesAsync();
+    }
+    
+    @Async
+    public void createOptimizationIndexesAsync() {
+        log.info("🔧 Optimizando índices de base de datos (async)...");
         
         try {
             // ✅ Índices para Usuario
