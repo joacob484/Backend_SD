@@ -47,42 +47,18 @@ jobs:
         gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
     - name: Build and Deploy to Cloud Run
       run: |
-        echo "========================================"
-        echo " BUILDING DOCKER IMAGE"
-        echo "========================================"
-        echo ""
-        
         # Build Docker image
         docker build \
           --platform linux/amd64 \
           --tag ${{ env.IMAGE }} \
           --build-arg BUILDKIT_INLINE_CACHE=1 \
+          --quiet \
           .
         
-        echo ""
-        echo "Image built: ${{ env.IMAGE }}"
-        echo ""
-        
-        echo "========================================"
-        echo " PUSHING TO ARTIFACT REGISTRY"
-        echo "========================================"
-        echo ""
-        
         # Push to Artifact Registry
-        docker push ${{ env.IMAGE }}
+        docker push ${{ env.IMAGE }} --quiet
         
-        echo ""
-        echo "Image pushed successfully"
-        echo ""
-        
-        echo "========================================"
-        echo " DEPLOYING TO CLOUD RUN"
-        echo "========================================"
-        echo ""
-        echo "Build with Dockerfile"
-        echo "Zero-downtime deployment"
-        echo "Automatic traffic migration"
-        echo ""
+        echo "✓ Image built and pushed: ${{ env.IMAGE }}"
         
         # Deploy new revision without traffic first (for validation)
         gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
@@ -92,11 +68,10 @@ jobs:
           --allow-unauthenticated \
           --memory=2Gi \
           --cpu=2 \
-          --timeout=600 \
+          --timeout=900 \
           --min-instances=0 \
           --max-instances=10 \
-          --cpu-boost \
-          --cpu-throttling \
+          --no-cpu-throttling \
           --update-env-vars=SPRING_PROFILES_ACTIVE=cloudrun \
           --update-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
           --update-env-vars=CLOUD_SQL_INSTANCE=${{ env.CLOUDSQL_INSTANCE }} \
@@ -105,12 +80,6 @@ jobs:
           --update-secrets=/secrets/google-credentials.json=google-vision-credentials:latest \
           --clear-vpc-connector \
           --port=8080 \
-          --startup-cpu-boost \
-          --startup-probe-type=http-get \
-          --startup-probe-path=/actuator/health/readiness \
-          --startup-probe-period=10 \
-          --startup-probe-timeout=3 \
-          --startup-probe-failure-threshold=30 \
           --no-traffic \
           --tag=candidate \
           --quiet
@@ -123,67 +92,47 @@ jobs:
           --sort-by='~metadata.creationTimestamp' \
           --limit=1)
         
-        echo "New revision: $NEW_REVISION"
-        
         # Migrate 100% traffic to new revision
-        echo "Migrating 100% traffic to $NEW_REVISION..."
         gcloud run services update-traffic ${{ env.CLOUD_RUN_SERVICE }} \
           --region=${{ env.GCP_REGION }} \
           --to-revisions=$NEW_REVISION=100 \
           --quiet
         
-        echo ""
-        echo "Deployment complete!"
-        echo "Traffic migrated to new revision: $NEW_REVISION"
-        echo "Service URL:"
-        gcloud run services describe ${{ env.CLOUD_RUN_SERVICE }} \
+        SERVICE_URL=$(gcloud run services describe ${{ env.CLOUD_RUN_SERVICE }} \
           --region=${{ env.GCP_REGION }} \
-          --format='value(status.url)'
+          --format='value(status.url)')
+        
+        echo "✓ Deployed: $NEW_REVISION"
+        echo "✓ Service: $SERVICE_URL"
     - name: Detect Service Changes
       id: detect-changes
       run: |
-        echo "Detecting service changes..."
-        
         # Detect changes in Pub/Sub related files
         PUBSUB_CHANGED=false
         if git diff --name-only HEAD~1 HEAD | grep -iE "(pubsub|PubSub|EventPublisher|EventSubscriber)" > /dev/null 2>&1; then
           PUBSUB_CHANGED=true
-          echo "Changes detected in Pub/Sub code"
         fi
         
         echo "pubsub_changed=$PUBSUB_CHANGED" >> $GITHUB_OUTPUT
-        
-        echo ""
-        echo "Summary of changes:"
-        echo "  Pub/Sub: $PUBSUB_CHANGED"
     - name: Verify Pub/Sub Setup
       if: steps.detect-changes.outputs.pubsub_changed == 'true' || env.GCP_PUBSUB_ENABLED == 'true'
       run: |
-        echo "Verifying Pub/Sub configuration..."
-        echo ""
-        
         # Create topic if it doesn't exist
         if ! gcloud pubsub topics describe ${{ env.GCP_PUBSUB_TOPIC }} --project=${{ env.GCP_PROJECT_ID }} > /dev/null 2>&1; then
-          echo "Creating topic: ${{ env.GCP_PUBSUB_TOPIC }}"
-          gcloud pubsub topics create ${{ env.GCP_PUBSUB_TOPIC }} --project=${{ env.GCP_PROJECT_ID }}
-        else
-          echo "Topic exists: ${{ env.GCP_PUBSUB_TOPIC }}"
+          gcloud pubsub topics create ${{ env.GCP_PUBSUB_TOPIC }} --project=${{ env.GCP_PROJECT_ID }} --quiet
         fi
         
         # Create subscription if it doesn't exist
         if ! gcloud pubsub subscriptions describe ${{ env.GCP_PUBSUB_SUBSCRIPTION }} --project=${{ env.GCP_PROJECT_ID }} > /dev/null 2>&1; then
-          echo "Creating subscription: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
           gcloud pubsub subscriptions create ${{ env.GCP_PUBSUB_SUBSCRIPTION }} \
             --topic=${{ env.GCP_PUBSUB_TOPIC }} \
             --ack-deadline=60 \
             --message-retention-duration=7d \
-            --project=${{ env.GCP_PROJECT_ID }}
-        else
-          echo "Subscription exists: ${{ env.GCP_PUBSUB_SUBSCRIPTION }}"
+            --project=${{ env.GCP_PROJECT_ID }} \
+            --quiet
         fi
         
-        echo ""
-        echo "Pub/Sub configured correctly"
+        echo "✓ Pub/Sub configured"
     - name: Notify on Failure (create issue)
       if: failure()
       uses: actions/github-script@v6
