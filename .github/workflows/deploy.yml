@@ -69,7 +69,7 @@ jobs:
           --memory=2Gi \
           --cpu=2 \
           --timeout=900 \
-          --min-instances=0 \
+          --min-instances=1 \
           --max-instances=10 \
           --no-cpu-throttling \
           --update-env-vars=SPRING_PROFILES_ACTIVE=cloudrun,GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }},CLOUD_SQL_INSTANCE=${{ env.CLOUDSQL_INSTANCE }} \
@@ -77,29 +77,13 @@ jobs:
           --update-secrets=SPRING_DATASOURCE_PASSWORD=termii-sender-id:latest,/secrets/google-credentials.json=google-vision-credentials:latest \
           --clear-vpc-connector \
           --port=8080 \
-          --no-traffic \
-          --tag=candidate \
-          --quiet
-        
-        # Get new revision name
-        NEW_REVISION=$(gcloud run revisions list \
-          --service=${{ env.CLOUD_RUN_SERVICE }} \
-          --region=${{ env.GCP_REGION }} \
-          --format='value(metadata.name)' \
-          --sort-by='~metadata.creationTimestamp' \
-          --limit=1)
-        
-        # Migrate 100% traffic to new revision
-        gcloud run services update-traffic ${{ env.CLOUD_RUN_SERVICE }} \
-          --region=${{ env.GCP_REGION }} \
-          --to-revisions=$NEW_REVISION=100 \
           --quiet
         
         SERVICE_URL=$(gcloud run services describe ${{ env.CLOUD_RUN_SERVICE }} \
           --region=${{ env.GCP_REGION }} \
           --format='value(status.url)')
         
-        echo "✓ Deployed: $NEW_REVISION"
+        echo "✓ Deployed successfully"
         echo "✓ Service: $SERVICE_URL"
     - name: Detect Service Changes
       id: detect-changes

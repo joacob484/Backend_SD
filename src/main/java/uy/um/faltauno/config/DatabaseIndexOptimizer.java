@@ -3,6 +3,7 @@ package uy.um.faltauno.config;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -11,8 +12,10 @@ import org.springframework.stereotype.Component;
  * 
  * Crea índices en la base de datos para optimizar queries frecuentes
  * Se ejecuta al iniciar la aplicación
+ * DISABLED in cloudrun profile - indexes should be created via Flyway migrations
  */
 @Component
+@ConditionalOnProperty(name = "database.index.optimizer.enabled", havingValue = "true", matchIfMissing = false)
 @RequiredArgsConstructor
 @Slf4j
 public class DatabaseIndexOptimizer {
