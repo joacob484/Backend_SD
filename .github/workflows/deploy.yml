@@ -72,7 +72,7 @@ jobs:
           --min-instances=1 \
           --max-instances=10 \
           --no-cpu-throttling \
-          --update-env-vars=SPRING_PROFILES_ACTIVE=cloudrun,GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }},CLOUD_SQL_INSTANCE=${{ env.CLOUDSQL_INSTANCE }},GOOGLE_APPLICATION_CREDENTIALS=/secrets/google-credentials.json \
+          --update-env-vars=SPRING_PROFILES_ACTIVE=cloudrun,GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }},CLOUD_SQL_INSTANCE=${{ env.CLOUDSQL_INSTANCE }},GOOGLE_VISION_CREDENTIALS_PATH=/secrets/google-credentials.json \
           --remove-env-vars=SMS_ENABLED,SMS_PROVIDER,PHONE_VERIFICATION_ENABLED,GOOGLE_APPLICATION_CREDENTIALS \
           --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }} \
           --update-secrets=SPRING_DATASOURCE_PASSWORD=db-password:latest,JWT_SECRET=jwt-secret:latest,GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,MAIL_USERNAME=mail-username:latest,MAIL_PASSWORD=mail-password:latest,/secrets/google-credentials.json=google-vision-credentials:latest \

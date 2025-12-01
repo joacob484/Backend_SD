@@ -198,6 +198,11 @@ jwt:
 frontend:
   url: ${FRONTEND_URL:https://faltauno-frontend-169771742214.us-central1.run.app}
 
+# Google Vision configuration
+google:
+  vision:
+    credentials-path: ${GOOGLE_VISION_CREDENTIALS_PATH:}
+
 # Google Cloud Pub/Sub Configuration
 gcp:
   pubsub:

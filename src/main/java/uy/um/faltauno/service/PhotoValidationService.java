@@ -1,13 +1,20 @@
 package uy.um.faltauno.service;
 
+import com.google.api.gax.core.FixedCredentialsProvider;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.vision.v1.*;
 import com.google.protobuf.ByteString;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import uy.um.faltauno.dto.PhotoValidationResult;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +29,9 @@ import java.util.List;
 @Service
 @Slf4j
 public class PhotoValidationService {
+
+    @Value("${google.vision.credentials-path:}")
+    private String visionCredentialsPath;
 
     /**
      * Valida una foto de perfil
@@ -38,7 +48,7 @@ public class PhotoValidationService {
             Image img = Image.newBuilder().setContent(imgBytes).build();
 
             // Crear cliente de Vision API
-            try (ImageAnnotatorClient vision = ImageAnnotatorClient.create()) {
+            try (ImageAnnotatorClient vision = createVisionClient()) {
                 
                 // 1. Detectar rostros
                 PhotoValidationResult faceResult = detectFaces(vision, img);
@@ -92,6 +102,30 @@ public class PhotoValidationService {
                 .reason("API_ERROR")
                 .build();
         }
+    }
+
+    private ImageAnnotatorClient createVisionClient() throws IOException {
+        if (StringUtils.hasText(visionCredentialsPath)) {
+            Path credentialsPath = Path.of(visionCredentialsPath);
+            if (!Files.exists(credentialsPath)) {
+                log.warn("[PhotoValidation] Credentials path {} does not exist. Falling back to ADC", visionCredentialsPath);
+            } else {
+                GoogleCredentials credentials;
+                try (InputStream input = Files.newInputStream(credentialsPath)) {
+                    credentials = GoogleCredentials.fromStream(input)
+                        .createScoped(ImageAnnotatorSettings.getDefaultServiceScopes());
+                }
+
+                ImageAnnotatorSettings settings = ImageAnnotatorSettings.newBuilder()
+                    .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
+                    .build();
+                log.info("[PhotoValidation] Using custom Vision credentials file at {}", visionCredentialsPath);
+                return ImageAnnotatorClient.create(settings);
+            }
+        }
+
+        log.info("[PhotoValidation] Using default application credentials for Vision API");
+        return ImageAnnotatorClient.create();
     }
 
     /**

@@ -20,17 +20,7 @@
 
     <!-- Cloud Run / Producción: Logs JSON estructurados para Cloud Logging -->
     <springProfile name="prod,cloudrun">
-        <!-- Cloud Logging Appender -->
-        <appender name="CLOUD_LOGGING" class="com.google.cloud.logging.logback.LoggingAppender">
-            <!-- Logs en formato JSON estructurado -->
-            <log>falta-uno-backend</log>
-            <resourceType>cloud_run_revision</resourceType>
-            <flushLevel>WARNING</flushLevel>
-            <!-- Añadir labels para filtrado -->
-            <enhancer>com.google.cloud.logging.logback.TraceLoggingEnhancer</enhancer>
-        </appender>
-
-        <!-- Fallback console con JSON encoder -->
+        <!-- Console JSON encoder consumed by Cloud Run logging -->
         <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                 <includeContext>true</includeContext>
@@ -49,7 +39,6 @@
         </appender>
 
         <root level="INFO">
-            <appender-ref ref="CLOUD_LOGGING"/>
             <appender-ref ref="JSON_CONSOLE"/>
         </root>
 
