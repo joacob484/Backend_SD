@@ -18,7 +18,7 @@ spring:
       auto-commit: true
       leak-detection-threshold: 60000  # ✅ Detectar leaks después de 60 segundos
       pool-name: FaltaUnoHikariCP
-      initialization-fail-timeout: -1  # ✅ Don't fail if DB not available at startup
+      initialization-fail-timeout: 30000  # ✅ 30 seconds max wait, don't hang forever
 
   jpa:
     hibernate:
@@ -86,9 +86,15 @@ spring:
               - email
               - profile
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            authorization-grant-type: authorization_code
         provider:
           google:
-            issuer-uri: https://accounts.google.com
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://openidconnect.googleapis.com/v1/userinfo
+            user-name-attribute: sub
+            jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+            # Don't use issuer-uri - it makes blocking HTTP calls at startup
 
   # ✅ Subida de archivos
   servlet:
@@ -280,7 +286,7 @@ spring:
       maximum-pool-size: 10
       minimum-idle: 0  # ✅ Don't create connections at startup
       connection-timeout: 60000
-      initialization-fail-timeout: -1
+      initialization-fail-timeout: 30000  # ✅ 30 seconds max wait
       leak-detection-threshold: 120000
       validation-timeout: 5000
 
