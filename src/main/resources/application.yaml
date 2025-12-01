@@ -11,13 +11,14 @@ spring:
     # ✅ Pool Hikari (estable)
     hikari:
       maximum-pool-size: 10  # ✅ Reducido para Cloud Run (menos recursos)
-      minimum-idle: 2  # ✅ Mínimo de conexiones idle
+      minimum-idle: 0  # ✅ Don't create connections during startup
       connection-timeout: 20000  # ✅ 20 segundos timeout
       idle-timeout: 300000  # ✅ 5 minutos idle
       max-lifetime: 1200000  # ✅ 20 minutos max lifetime (renovar conexiones)
       auto-commit: true
       leak-detection-threshold: 60000  # ✅ Detectar leaks después de 60 segundos
       pool-name: FaltaUnoHikariCP
+      initialization-fail-timeout: -1  # ✅ Don't fail if DB not available at startup
 
   jpa:
     hibernate:
@@ -287,7 +288,7 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
       maximum-pool-size: 10
-      minimum-idle: 1
+      minimum-idle: 0  # ✅ Don't create connections at startup
       connection-timeout: 60000
       initialization-fail-timeout: -1
       leak-detection-threshold: 120000

@@ -25,7 +25,14 @@ public class PubSubConfig implements DisposableBean {
         if (pubsubTopic == null || pubsubTopic.isEmpty()) {
             throw new IllegalStateException("gcp.pubsub.topic must be set when gcp.pubsub.enabled=true");
         }
-        String projectId = ServiceOptions.getDefaultProjectId();
+        // Get project ID from environment instead of blocking ServiceOptions call
+        String projectId = System.getenv("GOOGLE_CLOUD_PROJECT");
+        if (projectId == null) {
+            projectId = System.getenv("GCP_PROJECT");
+        }
+        if (projectId == null) {
+            projectId = "master-might-274420"; // fallback
+        }
         TopicName topicName = TopicName.of(projectId, pubsubTopic);
         this.publisher = Publisher.newBuilder(topicName).build();
         return this.publisher;
