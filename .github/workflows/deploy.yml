@@ -104,6 +104,13 @@ jobs:
           --update-secrets=SPRING_DATASOURCE_PASSWORD=termii-sender-id:latest \
           --update-secrets=/secrets/google-credentials.json=google-vision-credentials:latest \
           --clear-vpc-connector \
+          --port=8080 \
+          --startup-cpu-boost \
+          --startup-probe-type=http-get \
+          --startup-probe-path=/actuator/health/readiness \
+          --startup-probe-period=10 \
+          --startup-probe-timeout=3 \
+          --startup-probe-failure-threshold=30 \
           --no-traffic \
           --tag=candidate \
           --quiet

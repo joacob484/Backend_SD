@@ -24,36 +24,20 @@ public class FaltaUnoApplication {
     }
     
     @PostConstruct
-    public void ensureVerificationColumns() {
+    public void logStartup() {
         try {
-            log.info("🔧 Verificando columnas de verificación email...");
+            log.info("✅ Application started successfully");
+            log.info("✅ Database connection pool initialized");
             
-            // Agregar columnas si no existen
-            jdbcTemplate.execute(
-                "ALTER TABLE usuario ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE"
+            // Quick sanity check without DDL
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM usuario", Integer.class
             );
-            jdbcTemplate.execute(
-                "ALTER TABLE usuario ADD COLUMN IF NOT EXISTS verification_code VARCHAR(6)"
-            );
-            jdbcTemplate.execute(
-                "ALTER TABLE usuario ADD COLUMN IF NOT EXISTS verification_code_expires_at TIMESTAMP"
-            );
-            
-            // Marcar usuarios OAuth como verificados
-            int updated = jdbcTemplate.update(
-                "UPDATE usuario SET email_verified = TRUE WHERE provider = 'GOOGLE' AND email_verified = FALSE"
-            );
-            
-            // Crear índice
-            jdbcTemplate.execute(
-                "CREATE INDEX IF NOT EXISTS idx_usuario_verification_code ON usuario(verification_code) WHERE verification_code IS NOT NULL"
-            );
-            
-            log.info("✅ Columnas de verificación configuradas correctamente. Usuarios OAuth verificados: {}", updated);
+            log.info("✅ Database accessible - {} users in system", count);
             
         } catch (Exception e) {
-            log.error("❌ Error configurando columnas de verificación: {}", e.getMessage());
-            // No lanzar excepción para no bloquear el startup si las columnas ya existen
+            log.error("❌ Error during startup check: {}", e.getMessage());
+            // Don't throw exception to avoid blocking startup
         }
     }
 }
