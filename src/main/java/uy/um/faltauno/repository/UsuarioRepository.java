@@ -86,6 +86,19 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
     @Query("SELECT COUNT(u) FROM Usuario u WHERE u.bannedAt IS NOT NULL AND u.deletedAt IS NULL")
     long countByBannedAtIsNotNull();
 
+        /**
+         * Verificar si existe otra cuenta activa con la misma cédula normalizada
+         */
+        @Query("""
+                SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END
+                FROM Usuario u
+                WHERE u.deletedAt IS NULL
+                    AND u.cedula IS NOT NULL
+                    AND u.cedula = :cedula
+                    AND (:excludeId IS NULL OR u.id <> :excludeId)
+                """)
+        boolean existsByCedula(@Param("cedula") String cedula, @Param("excludeId") UUID excludeId);
+
     interface AuthProjection {
         UUID getId();
         String getEmail();

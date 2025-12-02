@@ -8,6 +8,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -94,31 +95,13 @@ public class UsuarioService {
      * @return true si la cédula es válida, false en caso contrario
      */
     public boolean verificarCedula(String cedula) {
-        if (cedula == null || cedula.isBlank()) {
+        String normalized = normalizeCedulaValue(cedula);
+        if (normalized == null) {
             return false;
-        }
-
-        // ⚡ NUEVO: Validar longitud antes de limpiar (prevenir inputs maliciosos)
-        // Una cédula válida debe tener entre 7 y 20 caracteres (permitiendo puntos/guiones)
-        if (cedula.length() < 7 || cedula.length() > 20) {
-            return false;
-        }
-
-        // Limpiar: solo dígitos
-        String clean = cedula.replaceAll("[^\\d]", "");
-        
-        // ⚡ Validar longitud después de limpiar
-        if (clean.length() < 7 || clean.length() > 8) {
-            return false;
-        }
-        
-        // Completar con ceros a la izquierda si tiene 7 dígitos
-        while (clean.length() < 8) {
-            clean = "0" + clean;
         }
 
         int[] pesos = {2, 9, 8, 7, 6, 3, 4};
-        int[] digitos = clean.chars().map(c -> c - '0').toArray();
+        int[] digitos = normalized.chars().map(c -> c - '0').toArray();
 
         int suma = 0;
         for (int i = 0; i < pesos.length; i++) {
@@ -137,7 +120,12 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
-        usuario.setCedula(cedula);
+        String normalized = normalizeCedulaValue(cedula);
+        if (normalized == null) {
+            throw new IllegalArgumentException("Cédula inválida");
+        }
+        assertCedulaDisponible(normalized, usuarioId);
+        usuario.setCedula(normalized);
         usuario = usuarioRepository.save(usuario);
 
         UsuarioDTO dto = usuarioMapper.toDTO(usuario);
@@ -430,8 +418,45 @@ public class UsuarioService {
     public Usuario marcarCedula(UUID usuarioId, String cedula) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
-        usuario.setCedula(cedula);
+        String normalized = normalizeCedulaValue(cedula);
+        if (normalized == null) {
+            throw new IllegalArgumentException("Cédula inválida");
+        }
+        assertCedulaDisponible(normalized, usuarioId);
+        usuario.setCedula(normalized);
         return usuarioRepository.save(usuario);
+    }
+
+    private void assertCedulaDisponible(String normalizedCedula, UUID currentUserId) {
+        if (!StringUtils.hasText(normalizedCedula)) {
+            throw new IllegalArgumentException("Cédula inválida");
+        }
+
+        boolean cedulaEnUso = usuarioRepository.existsByCedula(normalizedCedula, currentUserId);
+        if (cedulaEnUso) {
+            throw new IllegalArgumentException("La cédula ya está registrada por otro usuario");
+        }
+    }
+
+    private String normalizeCedulaValue(String cedula) {
+        if (cedula == null || cedula.isBlank()) {
+            return null;
+        }
+
+        String trimmed = cedula.trim();
+        if (trimmed.length() < 7 || trimmed.length() > 20) {
+            return null;
+        }
+
+        String digits = trimmed.replaceAll("[^\\d]", "");
+        if (digits.length() < 7 || digits.length() > 8) {
+            return null;
+        }
+
+        while (digits.length() < 8) {
+            digits = "0" + digits;
+        }
+        return digits;
     }
 
     @Transactional(readOnly = true)
