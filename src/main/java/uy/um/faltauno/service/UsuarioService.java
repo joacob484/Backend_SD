@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import uy.um.faltauno.dto.PendingReviewResponse;
 import uy.um.faltauno.dto.PerfilDTO;
+import uy.um.faltauno.dto.PhotoValidationResult;
 import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.dto.UsuarioMinDTO;
 import uy.um.faltauno.util.UsuarioMapper;
@@ -67,6 +68,7 @@ public class UsuarioService {
     private final NotificacionRepository notificacionRepository;
     private final ChatVisitRepository chatVisitRepository;
     private final ReportRepository reportRepository;
+    private final PhotoValidationService photoValidationService;
 
     /**
      * Encuentra el ID de un usuario por email SIN cargar LOBs.
@@ -404,6 +406,17 @@ public class UsuarioService {
                                     !contentType.startsWith("image/png") && 
                                     !contentType.startsWith("image/jpg"))) {
             throw new IllegalArgumentException("Solo se permiten imágenes JPEG o PNG");
+        }
+
+        // ✅ Validar rostro visible y contenido apropiado usando Google Vision API
+        PhotoValidationResult validationResult = photoValidationService.validatePhoto(file);
+        if (!validationResult.isValid()) {
+            String failureMessage = validationResult.getMessage() != null
+                ? validationResult.getMessage()
+                : "La foto no cumple con los requisitos (rostro visible y contenido apropiado)";
+            log.warn("[UsuarioService] Foto rechazada por Vision API: reason={} message={}",
+                validationResult.getReason(), failureMessage);
+            throw new IllegalArgumentException(failureMessage);
         }
 
     usuario.setFotoPerfil(file.getBytes());
