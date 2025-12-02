@@ -180,6 +180,10 @@ public class UsuarioController {
 
             usuarioService.subirFoto(userId, file);
             return ResponseEntity.ok(new ApiResponse<>(null, "Foto subida correctamente", true));
+        } catch (IllegalArgumentException iae) {
+            log.warn("Validación de foto rechazada: {}", iae.getMessage());
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(new ApiResponse<>(null, iae.getMessage(), false));
         } catch (IOException ioe) {
             log.error("Error guardando foto: {}", ioe.getMessage(), ioe);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
