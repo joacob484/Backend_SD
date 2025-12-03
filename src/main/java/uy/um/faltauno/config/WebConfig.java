@@ -22,6 +22,7 @@ public class WebConfig {
     // ✅ Inyectar como interfaz HandlerInterceptor (no como clase concreta)
     // Esto permite que Spring use proxies JDK para @Async sin problemas
     private final HandlerInterceptor activityTrackingInterceptor;
+    private final HandlerInterceptor onboardingGuardInterceptor;
     private final HandlerInterceptor adminRoleInterceptor;
 
     @Bean
@@ -46,6 +47,16 @@ public class WebConfig {
                             "/api/health",
                             "/api/actuator/**"
                         );
+
+                        registry.addInterceptor(onboardingGuardInterceptor)
+                            .addPathPatterns("/api/**")
+                            .excludePathPatterns(
+                                "/api/auth/**",
+                                "/api/password/**",
+                                "/api/verification/**",
+                                "/api/health",
+                                "/api/actuator/**"
+                            );
                 
                 // Interceptor para verificar permisos de administrador
                 registry.addInterceptor(adminRoleInterceptor)

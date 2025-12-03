@@ -11,6 +11,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import uy.um.faltauno.config.JwtUtil;
 import uy.um.faltauno.dto.ApiResponse;
+import uy.um.faltauno.dto.OnboardingStatusDTO;
 import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.entity.Usuario;
 import uy.um.faltauno.service.UsuarioService;
@@ -149,11 +150,16 @@ public class AuthenticationController {
             dto.setPerfilCompleto(dto.getPerfilCompleto());
             dto.setCedulaVerificada(dto.getCedulaVerificada());
 
+            OnboardingStatusDTO onboarding = usuarioService.computeOnboardingStatus(dto);
+
             String token = jwtUtil.generateToken(existingUser.getId(), existingUser.getEmail(), existingUser.getTokenVersion(), existingUser.getRol());
 
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("token", token);
             responseData.put("user", dto);
+            responseData.put("onboarding", onboarding);
+            responseData.put("nextStep", onboarding.getNextStep());
+            responseData.put("requiresOnboardingAction", onboarding.isRequiresAction());
 
             return ResponseEntity.ok(new ApiResponse<>(responseData, "Autenticado", true));
         } catch (BadCredentialsException ex) {

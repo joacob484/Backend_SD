@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.transaction.annotation.Transactional;
 
+import uy.um.faltauno.dto.OnboardingStatusDTO;
 import uy.um.faltauno.dto.PendingReviewResponse;
 import uy.um.faltauno.dto.PerfilDTO;
 import uy.um.faltauno.dto.PhotoValidationResult;
@@ -70,6 +71,7 @@ public class UsuarioService {
     private final ChatVisitRepository chatVisitRepository;
     private final ReportRepository reportRepository;
     private final PhotoValidationService photoValidationService;
+    private final EmailService emailService;
 
     /**
      * Encuentra el ID de un usuario por email SIN cargar LOBs.
@@ -120,6 +122,7 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
+        boolean alreadyHadCedula = hasVerifiedCedula(usuario);
         String normalized = normalizeCedulaValue(cedula);
         if (normalized == null) {
             throw new IllegalArgumentException("Cédula inválida");
@@ -127,6 +130,8 @@ public class UsuarioService {
         assertCedulaDisponible(normalized, usuarioId);
         usuario.setCedula(normalized);
         usuario = usuarioRepository.save(usuario);
+        usuarioRepository.flush();
+        triggerWelcomeEmailIfNeeded(alreadyHadCedula, usuario);
 
         UsuarioDTO dto = usuarioMapper.toDTO(usuario);
         dto.setPassword(null);
@@ -251,6 +256,41 @@ public class UsuarioService {
         
         // Si no existe en absoluto
         throw new IllegalArgumentException("Usuario no encontrado");
+    }
+
+    @Transactional(readOnly = true)
+    public OnboardingStatusDTO computeOnboardingStatus(UUID usuarioId) {
+        UsuarioDTO dto = getUsuario(usuarioId);
+        return computeOnboardingStatus(dto);
+    }
+
+    public OnboardingStatusDTO computeOnboardingStatus(UsuarioDTO dto) {
+        boolean emailVerified = Boolean.TRUE.equals(dto.getEmailVerified());
+        boolean perfilCompleto = Boolean.TRUE.equals(dto.getPerfilCompleto());
+        boolean cedulaVerificada = Boolean.TRUE.equals(dto.getCedulaVerificada());
+
+        OnboardingStatusDTO.Step nextStep = OnboardingStatusDTO.Step.DONE;
+        String reason = "Onboarding completo";
+
+        if (!emailVerified) {
+            nextStep = OnboardingStatusDTO.Step.VERIFY_EMAIL;
+            reason = "Debes verificar tu email para continuar.";
+        } else if (!perfilCompleto) {
+            nextStep = OnboardingStatusDTO.Step.COMPLETE_PROFILE;
+            reason = "Completa tu perfil para desbloquear el resto de la app.";
+        } else if (!cedulaVerificada) {
+            nextStep = OnboardingStatusDTO.Step.VERIFY_CEDULA;
+            reason = "Verificá y guardá tu cédula para finalizar el registro.";
+        }
+
+        return OnboardingStatusDTO.builder()
+                .nextStep(nextStep)
+                .requiresAction(nextStep != OnboardingStatusDTO.Step.DONE)
+                .emailVerified(emailVerified)
+                .perfilCompleto(perfilCompleto)
+                .cedulaVerificada(cedulaVerificada)
+                .blockingReason(reason)
+                .build();
     }
 
     @Transactional
@@ -418,13 +458,27 @@ public class UsuarioService {
     public Usuario marcarCedula(UUID usuarioId, String cedula) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        boolean alreadyHadCedula = hasVerifiedCedula(usuario);
         String normalized = normalizeCedulaValue(cedula);
         if (normalized == null) {
             throw new IllegalArgumentException("Cédula inválida");
         }
         assertCedulaDisponible(normalized, usuarioId);
         usuario.setCedula(normalized);
-        return usuarioRepository.save(usuario);
+        Usuario saved = usuarioRepository.save(usuario);
+        usuarioRepository.flush();
+        triggerWelcomeEmailIfNeeded(alreadyHadCedula, saved);
+        return saved;
+    }
+
+    private boolean hasVerifiedCedula(Usuario usuario) {
+        return usuario.getCedula() != null && !usuario.getCedula().isBlank();
+    }
+
+    private void triggerWelcomeEmailIfNeeded(boolean hadCedulaBefore, Usuario usuario) {
+        if (!hadCedulaBefore && hasVerifiedCedula(usuario)) {
+            emailService.enviarEmailBienvenida(usuario);
+        }
     }
 
     private void assertCedulaDisponible(String normalizedCedula, UUID currentUserId) {
