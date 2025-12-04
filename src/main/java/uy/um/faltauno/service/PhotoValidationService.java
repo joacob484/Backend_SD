@@ -199,27 +199,28 @@ public class PhotoValidationService {
         float averageBrightness = totalBrightness / totalScore;
         log.info("[PhotoValidation] Image average brightness: {}", averageBrightness);
 
-        // Rechazar imágenes muy oscuras (brightness < 40) o muy brillantes (brightness > 240)
-        if (averageBrightness < 40) {
+        // Rechazar imágenes muy oscuras (brightness < 60) o muy brillantes (brightness > 220)
+        // Rangos más estrictos para asegurar buena visibilidad facial
+        if (averageBrightness < 60) {
             return PhotoValidationResult.builder()
                 .valid(false)
                 .hasFace(false)
                 .faceCount(0)
                 .isAppropriate(true)
                 .confidence(0.0)
-                .message("La foto está muy oscura. Busca mejor iluminación y vuelve a intentar.")
+                .message("La foto está muy oscura. Busca mejor iluminación natural o artificial y vuelve a intentar.")
                 .reason("POOR_LIGHTING")
                 .build();
         }
 
-        if (averageBrightness > 240) {
+        if (averageBrightness > 220) {
             return PhotoValidationResult.builder()
                 .valid(false)
                 .hasFace(false)
                 .faceCount(0)
                 .isAppropriate(true)
                 .confidence(0.0)
-                .message("La foto está sobreexpuesta. Reduce la iluminación y vuelve a intentar.")
+                .message("La foto está sobreexpuesta. Reduce la iluminación directa y vuelve a intentar.")
                 .reason("OVEREXPOSED")
                 .build();
         }
@@ -232,20 +233,20 @@ public class PhotoValidationService {
             var color = colorInfo.getColor();
             float brightness = (0.299f * color.getRed() + 0.587f * color.getGreen() + 0.114f * color.getBlue());
             
-            if (brightness < 30) veryDarkColors++;
-            if (brightness > 240) veryBrightColors++;
+            if (brightness < 50) veryDarkColors++;
+            if (brightness > 230) veryBrightColors++;
         }
 
-        // Si más del 50% de los colores dominantes son extremos, rechazar
+        // Si más del 40% de los colores dominantes son extremos, rechazar (más estricto)
         int totalColors = dominantColors.getColorsCount();
-        if ((veryDarkColors + veryBrightColors) > totalColors / 2) {
+        if ((veryDarkColors + veryBrightColors) > totalColors * 0.4) {
             return PhotoValidationResult.builder()
                 .valid(false)
                 .hasFace(false)
                 .faceCount(0)
                 .isAppropriate(true)
                 .confidence(0.0)
-                .message("La foto tiene problemas de iluminación. Evita contraluz y busca luz uniforme.")
+                .message("La foto tiene contraluz o iluminación despareja. Busca luz frontal uniforme y evita ventanas de fondo.")
                 .reason("BAD_LIGHTING_CONDITIONS")
                 .build();
         }
@@ -345,51 +346,51 @@ public class PhotoValidationService {
         
         log.info("[PhotoValidation] Face detection confidence: {}", confidence);
 
-        // 1. Verificar confianza mínima de detección (más estricta: 0.7 en lugar de 0.5)
-        if (confidence < 0.7) {
+        // 1. Verificar confianza mínima de detección (muy estricta: 0.75 para asegurar nitidez)
+        if (confidence < 0.75) {
             return PhotoValidationResult.builder()
                 .valid(false)
                 .hasFace(true)
                 .faceCount(1)
                 .isAppropriate(true)
                 .confidence(confidence)
-                .message("La calidad de la foto es muy baja. Por favor toma una foto más clara con buena iluminación.")
+                .message("La foto está borrosa o poco clara. Asegúrate de que tu cara esté enfocada y con buena iluminación.")
                 .reason("LOW_CONFIDENCE")
                 .build();
         }
 
-        // 2. Verificar que el rostro esté centrado y visible (ángulos más estrictos)
+        // 2. Verificar que el rostro esté centrado y visible (ángulos muy estrictos)
         float panAngle = face.getPanAngle();
         float tiltAngle = face.getTiltAngle();
         float rollAngle = face.getRollAngle();
         
         log.info("[PhotoValidation] Face angles - Pan: {}, Tilt: {}, Roll: {}", panAngle, tiltAngle, rollAngle);
         
-        // Rechazar ángulos extremos (más estricto: >30 grados para pan/tilt, >20 para roll)
-        if (Math.abs(panAngle) > 30 || Math.abs(tiltAngle) > 30 || Math.abs(rollAngle) > 20) {
+        // Rechazar ángulos extremos (muy estricto: >25 grados para pan/tilt, >15 para roll)
+        if (Math.abs(panAngle) > 25 || Math.abs(tiltAngle) > 25 || Math.abs(rollAngle) > 15) {
             return PhotoValidationResult.builder()
                 .valid(false)
                 .hasFace(true)
                 .faceCount(1)
                 .isAppropriate(true)
                 .confidence(confidence)
-                .message("Tu rostro debe estar de frente a la cámara. Evita girar la cabeza o inclinar el teléfono.")
+                .message("Tu rostro debe estar completamente de frente a la cámara. Mantén la cabeza recta y el teléfono nivelado.")
                 .reason("EXTREME_ANGLE")
                 .build();
         }
 
-        // 3. Verificar que los ojos y boca sean visibles (landmarks) - más estricto: mínimo 8 en lugar de 5
+        // 3. Verificar que los ojos y boca sean visibles (landmarks) - muy estricto: mínimo 10 para asegurar claridad
         int visibleLandmarks = face.getLandmarksCount();
         log.info("[PhotoValidation] Visible facial landmarks: {}", visibleLandmarks);
         
-        if (visibleLandmarks < 8) {
+        if (visibleLandmarks < 10) {
             return PhotoValidationResult.builder()
                 .valid(false)
                 .hasFace(true)
                 .faceCount(1)
                 .isAppropriate(true)
                 .confidence(confidence)
-                .message("Tu rostro debe estar completamente visible. Evita usar gafas oscuras, mascarillas o accesorios que cubran tu cara.")
+                .message("Tu rostro no se ve con suficiente claridad. Evita gafas oscuras, mascarillas o accesorios. Asegúrate de tener buena iluminación frontal.")
                 .reason("FACE_OCCLUDED")
                 .build();
         }
