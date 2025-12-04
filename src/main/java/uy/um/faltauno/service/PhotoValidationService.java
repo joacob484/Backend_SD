@@ -50,13 +50,19 @@ public class PhotoValidationService {
             // Crear cliente de Vision API
             try (ImageAnnotatorClient vision = createVisionClient()) {
                 
-                // 1. Detectar rostros
+                // 1. Detectar calidad de imagen e iluminación
+                PhotoValidationResult imageQualityResult = detectImageQuality(vision, img);
+                if (!imageQualityResult.isValid()) {
+                    return imageQualityResult;
+                }
+
+                // 2. Detectar rostros
                 PhotoValidationResult faceResult = detectFaces(vision, img);
                 if (!faceResult.isValid()) {
                     return faceResult;
                 }
 
-                // 2. Detectar contenido inapropiado
+                // 3. Detectar contenido inapropiado
                 PhotoValidationResult safeSearchResult = detectInappropriateContent(vision, img);
                 if (!safeSearchResult.isValid()) {
                     return safeSearchResult;
@@ -126,6 +132,134 @@ public class PhotoValidationService {
 
         log.info("[PhotoValidation] Using default application credentials for Vision API");
         return ImageAnnotatorClient.create();
+    }
+
+    /**
+     * Detecta calidad de imagen e iluminación usando Image Properties
+     * Rechaza fotos con muy poca luz o calidad degradada
+     */
+    private PhotoValidationResult detectImageQuality(ImageAnnotatorClient vision, Image img) {
+        Feature imagePropertiesFeature = Feature.newBuilder()
+            .setType(Feature.Type.IMAGE_PROPERTIES)
+            .build();
+
+        AnnotateImageRequest request = AnnotateImageRequest.newBuilder()
+            .addFeatures(imagePropertiesFeature)
+            .setImage(img)
+            .build();
+
+        List<AnnotateImageRequest> requests = new ArrayList<>();
+        requests.add(request);
+
+        BatchAnnotateImagesResponse response = vision.batchAnnotateImages(requests);
+        List<AnnotateImageResponse> responses = response.getResponsesList();
+
+        if (responses.isEmpty() || !responses.get(0).hasImagePropertiesAnnotation()) {
+            log.warn("[PhotoValidation] No ImageProperties response");
+            // Continuar sin esta validación si no está disponible
+            return PhotoValidationResult.builder()
+                .valid(true)
+                .hasFace(false)
+                .faceCount(0)
+                .isAppropriate(true)
+                .confidence(0.0)
+                .message("Calidad no verificada")
+                .build();
+        }
+
+        var imageProperties = responses.get(0).getImagePropertiesAnnotation();
+        var dominantColors = imageProperties.getDominantColors();
+
+        if (dominantColors.getColorsCount() == 0) {
+            log.warn("[PhotoValidation] No color information available");
+            return PhotoValidationResult.builder()
+                .valid(true)
+                .hasFace(false)
+                .faceCount(0)
+                .isAppropriate(true)
+                .confidence(0.0)
+                .message("Calidad no verificada")
+                .build();
+        }
+
+        // Calcular brillo promedio de la imagen
+        float totalBrightness = 0;
+        float totalScore = 0;
+        
+        for (var colorInfo : dominantColors.getColorsList()) {
+            var color = colorInfo.getColor();
+            float score = colorInfo.getScore();
+            
+            // Calcular luminosidad usando la fórmula estándar
+            float brightness = (0.299f * color.getRed() + 0.587f * color.getGreen() + 0.114f * color.getBlue());
+            totalBrightness += brightness * score;
+            totalScore += score;
+        }
+
+        float averageBrightness = totalBrightness / totalScore;
+        log.info("[PhotoValidation] Image average brightness: {}", averageBrightness);
+
+        // Rechazar imágenes muy oscuras (brightness < 40) o muy brillantes (brightness > 240)
+        if (averageBrightness < 40) {
+            return PhotoValidationResult.builder()
+                .valid(false)
+                .hasFace(false)
+                .faceCount(0)
+                .isAppropriate(true)
+                .confidence(0.0)
+                .message("La foto está muy oscura. Busca mejor iluminación y vuelve a intentar.")
+                .reason("POOR_LIGHTING")
+                .build();
+        }
+
+        if (averageBrightness > 240) {
+            return PhotoValidationResult.builder()
+                .valid(false)
+                .hasFace(false)
+                .faceCount(0)
+                .isAppropriate(true)
+                .confidence(0.0)
+                .message("La foto está sobreexpuesta. Reduce la iluminación y vuelve a intentar.")
+                .reason("OVEREXPOSED")
+                .build();
+        }
+
+        // Verificar si hay demasiados colores muy oscuros o muy claros (indica contraluz o mala calidad)
+        int veryDarkColors = 0;
+        int veryBrightColors = 0;
+        
+        for (var colorInfo : dominantColors.getColorsList()) {
+            var color = colorInfo.getColor();
+            float brightness = (0.299f * color.getRed() + 0.587f * color.getGreen() + 0.114f * color.getBlue());
+            
+            if (brightness < 30) veryDarkColors++;
+            if (brightness > 240) veryBrightColors++;
+        }
+
+        // Si más del 50% de los colores dominantes son extremos, rechazar
+        int totalColors = dominantColors.getColorsCount();
+        if ((veryDarkColors + veryBrightColors) > totalColors / 2) {
+            return PhotoValidationResult.builder()
+                .valid(false)
+                .hasFace(false)
+                .faceCount(0)
+                .isAppropriate(true)
+                .confidence(0.0)
+                .message("La foto tiene problemas de iluminación. Evita contraluz y busca luz uniforme.")
+                .reason("BAD_LIGHTING_CONDITIONS")
+                .build();
+        }
+
+        log.info("[PhotoValidation] Image quality check passed - brightness: {}", averageBrightness);
+        
+        return PhotoValidationResult.builder()
+            .valid(true)
+            .hasFace(false)
+            .faceCount(0)
+            .isAppropriate(true)
+            .confidence(1.0)
+            .message("Calidad de imagen aceptable")
+            .build();
     }
 
     /**
