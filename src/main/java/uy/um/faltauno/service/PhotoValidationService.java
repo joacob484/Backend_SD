@@ -130,11 +130,12 @@ public class PhotoValidationService {
 
     /**
      * Detecta rostros en la imagen
-     * Requiere EXACTAMENTE 1 rostro
+     * Requiere EXACTAMENTE 1 rostro con validaciones avanzadas de calidad
      */
     private PhotoValidationResult detectFaces(ImageAnnotatorClient vision, Image img) {
         Feature faceDetectionFeature = Feature.newBuilder()
             .setType(Feature.Type.FACE_DETECTION)
+            .setMaxResults(10) // Detectar hasta 10 rostros para mejor análisis
             .build();
 
         AnnotateImageRequest request = AnnotateImageRequest.newBuilder()
@@ -187,7 +188,7 @@ public class PhotoValidationService {
                 .faceCount(0)
                 .isAppropriate(true)
                 .confidence(0.0)
-                .message("No se detectó ningún rostro en la foto")
+                .message("No se detectó ningún rostro en la foto. Asegúrate de que tu cara sea visible y esté bien iluminada.")
                 .reason("NO_FACE")
                 .build();
         }
@@ -199,15 +200,88 @@ public class PhotoValidationService {
                 .faceCount(faceCount)
                 .isAppropriate(true)
                 .confidence(0.0)
-                .message("Se detectaron " + faceCount + " rostros. Por favor sube una foto con una sola persona")
+                .message("Se detectaron " + faceCount + " rostros. Por favor sube una foto con una sola persona.")
                 .reason("MULTIPLE_FACES")
                 .build();
         }
 
-        // Exactamente 1 rostro - calcular confianza
+        // Exactamente 1 rostro - validaciones avanzadas de calidad
         FaceAnnotation face = res.getFaceAnnotations(0);
         double confidence = face.getDetectionConfidence();
+        
+        log.info("[PhotoValidation] Face detection confidence: {}", confidence);
 
+        // 1. Verificar confianza mínima de detección
+        if (confidence < 0.5) {
+            return PhotoValidationResult.builder()
+                .valid(false)
+                .hasFace(true)
+                .faceCount(1)
+                .isAppropriate(true)
+                .confidence(confidence)
+                .message("La calidad de la foto es muy baja. Por favor toma una foto más clara.")
+                .reason("LOW_CONFIDENCE")
+                .build();
+        }
+
+        // 2. Verificar que el rostro esté centrado y visible (no extremadamente girado)
+        float panAngle = face.getPanAngle();
+        float tiltAngle = face.getTiltAngle();
+        float rollAngle = face.getRollAngle();
+        
+        log.info("[PhotoValidation] Face angles - Pan: {}, Tilt: {}, Roll: {}", panAngle, tiltAngle, rollAngle);
+        
+        // Rechazar ángulos extremos (>45 grados para pan/tilt, >30 para roll)
+        if (Math.abs(panAngle) > 45 || Math.abs(tiltAngle) > 45 || Math.abs(rollAngle) > 30) {
+            return PhotoValidationResult.builder()
+                .valid(false)
+                .hasFace(true)
+                .faceCount(1)
+                .isAppropriate(true)
+                .confidence(confidence)
+                .message("Tu rostro debe estar de frente a la cámara. Evita ángulos extremos.")
+                .reason("EXTREME_ANGLE")
+                .build();
+        }
+
+        // 3. Verificar que los ojos y boca sean visibles (landmarks)
+        int visibleLandmarks = face.getLandmarksCount();
+        log.info("[PhotoValidation] Visible facial landmarks: {}", visibleLandmarks);
+        
+        if (visibleLandmarks < 5) {
+            return PhotoValidationResult.builder()
+                .valid(false)
+                .hasFace(true)
+                .faceCount(1)
+                .isAppropriate(true)
+                .confidence(confidence)
+                .message("Tu rostro debe estar completamente visible. Evita cubrirlo con accesorios.")
+                .reason("FACE_OCCLUDED")
+                .build();
+        }
+
+        // 4. Verificar emociones extremas o expresiones no apropiadas para foto de perfil
+        Likelihood anger = face.getAngerLikelihood();
+        Likelihood sorrow = face.getSorrowLikelihood();
+        
+        log.info("[PhotoValidation] Emotions - Anger: {}, Sorrow: {}, Joy: {}", 
+            anger, sorrow, face.getJoyLikelihood());
+        
+        if (anger == Likelihood.VERY_LIKELY || sorrow == Likelihood.VERY_LIKELY) {
+            return PhotoValidationResult.builder()
+                .valid(false)
+                .hasFace(true)
+                .faceCount(1)
+                .isAppropriate(true)
+                .confidence(confidence)
+                .message("Por favor usa una foto con expresión neutra o sonriente para tu perfil.")
+                .reason("INAPPROPRIATE_EXPRESSION")
+                .build();
+        }
+
+        // ✅ Todas las validaciones pasaron
+        log.info("[PhotoValidation] Face validation passed - confidence: {}, landmarks: {}", confidence, visibleLandmarks);
+        
         return PhotoValidationResult.builder()
             .valid(true)
             .hasFace(true)
@@ -220,6 +294,7 @@ public class PhotoValidationService {
 
     /**
      * Detecta contenido inapropiado usando SafeSearch
+     * Con umbrales estrictos para fotos de perfil
      */
     private PhotoValidationResult detectInappropriateContent(ImageAnnotatorClient vision, Image img) {
         Feature safeSearchFeature = Feature.newBuilder()
@@ -254,25 +329,60 @@ public class PhotoValidationService {
 
         // Verificar niveles de contenido inapropiado
         // VERY_LIKELY o LIKELY = bloquear
+        // Para fotos de perfil, ser más estricto
         boolean hasAdultContent = isLikelyOrVeryLikely(annotation.getAdult());
         boolean hasViolentContent = isLikelyOrVeryLikely(annotation.getViolence());
         boolean hasRacyContent = isLikelyOrVeryLikely(annotation.getRacy());
+        boolean hasSpoofContent = isLikelyOrVeryLikely(annotation.getSpoof());
 
-        log.info("[PhotoValidation] SafeSearch - Adult: {}, Violence: {}, Racy: {}", 
-            annotation.getAdult(), annotation.getViolence(), annotation.getRacy());
+        log.info("[PhotoValidation] SafeSearch - Adult: {}, Violence: {}, Racy: {}, Spoof: {}", 
+            annotation.getAdult(), annotation.getViolence(), annotation.getRacy(), annotation.getSpoof());
 
-        if (hasAdultContent || hasViolentContent || hasRacyContent) {
-            String reason = hasAdultContent ? "ADULT_CONTENT" : 
-                           hasViolentContent ? "VIOLENT_CONTENT" : "RACY_CONTENT";
-            
+        if (hasAdultContent) {
             return PhotoValidationResult.builder()
                 .valid(false)
                 .hasFace(true)
                 .faceCount(1)
                 .isAppropriate(false)
                 .confidence(0.0)
-                .message("La foto contiene contenido inapropiado. Por favor elige otra imagen")
-                .reason(reason)
+                .message("La foto contiene contenido adulto. Usa una foto apropiada para tu perfil.")
+                .reason("ADULT_CONTENT")
+                .build();
+        }
+        
+        if (hasViolentContent) {
+            return PhotoValidationResult.builder()
+                .valid(false)
+                .hasFace(true)
+                .faceCount(1)
+                .isAppropriate(false)
+                .confidence(0.0)
+                .message("La foto contiene contenido violento. Elige una foto apropiada.")
+                .reason("VIOLENT_CONTENT")
+                .build();
+        }
+        
+        if (hasRacyContent) {
+            return PhotoValidationResult.builder()
+                .valid(false)
+                .hasFace(true)
+                .faceCount(1)
+                .isAppropriate(false)
+                .confidence(0.0)
+                .message("La foto contiene contenido sugerente. Por favor elige otra imagen.")
+                .reason("RACY_CONTENT")
+                .build();
+        }
+        
+        if (hasSpoofContent) {
+            return PhotoValidationResult.builder()
+                .valid(false)
+                .hasFace(true)
+                .faceCount(1)
+                .isAppropriate(false)
+                .confidence(0.0)
+                .message("La foto parece ser falsa o modificada. Usa una foto real.")
+                .reason("SPOOF_CONTENT")
                 .build();
         }
 
