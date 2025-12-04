@@ -211,51 +211,51 @@ public class PhotoValidationService {
         
         log.info("[PhotoValidation] Face detection confidence: {}", confidence);
 
-        // 1. Verificar confianza mínima de detección
-        if (confidence < 0.5) {
+        // 1. Verificar confianza mínima de detección (más estricta: 0.7 en lugar de 0.5)
+        if (confidence < 0.7) {
             return PhotoValidationResult.builder()
                 .valid(false)
                 .hasFace(true)
                 .faceCount(1)
                 .isAppropriate(true)
                 .confidence(confidence)
-                .message("La calidad de la foto es muy baja. Por favor toma una foto más clara.")
+                .message("La calidad de la foto es muy baja. Por favor toma una foto más clara con buena iluminación.")
                 .reason("LOW_CONFIDENCE")
                 .build();
         }
 
-        // 2. Verificar que el rostro esté centrado y visible (no extremadamente girado)
+        // 2. Verificar que el rostro esté centrado y visible (ángulos más estrictos)
         float panAngle = face.getPanAngle();
         float tiltAngle = face.getTiltAngle();
         float rollAngle = face.getRollAngle();
         
         log.info("[PhotoValidation] Face angles - Pan: {}, Tilt: {}, Roll: {}", panAngle, tiltAngle, rollAngle);
         
-        // Rechazar ángulos extremos (>45 grados para pan/tilt, >30 para roll)
-        if (Math.abs(panAngle) > 45 || Math.abs(tiltAngle) > 45 || Math.abs(rollAngle) > 30) {
+        // Rechazar ángulos extremos (más estricto: >30 grados para pan/tilt, >20 para roll)
+        if (Math.abs(panAngle) > 30 || Math.abs(tiltAngle) > 30 || Math.abs(rollAngle) > 20) {
             return PhotoValidationResult.builder()
                 .valid(false)
                 .hasFace(true)
                 .faceCount(1)
                 .isAppropriate(true)
                 .confidence(confidence)
-                .message("Tu rostro debe estar de frente a la cámara. Evita ángulos extremos.")
+                .message("Tu rostro debe estar de frente a la cámara. Evita girar la cabeza o inclinar el teléfono.")
                 .reason("EXTREME_ANGLE")
                 .build();
         }
 
-        // 3. Verificar que los ojos y boca sean visibles (landmarks)
+        // 3. Verificar que los ojos y boca sean visibles (landmarks) - más estricto: mínimo 8 en lugar de 5
         int visibleLandmarks = face.getLandmarksCount();
         log.info("[PhotoValidation] Visible facial landmarks: {}", visibleLandmarks);
         
-        if (visibleLandmarks < 5) {
+        if (visibleLandmarks < 8) {
             return PhotoValidationResult.builder()
                 .valid(false)
                 .hasFace(true)
                 .faceCount(1)
                 .isAppropriate(true)
                 .confidence(confidence)
-                .message("Tu rostro debe estar completamente visible. Evita cubrirlo con accesorios.")
+                .message("Tu rostro debe estar completamente visible. Evita usar gafas oscuras, mascarillas o accesorios que cubran tu cara.")
                 .reason("FACE_OCCLUDED")
                 .build();
         }
@@ -328,12 +328,12 @@ public class PhotoValidationService {
         SafeSearchAnnotation annotation = responses.get(0).getSafeSearchAnnotation();
 
         // Verificar niveles de contenido inapropiado
-        // VERY_LIKELY o LIKELY = bloquear
-        // Para fotos de perfil, ser más estricto
-        boolean hasAdultContent = isLikelyOrVeryLikely(annotation.getAdult());
-        boolean hasViolentContent = isLikelyOrVeryLikely(annotation.getViolence());
-        boolean hasRacyContent = isLikelyOrVeryLikely(annotation.getRacy());
-        boolean hasSpoofContent = isLikelyOrVeryLikely(annotation.getSpoof());
+        // VERY_LIKELY, LIKELY o POSSIBLE = bloquear (más estricto)
+        // Para fotos de perfil, ser muy estricto con el contenido
+        boolean hasAdultContent = isPossibleLikelyOrVeryLikely(annotation.getAdult());
+        boolean hasViolentContent = isPossibleLikelyOrVeryLikely(annotation.getViolence());
+        boolean hasRacyContent = isPossibleLikelyOrVeryLikely(annotation.getRacy());
+        boolean hasSpoofContent = isPossibleLikelyOrVeryLikely(annotation.getSpoof());
 
         log.info("[PhotoValidation] SafeSearch - Adult: {}, Violence: {}, Racy: {}, Spoof: {}", 
             annotation.getAdult(), annotation.getViolence(), annotation.getRacy(), annotation.getSpoof());
@@ -397,9 +397,12 @@ public class PhotoValidationService {
     }
 
     /**
-     * Helper para verificar si el nivel de confianza es LIKELY o VERY_LIKELY
+     * Helper para verificar si el nivel de confianza es POSSIBLE, LIKELY o VERY_LIKELY
+     * Más estricto para fotos de perfil
      */
-    private boolean isLikelyOrVeryLikely(Likelihood likelihood) {
-        return likelihood == Likelihood.LIKELY || likelihood == Likelihood.VERY_LIKELY;
+    private boolean isPossibleLikelyOrVeryLikely(Likelihood likelihood) {
+        return likelihood == Likelihood.POSSIBLE || 
+               likelihood == Likelihood.LIKELY || 
+               likelihood == Likelihood.VERY_LIKELY;
     }
 }
