@@ -66,12 +66,13 @@ jobs:
           --region=${{ env.GCP_REGION }} \
           --platform=managed \
           --allow-unauthenticated \
-          --memory=2Gi \
+          --memory=1Gi \
           --cpu=2 \
-          --timeout=900 \
-          --min-instances=1 \
-          --max-instances=10 \
-          --no-cpu-throttling \
+          --timeout=300 \
+          --min-instances=0 \
+          --max-instances=3 \
+          --cpu-throttling \
+          --concurrency=80 \
           --update-env-vars=SPRING_PROFILES_ACTIVE=cloudrun,GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }},CLOUD_SQL_INSTANCE=${{ env.CLOUDSQL_INSTANCE }},GOOGLE_VISION_CREDENTIALS_PATH=/secrets/google-credentials.json \
           --remove-env-vars=SMS_ENABLED,SMS_PROVIDER,PHONE_VERIFICATION_ENABLED,GOOGLE_APPLICATION_CREDENTIALS \
           --add-cloudsql-instances=${{ env.CLOUDSQL_INSTANCE }} \
