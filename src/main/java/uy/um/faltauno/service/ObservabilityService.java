@@ -46,39 +46,71 @@ public class ObservabilityService {
     public ObservabilityDTO getObservabilityMetrics() {
         log.info("[OBSERVABILITY] Generando métricas de observabilidad");
         
+        PerformanceMetrics perf = null;
+        CostMetrics cost = null;
+        UserMetrics users = null;
+        SystemMetrics sys = null;
+        DatabaseMetrics db = null;
+        List<Alert> alerts = new ArrayList<>();
+        
         try {
             log.info("[OBSERVABILITY] Obteniendo performance metrics...");
-            PerformanceMetrics perf = getPerformanceMetrics();
-            
-            log.info("[OBSERVABILITY] Obteniendo cost metrics...");
-            CostMetrics cost = getCostMetrics();
-            
-            log.info("[OBSERVABILITY] Obteniendo user metrics...");
-            UserMetrics users = getUserMetrics();
-            
-            log.info("[OBSERVABILITY] Obteniendo system metrics...");
-            SystemMetrics sys = getSystemMetrics();
-            
-            log.info("[OBSERVABILITY] Obteniendo database metrics...");
-            DatabaseMetrics db = getDatabaseMetrics();
-            
-            log.info("[OBSERVABILITY] Generando alerts...");
-            List<Alert> alerts = generateAlerts();
-            
-            log.info("[OBSERVABILITY] Construyendo DTO final...");
-            return ObservabilityDTO.builder()
-                    .performance(perf)
-                    .costs(cost)
-                    .users(users)
-                    .system(sys)
-                    .database(db)
-                    .alerts(alerts)
-                    .timestamp(LocalDateTime.now())
-                    .build();
+            perf = getPerformanceMetrics();
         } catch (Exception e) {
-            log.error("[OBSERVABILITY] Error generando métricas", e);
-            throw e;
+            log.error("[OBSERVABILITY] Error obteniendo performance metrics", e);
+            perf = getDefaultPerformanceMetrics();
         }
+        
+        try {
+            log.info("[OBSERVABILITY] Obteniendo cost metrics...");
+            cost = getCostMetrics();
+        } catch (Exception e) {
+            log.error("[OBSERVABILITY] Error obteniendo cost metrics", e);
+            cost = getDefaultCostMetrics();
+        }
+        
+        try {
+            log.info("[OBSERVABILITY] Obteniendo user metrics...");
+            users = getUserMetrics();
+        } catch (Exception e) {
+            log.error("[OBSERVABILITY] Error obteniendo user metrics", e);
+            users = getDefaultUserMetrics();
+        }
+        
+        try {
+            log.info("[OBSERVABILITY] Obteniendo system metrics...");
+            sys = getSystemMetrics();
+        } catch (Exception e) {
+            log.error("[OBSERVABILITY] Error obteniendo system metrics", e);
+            sys = getDefaultSystemMetrics();
+        }
+        
+        try {
+            log.info("[OBSERVABILITY] Obteniendo database metrics...");
+            db = getDatabaseMetrics();
+        } catch (Exception e) {
+            log.error("[OBSERVABILITY] Error obteniendo database metrics", e);
+            db = getDefaultDatabaseMetrics();
+        }
+        
+        try {
+            log.info("[OBSERVABILITY] Generando alerts...");
+            alerts = generateAlerts();
+        } catch (Exception e) {
+            log.error("[OBSERVABILITY] Error generando alerts", e);
+            alerts = new ArrayList<>();
+        }
+        
+        log.info("[OBSERVABILITY] Construyendo DTO final...");
+        return ObservabilityDTO.builder()
+                .performance(perf)
+                .costs(cost)
+                .users(users)
+                .system(sys)
+                .database(db)
+                .alerts(alerts)
+                .timestamp(LocalDateTime.now())
+                .build();
     }
     
     /**
@@ -518,5 +550,84 @@ public class ObservabilityService {
         totalRequests.set(0);
         successfulRequests.set(0);
         failedRequests.set(0);
+    }
+    
+    // ========================================
+    // DEFAULT/FALLBACK METRICS
+    // ========================================
+    
+    private PerformanceMetrics getDefaultPerformanceMetrics() {
+        return PerformanceMetrics.builder()
+                .avgResponseTime(0.0)
+                .p50ResponseTime(0.0)
+                .p95ResponseTime(0.0)
+                .p99ResponseTime(0.0)
+                .requestsPerMinute(0L)
+                .errorRate(0.0)
+                .successRate(100.0)
+                .endpointCalls(new HashMap<>())
+                .slowestEndpoints(new HashMap<>())
+                .build();
+    }
+    
+    private CostMetrics getDefaultCostMetrics() {
+        return CostMetrics.builder()
+                .monthlyEstimate(0.0)
+                .dailyCost(0.0)
+                .cloudRunBackend(0.0)
+                .cloudRunFrontend(0.0)
+                .cloudSql(0.0)
+                .storage(0.0)
+                .bandwidth(0.0)
+                .costBreakdown(new HashMap<>())
+                .trends(new ArrayList<>())
+                .build();
+    }
+    
+    private UserMetrics getDefaultUserMetrics() {
+        return UserMetrics.builder()
+                .activeUsers(0L)
+                .dailyActiveUsers(0L)
+                .weeklyActiveUsers(0L)
+                .onlineUsers(0L)
+                .usersByCountry(new HashMap<>())
+                .usersByDevice(new HashMap<>())
+                .activityTrends(new ArrayList<>())
+                .build();
+    }
+    
+    private SystemMetrics getDefaultSystemMetrics() {
+        Map<String, String> jvmInfo = new HashMap<>();
+        jvmInfo.put("version", System.getProperty("java.version"));
+        jvmInfo.put("status", "Error loading metrics");
+        
+        return SystemMetrics.builder()
+                .version("3.5.0")
+                .environment("production")
+                .uptime(0L)
+                .cpuUsage(0.0)
+                .memoryUsage(0.0)
+                .memoryUsedMB(0L)
+                .memoryTotalMB(0L)
+                .activeInstances(1)
+                .maxInstances(2)
+                .jvmInfo(jvmInfo)
+                .build();
+    }
+    
+    private DatabaseMetrics getDefaultDatabaseMetrics() {
+        Map<String, Long> topQueries = new HashMap<>();
+        topQueries.put("N/A", 0L);
+        
+        return DatabaseMetrics.builder()
+                .activeConnections(0L)
+                .idleConnections(0L)
+                .totalConnections(0L)
+                .poolSize(3)
+                .poolUsage(0.0)
+                .cacheHitRate(0.0)
+                .slowestQueries(topQueries)
+                .avgQueryTime(0.0)
+                .build();
     }
 }
