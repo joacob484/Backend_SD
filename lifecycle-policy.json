@@ -1,0 +1,37 @@
+{
+  "lifecycle": {
+    "rule": [
+      {
+        "action": {
+          "type": "Delete"
+        },
+        "condition": {
+          "age": 90,
+          "matchesPrefix": ["temp/", "uploads/temp/", "cache/"]
+        },
+        "description": "Borrar archivos temporales después de 90 días"
+      },
+      {
+        "action": {
+          "type": "Delete"
+        },
+        "condition": {
+          "age": 30,
+          "matchesPrefix": ["logs/", "debug/", "test/"]
+        },
+        "description": "Borrar logs y archivos de debug después de 30 días"
+      },
+      {
+        "action": {
+          "type": "SetStorageClass",
+          "storageClass": "NEARLINE"
+        },
+        "condition": {
+          "age": 60,
+          "matchesPrefix": ["archive/", "backups/"]
+        },
+        "description": "Mover archivos de archivo a NEARLINE (más barato) después de 60 días"
+      }
+    ]
+  }
+}

@@ -13,7 +13,9 @@ import uy.um.faltauno.dto.ResolveReportRequest;
 import uy.um.faltauno.dto.UsuarioDTO;
 import uy.um.faltauno.entity.Report;
 import uy.um.faltauno.entity.Usuario;
+import uy.um.faltauno.dto.ObservabilityDTO;
 import uy.um.faltauno.security.RequireAdmin;
+import uy.um.faltauno.service.ObservabilityService;
 import uy.um.faltauno.service.PartidoService;
 import uy.um.faltauno.service.ReportService;
 import uy.um.faltauno.service.UsuarioService;
@@ -36,6 +38,7 @@ public class AdminController {
     private final UsuarioService usuarioService;
     private final PartidoService partidoService;
     private final ReportService reportService;
+    private final ObservabilityService observabilityService;
     
     /**
      * GET /api/admin/usuarios
@@ -377,6 +380,31 @@ public class AdminController {
             log.error("[ADMIN] Error al desbanear usuario", e);
             return ResponseEntity.status(500)
                     .body(new ApiResponse<>(null, "Error al desbanear usuario", false));
+        }
+    }
+    
+    /**
+     * GET /api/admin/observability
+     * Obtener métricas completas de observabilidad
+     * NUEVO: Reemplaza Grafana con dashboard integrado
+     */
+    @GetMapping("/observability")
+    public ResponseEntity<ApiResponse<ObservabilityDTO>> getObservability(
+            @AuthenticationPrincipal Usuario admin) {
+        try {
+            log.info("[ADMIN] {} obteniendo métricas de observabilidad", admin.getEmail());
+            
+            ObservabilityDTO metrics = observabilityService.getObservabilityMetrics();
+            
+            return ResponseEntity.ok(new ApiResponse<>(metrics, 
+                    "Métricas de observabilidad obtenidas", 
+                    true));
+        } catch (Exception e) {
+            log.error("[ADMIN] Error al obtener métricas de observabilidad", e);
+            return ResponseEntity.status(500)
+                    .body(new ApiResponse<>(null, 
+                            "Error al obtener métricas: " + e.getMessage(), 
+                            false));
         }
     }
 }

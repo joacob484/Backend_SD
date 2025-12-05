@@ -1233,6 +1233,15 @@ public class UsuarioService {
     }
     
     /**
+     * Contar usuarios conectados (últimos 5 minutos)
+     */
+    @Transactional(readOnly = true)
+    public long contarUsuariosConectados() {
+        LocalDateTime cutoffDate = LocalDateTime.now().minusMinutes(5);
+        return usuarioRepository.countByLastActivityAtAfter(cutoffDate);
+    }
+    
+    /**
      * Eliminar permanentemente un usuario (hard delete)
      * Elimina en cascada TODOS los datos relacionados:
      * - Contactos (propios y referencias)
