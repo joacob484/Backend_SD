@@ -266,7 +266,7 @@ spring:
     activate:
       on-profile: cloudrun
 
-# Perfil especial para Cloud Run - configuración optimizada
+  # Perfil especial para Cloud Run - configuración optimizada
 
   # ⚡ Server configuration para Cloud Run
   application:
@@ -310,6 +310,7 @@ spring:
       leak-detection-threshold: 120000
       validation-timeout: 5000
 
+# Logging para Cloud Run
 logging:
   level:
     root: INFO
