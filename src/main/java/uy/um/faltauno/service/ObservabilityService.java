@@ -616,18 +616,18 @@ public class ObservabilityService {
     }
     
     private DatabaseMetrics getDefaultDatabaseMetrics() {
-        Map<String, Long> topQueries = new HashMap<>();
-        topQueries.put("N/A", 0L);
-        
         return DatabaseMetrics.builder()
                 .activeConnections(0L)
                 .idleConnections(0L)
                 .totalConnections(0L)
-                .poolSize(3)
-                .poolUsage(0.0)
+                .connectionPoolUsage(0.0)
+                .cacheHits(0L)
+                .cacheMisses(0L)
                 .cacheHitRate(0.0)
-                .slowestQueries(topQueries)
+                .totalQueries(0L)
                 .avgQueryTime(0.0)
+                .slowQueries(new ArrayList<>())
+                .tablesSizes(new HashMap<>())
                 .build();
     }
 }
