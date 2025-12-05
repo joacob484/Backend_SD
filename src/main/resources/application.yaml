@@ -123,6 +123,10 @@ spring:
           writetimeout: 5000
     default-encoding: UTF-8
 
+  # ⚡ GRACEFUL SHUTDOWN (no perder requests)
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
 # Application configuration
 app:
   # Phone verification
@@ -158,11 +162,6 @@ server:
       remote-ip-header: x-forwarded-for
       protocol-header: x-forwarded-proto
       protocol-header-https-value: https
-
-# ⚡ GRACEFUL SHUTDOWN (no perder requests)
-spring:
-  lifecycle:
-    timeout-per-shutdown-phase: 30s
 
 management:
   endpoint:
