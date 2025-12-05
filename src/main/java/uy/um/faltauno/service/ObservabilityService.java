@@ -46,15 +46,39 @@ public class ObservabilityService {
     public ObservabilityDTO getObservabilityMetrics() {
         log.info("[OBSERVABILITY] Generando métricas de observabilidad");
         
-        return ObservabilityDTO.builder()
-                .performance(getPerformanceMetrics())
-                .costs(getCostMetrics())
-                .users(getUserMetrics())
-                .system(getSystemMetrics())
-                .database(getDatabaseMetrics())
-                .alerts(generateAlerts())
-                .timestamp(LocalDateTime.now())
-                .build();
+        try {
+            log.info("[OBSERVABILITY] Obteniendo performance metrics...");
+            PerformanceMetrics perf = getPerformanceMetrics();
+            
+            log.info("[OBSERVABILITY] Obteniendo cost metrics...");
+            CostMetrics cost = getCostMetrics();
+            
+            log.info("[OBSERVABILITY] Obteniendo user metrics...");
+            UserMetrics users = getUserMetrics();
+            
+            log.info("[OBSERVABILITY] Obteniendo system metrics...");
+            SystemMetrics sys = getSystemMetrics();
+            
+            log.info("[OBSERVABILITY] Obteniendo database metrics...");
+            DatabaseMetrics db = getDatabaseMetrics();
+            
+            log.info("[OBSERVABILITY] Generando alerts...");
+            List<Alert> alerts = generateAlerts();
+            
+            log.info("[OBSERVABILITY] Construyendo DTO final...");
+            return ObservabilityDTO.builder()
+                    .performance(perf)
+                    .costs(cost)
+                    .users(users)
+                    .system(sys)
+                    .database(db)
+                    .alerts(alerts)
+                    .timestamp(LocalDateTime.now())
+                    .build();
+        } catch (Exception e) {
+            log.error("[OBSERVABILITY] Error generando métricas", e);
+            throw e;
+        }
     }
     
     /**
@@ -152,45 +176,65 @@ public class ObservabilityService {
      * Métricas de usuarios
      */
     private UserMetrics getUserMetrics() {
-        long activeUsers = usuarioService.contarUsuariosConActividadReciente(30);
-        long weeklyActive = usuarioService.contarUsuariosConActividadReciente(7);
-        long dailyActive = usuarioService.contarUsuariosConActividadReciente(1);
-        long onlineNow = usuarioService.contarUsuariosConectados(); // Últimos 5 minutos
-        
-        // Por país (simulado - requeriría geolocalización)
-        Map<String, Long> byCountry = Map.of(
-                "Uruguay", activeUsers * 70 / 100,
-                "Argentina", activeUsers * 20 / 100,
-                "Brasil", activeUsers * 7 / 100,
-                "Otros", activeUsers * 3 / 100
-        );
-        
-        // Por dispositivo (simulado - requeriría User-Agent tracking)
-        Map<String, Long> byDevice = Map.of(
-                "Mobile", activeUsers * 75 / 100,
-                "Desktop", activeUsers * 20 / 100,
-                "Tablet", activeUsers * 5 / 100
-        );
-        
-        // Trends últimos 7 días
-        List<UserTrend> trends = new ArrayList<>();
-        for (int i = 6; i >= 0; i--) {
-            long count = usuarioService.contarRegistrosRecientes(i);
-            trends.add(UserTrend.builder()
-                    .date(LocalDate.now().minusDays(i).toString())
-                    .users(count)
-                    .build());
+        try {
+            log.info("[OBSERVABILITY] Contando usuarios activos (30d)...");
+            long activeUsers = usuarioService.contarUsuariosConActividadReciente(30);
+            log.info("[OBSERVABILITY] Active users: {}", activeUsers);
+            
+            log.info("[OBSERVABILITY] Contando usuarios semanales...");
+            long weeklyActive = usuarioService.contarUsuariosConActividadReciente(7);
+            log.info("[OBSERVABILITY] Weekly active: {}", weeklyActive);
+            
+            log.info("[OBSERVABILITY] Contando usuarios diarios...");
+            long dailyActive = usuarioService.contarUsuariosConActividadReciente(1);
+            log.info("[OBSERVABILITY] Daily active: {}", dailyActive);
+            
+            log.info("[OBSERVABILITY] Contando usuarios online...");
+            long onlineNow = usuarioService.contarUsuariosConectados(); // Últimos 5 minutos
+            log.info("[OBSERVABILITY] Online now: {}", onlineNow);
+            
+            // Por país (simulado - requeriría geolocalización)
+            log.info("[OBSERVABILITY] Calculando distribución por país...");
+            Map<String, Long> byCountry = Map.of(
+                    "Uruguay", activeUsers * 70 / 100,
+                    "Argentina", activeUsers * 20 / 100,
+                    "Brasil", activeUsers * 7 / 100,
+                    "Otros", activeUsers * 3 / 100
+            );
+            
+            // Por dispositivo (simulado - requeriría User-Agent tracking)
+            log.info("[OBSERVABILITY] Calculando distribución por dispositivo...");
+            Map<String, Long> byDevice = Map.of(
+                    "Mobile", activeUsers * 75 / 100,
+                    "Desktop", activeUsers * 20 / 100,
+                    "Tablet", activeUsers * 5 / 100
+            );
+            
+            // Trends últimos 7 días
+            log.info("[OBSERVABILITY] Calculando trends de usuarios...");
+            List<UserTrend> trends = new ArrayList<>();
+            for (int i = 6; i >= 0; i--) {
+                long count = usuarioService.contarRegistrosRecientes(i);
+                trends.add(UserTrend.builder()
+                        .date(LocalDate.now().minusDays(i).toString())
+                        .users(count)
+                        .build());
+            }
+            
+            log.info("[OBSERVABILITY] Construyendo UserMetrics...");
+            return UserMetrics.builder()
+                    .activeUsers(activeUsers)
+                    .dailyActiveUsers(dailyActive)
+                    .weeklyActiveUsers(weeklyActive)
+                    .onlineUsers(onlineNow)
+                    .usersByCountry(byCountry)
+                    .usersByDevice(byDevice)
+                    .activityTrends(trends)
+                    .build();
+        } catch (Exception e) {
+            log.error("[OBSERVABILITY] Error en getUserMetrics", e);
+            throw e;
         }
-        
-        return UserMetrics.builder()
-                .activeUsers(activeUsers)
-                .dailyActiveUsers(dailyActive)
-                .weeklyActiveUsers(weeklyActive)
-                .onlineUsers(onlineNow)
-                .usersByCountry(byCountry)
-                .usersByDevice(byDevice)
-                .activityTrends(trends)
-                .build();
     }
     
     /**
