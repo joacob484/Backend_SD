@@ -8,17 +8,19 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:REQUIRED_SET_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
-    # ✅ Pool Hikari (estable)
+    # 💰 POOL HIKARI ULTRA-ECONOMICO
+    # OPTIMIZADO para 1K usuarios con 512MB RAM y db-f1-micro
+    # Capacidad: 3 conexiones × 2 instancias = 6 conexiones (bien debajo del límite de 25)
     hikari:
-      maximum-pool-size: 10  # ✅ Reducido para Cloud Run (menos recursos)
-      minimum-idle: 0  # ✅ Don't create connections during startup
-      connection-timeout: 20000  # ✅ 20 segundos timeout
-      idle-timeout: 300000  # ✅ 5 minutos idle
-      max-lifetime: 1200000  # ✅ 20 minutos max lifetime (renovar conexiones)
+      maximum-pool-size: 3  # 💰 REDUCIDO a 3 (suficiente para 1K usuarios)
+      minimum-idle: 0  # 💰 Sin conexiones idle = menos carga DB
+      connection-timeout: 10000  # 💰 10 segundos (más rápido fail)
+      idle-timeout: 180000  # 💰 3 minutos (cerrar rápido conexiones idle)
+      max-lifetime: 600000  # 💰 10 minutos (renovar frecuente = menos recursos)
       auto-commit: true
-      leak-detection-threshold: 60000  # ✅ Detectar leaks después de 60 segundos
+      leak-detection-threshold: 30000  # 💰 30 segundos (detectar más rápido)
       pool-name: FaltaUnoHikariCP
-      initialization-fail-timeout: 30000  # ✅ 30 seconds max wait, don't hang forever
+      initialization-fail-timeout: 30000
 
   jpa:
     hibernate:
@@ -29,16 +31,16 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false  # ✅ Desactivado en producción para performance
         jdbc:
-          batch_size: 30  # ✅ Aumentado para mejor throughput
-          fetch_size: 50  # ✅ Reducir round-trips
+          batch_size: 50  # 💰 AUMENTADO a 50 (compensar menos conexiones)
+          fetch_size: 100  # 💰 AUMENTADO a 100 (menos round-trips)
           lob:
             non_contextual_creation: true
         order_inserts: true
         order_updates: true
         query:
-          in_clause_parameter_padding: true  # ✅ Mejora query plan caching
-          plan_cache_max_size: 2048  # ✅ Aumentar cache de query plans
-          plan_parameter_metadata_max_size: 256
+          in_clause_parameter_padding: true
+          plan_cache_max_size: 512  # 💰 REDUCIDO a 512 (menos RAM)
+          plan_parameter_metadata_max_size: 128  # 💰 REDUCIDO (menos RAM)
         cache:
           use_second_level_cache: false  # ✅ Caffeine ya maneja L1
           use_query_cache: false  # ✅ No duplicar con Caffeine
@@ -129,25 +131,38 @@ app:
       enabled: ${PHONE_VERIFICATION_ENABLED:true}
 
 server:
-  # Support Cloud Run which provides PORT env var. Prefer explicit SERVER_PORT if set,
-  # otherwise fall back to PORT (Cloud Run) and finally 8080.
   port: ${SERVER_PORT:${PORT:8080}}
+  
+  # 💰 COMPRESION AGRESIVA (ahorra 70-90% bandwidth)
   compression:
     enabled: true
-    mime-types: application/json,application/xml,text/html,text/xml,text/plain
-  connection-timeout: 30s                 # ✅ correcta (Spring Boot usa esta)
-  forward-headers-strategy: framework     # ✅ Detectar HTTPS detrás de proxy (Cloud Run)
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain,application/javascript,text/css,image/svg+xml
+    min-response-size: 512  # 💰 Comprimir todo >512 bytes
+  
+  # ⚡ OPTIMIZACIONES PERFORMANCE
+  connection-timeout: 30s
+  forward-headers-strategy: framework
+  shutdown: graceful  # 💪 No perder requests en deploy
+  http2:
+    enabled: true  # ⚡ HTTP/2 multiplexing
+  
+  # 💰 TOMCAT OPTIMIZADO PARA 512MB RAM
   tomcat:
-    keep-alive-timeout: 60s               # ✅ mayor que el proxy para evitar EOFs
-    max-connections: 10000
-    accept-count: 1000
+    keep-alive-timeout: 60s
+    max-connections: 2000  # 💰 REDUCIDO de 10000 (menos memoria)
+    accept-count: 100  # 💰 REDUCIDO de 1000
     threads:
-      max: 200
-      min-spare: 10
-    remoteip:                             # ✅ Configuración para Cloud Run
+      max: 50  # 💰 REDUCIDO de 200 (suficiente con Virtual Threads)
+      min-spare: 2  # 💰 REDUCIDO de 10
+    remoteip:
       remote-ip-header: x-forwarded-for
       protocol-header: x-forwarded-proto
       protocol-header-https-value: https
+
+# ⚡ GRACEFUL SHUTDOWN (no perder requests)
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
 
 management:
   endpoint:
