@@ -309,12 +309,12 @@ spring:
       leak-detection-threshold: 120000
       validation-timeout: 5000
 
-# Logging para Cloud Run
-logging:
-  level:
-    root: INFO
-    uy.um.faltauno: DEBUG
-    org.flywaydb: DEBUG  # ✅ See Flyway migration details
+  # Logging para Cloud Run
+  logging:
+    level:
+      root: INFO
+      uy.um.faltauno: DEBUG
+      org.flywaydb: DEBUG  # ✅ See Flyway migration details
 
 ---
 spring:
