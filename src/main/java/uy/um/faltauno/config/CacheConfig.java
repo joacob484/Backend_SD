@@ -66,12 +66,19 @@ public class CacheConfig implements CachingConfigurer {
         // 🎯 Pre-crear cachés más usados (cero latencia en primera request)
         cacheManager.setCacheNames(Arrays.asList(
             "usuarios",
-            "partidos", 
+            "partidos",
             "inscripciones",
             "contactos",
             "amistades",
             "estadisticas",
-            "notificaciones"
+            "notificaciones",
+            // Cache names from CacheNames.java
+            CacheNames.PARTIDOS_V2,
+            CacheNames.PARTIDOS_DISPONIBLES,
+            CacheNames.USUARIOS_PUBLICO,
+            CacheNames.COMMUNITY_STATS,
+            CacheNames.SYSTEM_STATS,
+            CacheNames.NOTIFICACIONES
         ));
         
         return cacheManager;
