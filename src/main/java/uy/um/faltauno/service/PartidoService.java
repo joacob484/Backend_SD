@@ -55,6 +55,7 @@ public class PartidoService {
     private final PartidoMapper partidoMapper;
     private final NotificacionService notificacionService;
     private final ReviewService reviewService;
+    private final UsuarioService usuarioService;
     private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
     // Pub/Sub publisher is optional in environments where Pub/Sub isn't configured.
     // Make it non-final so it's not required by Lombok's generated constructor.
@@ -69,6 +70,17 @@ public class PartidoService {
     public PartidoDTO crearPartido(PartidoDTO dto) {
         Timer.Sample sample = Timer.start(meterRegistry);
         
+        // Validar que el organizador existe
+        Usuario organizador = usuarioRepository.findById(dto.getOrganizadorId())
+                .orElseThrow(() -> new IllegalArgumentException("Organizador no encontrado"));
+        
+        // ✅ Verificar permisos de usuario (ban check)
+        try {
+            usuarioService.verificarPermisosUsuario(dto.getOrganizadorId(), "CREAR_PARTIDO");
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("No puedes crear partidos: " + e.getMessage());
+        }
+        
         // ✅ Validar que el organizador no tenga reviews pendientes
         if (reviewService.tienePendingReviews(dto.getOrganizadorId())) {
             throw new IllegalStateException("No puedes crear un partido hasta que califiques a todos los jugadores pendientes");
@@ -76,10 +88,6 @@ public class PartidoService {
         
         // Validaciones
         validarDatosPartido(dto);
-
-        // Validar que el organizador existe
-        Usuario organizador = usuarioRepository.findById(dto.getOrganizadorId())
-                .orElseThrow(() -> new IllegalArgumentException("Organizador no encontrado"));
 
         // Crear partido
         Partido partido = new Partido();

@@ -72,6 +72,7 @@ public class UsuarioService {
     private final ReportRepository reportRepository;
     private final PhotoValidationService photoValidationService;
     private final EmailService emailService;
+    private final NotificacionService notificacionService;
 
     /**
      * Encuentra el ID de un usuario por email SIN cargar LOBs.
@@ -237,6 +238,26 @@ public class UsuarioService {
             }
             
             Usuario usuario = usuarioOpt.get();
+            
+            // ✅ Verificar si el usuario está baneado y sin partidos confirmados pendientes
+            if (usuario.getBannedAt() != null) {
+                // Verificar si tiene partidos confirmados activos
+                List<Inscripcion> inscripciones = inscripcionRepository.findByUsuarioId(id);
+                long partidosConfirmados = inscripciones.stream()
+                    .filter(i -> "CONFIRMADO".equals(i.getPartido().getEstado()))
+                    .count();
+                
+                long partidosOrganizadosConfirmados = partidoRepository
+                    .findByOrganizador_Id(id)
+                    .stream()
+                    .filter(p -> "CONFIRMADO".equals(p.getEstado()))
+                    .count();
+                
+                // Si no tiene partidos confirmados, el perfil no es accesible
+                if (partidosConfirmados == 0 && partidosOrganizadosConfirmados == 0) {
+                    throw new IllegalArgumentException("Usuario no disponible");
+                }
+            }
             
             // ⚡ CRITICAL FIX: Force eager loading of foto WITHIN transaction
             // fotoPerfil is LAZY, so we must access it before session closes
@@ -1473,12 +1494,90 @@ public class UsuarioService {
             log.warn("[ADMIN] Baneo PERMANENTE");
         }
         
-        // Incrementar token version para invalidar sesiones activas
-        usuario.setTokenVersion(usuario.getTokenVersion() + 1);
+        // ✅ Eliminar inscripciones en partidos DISPONIBLES
+        List<Inscripcion> inscripciones = inscripcionRepository.findByUsuarioId(uuid);
+        int inscripcionesEliminadas = 0;
+        
+        for (Inscripcion inscripcion : inscripciones) {
+            Partido partido = inscripcion.getPartido();
+            
+            // Solo eliminar si el partido está DISPONIBLE (no confirmado)
+            if ("DISPONIBLE".equals(partido.getEstado())) {
+                inscripcionRepository.delete(inscripcion);
+                inscripcionesEliminadas++;
+                
+                // Notificar al organizador
+                if (partido.getOrganizador() != null && !partido.getOrganizador().getId().equals(uuid)) {
+                    notificacionService.notificarUsuarioBaneadoDePartido(
+                        partido.getOrganizador().getId(),
+                        partido.getId(),
+                        usuario.getNombre() + " " + usuario.getApellido()
+                    );
+                }
+                
+                log.info("[ADMIN] Inscripción eliminada: usuario {} del partido {} (DISPONIBLE)", usuarioId, partido.getId());
+            }
+        }
+        
+        // ✅ Cancelar partidos DISPONIBLES donde el usuario es organizador
+        List<Partido> partidosOrganizados = partidoRepository.findByOrganizador_Id(uuid);
+        int partidosCancelados = 0;
+        
+        for (Partido partido : partidosOrganizados) {
+            if ("DISPONIBLE".equals(partido.getEstado())) {
+                partido.setEstado("CANCELADO");
+                partidoRepository.save(partido);
+                partidosCancelados++;
+                
+                // Notificar a todos los jugadores inscritos
+                List<Inscripcion> jugadoresInscritos = inscripcionRepository.findByPartidoId(partido.getId());
+                for (Inscripcion insc : jugadoresInscritos) {
+                    if (!insc.getUsuario().getId().equals(uuid)) {
+                        notificacionService.crearNotificacion(
+                            insc.getUsuario().getId(),
+                            Notificacion.TipoNotificacion.PARTIDO_ACTUALIZADO,
+                            "Partido cancelado",
+                            "El partido en " + partido.getNombreUbicacion() + 
+                            " ha sido cancelado debido a una sanción administrativa al organizador",
+                            partido.getId(),
+                            "PARTIDO",
+                            "/matches/" + partido.getId(),
+                            Notificacion.Prioridad.ALTA
+                        );
+                    }
+                }
+                
+                log.info("[ADMIN] Partido cancelado: {} organizado por usuario baneado {}", partido.getId(), usuarioId);
+            }
+        }
+        
+        // Verificar si tiene partidos CONFIRMADOS activos
+        long partidosConfirmadosActivos = inscripciones.stream()
+            .filter(i -> "CONFIRMADO".equals(i.getPartido().getEstado()))
+            .count();
+        
+        // Verificar si organizó partidos CONFIRMADOS
+        long partidosOrganizadosConfirmados = partidoRepository
+            .findByOrganizador_Id(uuid)
+            .stream()
+            .filter(p -> "CONFIRMADO".equals(p.getEstado()))
+            .count();
+        
+        long totalPartidosConfirmados = partidosConfirmadosActivos + partidosOrganizadosConfirmados;
+        
+        if (totalPartidosConfirmados > 0) {
+            log.warn("[ADMIN] Usuario {} tiene {} partidos CONFIRMADOS. Baneo parcial aplicado.", 
+                usuarioId, totalPartidosConfirmados);
+        } else {
+            // Incrementar token version para invalidar sesiones activas (solo si no tiene partidos confirmados)
+            usuario.setTokenVersion(usuario.getTokenVersion() + 1);
+            log.warn("[ADMIN] Usuario {} sin partidos confirmados. Baneo completo aplicado.", usuarioId);
+        }
         
         usuarioRepository.save(usuario);
         
-        log.warn("[ADMIN] Usuario {} baneado exitosamente. Razón: {}", usuarioId, reason);
+        log.warn("[ADMIN] Usuario {} baneado exitosamente. Razón: {}. Inscripciones eliminadas: {}, Partidos cancelados: {}, Partidos confirmados pendientes: {}", 
+            usuarioId, reason, inscripcionesEliminadas, partidosCancelados, totalPartidosConfirmados);
         
         return usuarioMapper.toDTO(usuario);
     }
@@ -1539,5 +1638,76 @@ public class UsuarioService {
                     return true; // Sigue baneado
                 })
                 .orElse(false);
+    }
+
+    /**
+     * Verificar si un usuario baneado puede realizar una acción específica
+     * Solo puede participar en partidos CONFIRMADOS donde ya está inscrito/organizó
+     */
+    @Transactional(readOnly = true)
+    public void verificarPermisosUsuario(UUID usuarioId, String accion) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
+        
+        if (usuario.getBannedAt() == null) {
+            return; // No está baneado, tiene todos los permisos
+        }
+        
+        // Usuario está baneado, verificar si tiene partidos confirmados pendientes
+        List<Inscripcion> inscripciones = inscripcionRepository.findByUsuarioId(usuarioId);
+        long partidosConfirmados = inscripciones.stream()
+            .filter(i -> "CONFIRMADO".equals(i.getPartido().getEstado()))
+            .count();
+        
+        long partidosOrganizadosConfirmados = partidoRepository
+            .findByOrganizador_Id(usuarioId)
+            .stream()
+            .filter(p -> "CONFIRMADO".equals(p.getEstado()))
+            .count();
+        
+        long totalPartidosConfirmados = partidosConfirmados + partidosOrganizadosConfirmados;
+        
+        // Construir mensaje de baneo con detalles
+        StringBuilder mensajeBase = new StringBuilder("Tu cuenta ha sido suspendida");
+        
+        if (usuario.getBanReason() != null && !usuario.getBanReason().isEmpty()) {
+            mensajeBase.append(". Motivo: ").append(usuario.getBanReason());
+        }
+        
+        if (usuario.getBanUntil() != null) {
+            mensajeBase.append(". La suspensión expira el ").append(usuario.getBanUntil());
+        }
+        
+        // Si no tiene partidos confirmados, está completamente baneado
+        if (totalPartidosConfirmados == 0) {
+            throw new IllegalStateException(mensajeBase.toString());
+        }
+        
+        // Si tiene partidos confirmados, agregar información sobre restricción parcial
+        String mensajeRestriccion = mensajeBase.toString() + 
+            ". Tienes " + totalPartidosConfirmados + " partido" + 
+            (totalPartidosConfirmados > 1 ? "s confirmados pendientes" : " confirmado pendiente");
+        
+        // Verificar acciones específicas
+        switch (accion) {
+            case "CREAR_PARTIDO":
+                throw new IllegalStateException(mensajeRestriccion + 
+                    ". No puedes crear nuevos partidos hasta que estos finalicen.");
+            case "UNIRSE_PARTIDO":
+                throw new IllegalStateException(mensajeRestriccion + 
+                    ". Solo puedes participar en los partidos confirmados donde ya estás inscrito.");
+            case "ENVIAR_SOLICITUD_AMISTAD":
+            case "ACEPTAR_SOLICITUD_AMISTAD":
+                throw new IllegalStateException(mensajeRestriccion + 
+                    ". No puedes gestionar solicitudes de amistad hasta que estos partidos finalicen.");
+            case "CHAT_PARTIDO":
+                // Permitido solo para partidos donde está inscrito/organizó
+                return;
+            case "VER_PERFIL":
+                // Permitido
+                return;
+            default:
+                throw new IllegalStateException(mensajeRestriccion + ". Esta acción no está permitida.");
+        }
     }
 }

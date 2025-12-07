@@ -38,6 +38,7 @@ public class InscripcionService {
     private final InscripcionMapper inscripcionMapper;
     private final NotificacionService notificacionService;
     private final ReviewService reviewService;
+    private final UsuarioService usuarioService;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
     private final MeterRegistry meterRegistry;
@@ -56,6 +57,13 @@ public class InscripcionService {
             log.warn("[InscripcionService] Intento no autorizado: authUser={}, targetUser={}", 
                     authUserId, usuarioId);
             throw new SecurityException("No puedes inscribir a otro usuario");
+        }
+        
+        // ✅ Verificar permisos de usuario (ban check)
+        try {
+            usuarioService.verificarPermisosUsuario(usuarioId, "UNIRSE_PARTIDO");
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("No puedes unirte a partidos: " + e.getMessage());
         }
         
         // ✅ Validar que el usuario no tenga reviews pendientes

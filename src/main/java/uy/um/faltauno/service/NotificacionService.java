@@ -440,6 +440,20 @@ public class NotificacionService {
         );
     }
 
+    @Transactional
+    public void notificarUsuarioBaneadoDePartido(UUID organizadorId, UUID partidoId, String nombreUsuario) {
+        crearNotificacion(
+                organizadorId,
+                Notificacion.TipoNotificacion.JUGADOR_SALIO,
+                "Jugador removido",
+                nombreUsuario + " fue removido del partido por baneo administrativo",
+                partidoId,
+                "PARTIDO",
+                "/my-matches/" + partidoId,
+                Notificacion.Prioridad.ALTA
+        );
+    }
+
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void notificarNuevoMensaje(UUID usuarioId, UUID partidoId, String nombrePartido, String remitente) {
         try {

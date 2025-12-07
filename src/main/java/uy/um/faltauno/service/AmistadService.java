@@ -26,12 +26,20 @@ public class AmistadService {
     private final AmistadRepository amistadRepository;
     private final UsuarioRepository usuarioRepository;
     private final NotificacionService notificacionService;
+    private final UsuarioService usuarioService;
 
     @Transactional
     public AmistadDTO enviarSolicitud(UUID amigoId, Authentication auth) {
         log.info("[AmistadService] Enviando solicitud de amistad a usuarioId={}", amigoId);
         
         UUID usuarioId = getUserIdFromAuth(auth);
+        
+        // ✅ Verificar permisos de usuario (ban check)
+        try {
+            usuarioService.verificarPermisosUsuario(usuarioId, "ENVIAR_SOLICITUD_AMISTAD");
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("No puedes enviar solicitudes de amistad: " + e.getMessage());
+        }
         
         if (usuarioId.equals(amigoId)) {
             log.warn("[AmistadService] Intento de enviarse solicitud a sí mismo");
@@ -90,6 +98,13 @@ public class AmistadService {
         if (!"PENDIENTE".equals(amistad.getEstado())) {
             log.warn("[AmistadService] Solicitud no está pendiente: estado={}", amistad.getEstado());
             throw new IllegalStateException("La solicitud no está pendiente");
+        }
+        
+        // ✅ Verificar permisos de usuario (ban check)
+        try {
+            usuarioService.verificarPermisosUsuario(usuarioId, "ACEPTAR_SOLICITUD_AMISTAD");
+        } catch (IllegalStateException e) {
+            throw new IllegalStateException("No puedes aceptar solicitudes de amistad: " + e.getMessage());
         }
 
         amistad.setEstado("ACEPTADO");
