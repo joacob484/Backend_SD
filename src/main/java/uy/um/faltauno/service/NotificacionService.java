@@ -2,6 +2,8 @@ package uy.um.faltauno.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +27,14 @@ public class NotificacionService {
     private final NotificacionRepository notificacionRepository;
     private final NotificacionMapper notificacionMapper;
     private final EmailService emailService;
-    private final UsuarioService usuarioService;
+    
+    // Lazy injection to avoid circular dependency
+    private UsuarioService usuarioService;
+    
+    @Autowired
+    public void setUsuarioService(@Lazy UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
+    }
 
     /**
      * Crear una notificación genérica
