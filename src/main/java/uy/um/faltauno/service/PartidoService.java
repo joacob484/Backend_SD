@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
@@ -55,6 +56,7 @@ public class PartidoService {
     private final PartidoMapper partidoMapper;
     private final NotificacionService notificacionService;
     private final ReviewService reviewService;
+    @Lazy
     private final UsuarioService usuarioService;
     private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
     // Pub/Sub publisher is optional in environments where Pub/Sub isn't configured.
