@@ -2,6 +2,7 @@ package uy.um.faltauno.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -27,8 +28,14 @@ public class AmistadService {
     private final AmistadRepository amistadRepository;
     private final UsuarioRepository usuarioRepository;
     private final NotificacionService notificacionService;
-    @Lazy
-    private final UsuarioService usuarioService;
+    
+    // Lazy injection to avoid circular dependency
+    private UsuarioService usuarioService;
+    
+    @Autowired
+    public void setUsuarioService(@Lazy UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
+    }
 
     @Transactional
     public AmistadDTO enviarSolicitud(UUID amigoId, Authentication auth) {

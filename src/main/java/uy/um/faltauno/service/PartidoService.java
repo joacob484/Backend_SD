@@ -5,6 +5,7 @@ import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
@@ -56,14 +57,20 @@ public class PartidoService {
     private final PartidoMapper partidoMapper;
     private final NotificacionService notificacionService;
     private final ReviewService reviewService;
-    @Lazy
-    private final UsuarioService usuarioService;
     private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
     // Pub/Sub publisher is optional in environments where Pub/Sub isn't configured.
     // Make it non-final so it's not required by Lombok's generated constructor.
     private Publisher pubSubPublisher;
     
     private final MeterRegistry meterRegistry;
+    
+    // Lazy injection to avoid circular dependency
+    private UsuarioService usuarioService;
+    
+    @Autowired
+    public void setUsuarioService(@Lazy UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
+    }
     /**
      * Crear un nuevo partido
      */

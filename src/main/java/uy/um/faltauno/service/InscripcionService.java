@@ -2,6 +2,7 @@ package uy.um.faltauno.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
@@ -39,11 +40,17 @@ public class InscripcionService {
     private final InscripcionMapper inscripcionMapper;
     private final NotificacionService notificacionService;
     private final ReviewService reviewService;
-    @Lazy
-    private final UsuarioService usuarioService;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
     private final MeterRegistry meterRegistry;
+    
+    // Lazy injection to avoid circular dependency
+    private UsuarioService usuarioService;
+    
+    @Autowired
+    public void setUsuarioService(@Lazy UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
+    }
 
     /**
      * Crear solicitud para unirse a un partido.
