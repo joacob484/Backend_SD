@@ -32,6 +32,7 @@ import jakarta.persistence.criteria.Predicate;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -356,12 +357,26 @@ public class PartidoService {
         }
 
         // Actualizar campos permitidos
-        if (dto.getFecha() != null) {
-            validarFechaFutura(dto.getFecha(), dto.getHora() != null ? dto.getHora() : partido.getHora());
-            partido.setFecha(dto.getFecha());
-        }
-        if (dto.getHora() != null) {
-            partido.setHora(dto.getHora());
+        LocalDate nuevaFecha = dto.getFecha() != null ? dto.getFecha() : partido.getFecha();
+        LocalTime nuevaHora = dto.getHora() != null ? dto.getHora() : partido.getHora();
+        
+        // ✅ VALIDACIÓN: Nueva fecha/hora debe ser al menos 2 horas en el futuro
+        if (dto.getFecha() != null || dto.getHora() != null) {
+            LocalDateTime nuevaFechaHora = LocalDateTime.of(nuevaFecha, nuevaHora);
+            LocalDateTime minimoPermitido = LocalDateTime.now().plusHours(2);
+            
+            if (nuevaFechaHora.isBefore(minimoPermitido)) {
+                throw new IllegalStateException(
+                    "La nueva fecha y hora debe ser al menos 2 horas desde ahora"
+                );
+            }
+            
+            validarFechaFutura(nuevaFecha, nuevaHora);
+            if (dto.getFecha() != null) partido.setFecha(nuevaFecha);
+            if (dto.getHora() != null) partido.setHora(nuevaHora);
+            
+            // ✅ Registrar timestamp de última edición para cooldown de confirmación
+            partido.setUltimaEdicion(Instant.now());
         }
         if (dto.getNombreUbicacion() != null) {
             partido.setNombreUbicacion(dto.getNombreUbicacion());
@@ -397,6 +412,19 @@ public class PartidoService {
 
         Partido actualizado = partidoRepository.save(partido);
         log.info("Partido actualizado: id={}", id);
+        
+        // ✅ Notificar a jugadores inscritos sobre actualización del partido
+        List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(id);
+        List<UUID> usuariosIds = inscripciones.stream()
+                .map(i -> i.getUsuario().getId())
+                .collect(Collectors.toList());
+        
+        if (!usuariosIds.isEmpty()) {
+            String nombrePartido = actualizado.getTipoPartido() + " - " + actualizado.getNombreUbicacion();
+            // Notificar actualización del partido
+            notificacionService.notificarPartidoActualizado(usuariosIds, id, nombrePartido);
+            log.info("Notificaciones de actualización enviadas a {} jugadores", usuariosIds.size());
+        }
 
          PartidoDTO result = entityToDtoCompleto(actualizado);
          
@@ -445,17 +473,21 @@ public class PartidoService {
 
         log.info("Partido cancelado: id={}, motivo={}", id, motivo);
         
-        // Notificar a todos los jugadores inscritos
+        // Notificar a todos los jugadores inscritos Y al organizador
         List<Inscripcion> inscripciones = inscripcionRepository.findByPartidoId(id);
         List<UUID> usuariosIds = inscripciones.stream()
                 .map(i -> i.getUsuario().getId())
-                .filter(uid -> !uid.equals(userId)) // No notificar al organizador
                 .collect(Collectors.toList());
+        
+        // ✅ Incluir organizador en notificaciones (ya no lo excluimos)
+        if (!usuariosIds.contains(userId)) {
+            usuariosIds.add(userId);
+        }
         
         String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
         notificacionService.notificarPartidoCancelado(usuariosIds, id, nombrePartido, motivo);
         
-        log.info("Notificaciones enviadas a {} jugadores sobre cancelación", usuariosIds.size());
+        log.info("Notificaciones enviadas a {} personas sobre cancelación (jugadores + organizador)", usuariosIds.size());
 
         // 🔥 WebSocket: Notificar cancelación en tiempo real
         try {
@@ -548,6 +580,17 @@ public class PartidoService {
         if (!"DISPONIBLE".equals(partido.getEstado())) {
             throw new IllegalStateException("Solo se pueden confirmar partidos disponibles");
         }
+        
+        // ✅ VALIDACIÓN: Verificar cooldown de 1 hora desde última edición
+        if (partido.getUltimaEdicion() != null) {
+            Instant unHoraDespues = partido.getUltimaEdicion().plusSeconds(3600);
+            if (Instant.now().isBefore(unHoraDespues)) {
+                long minutosRestantes = (unHoraDespues.getEpochSecond() - Instant.now().getEpochSecond()) / 60;
+                throw new IllegalStateException(
+                    "Debes esperar " + minutosRestantes + " minutos más antes de confirmar el partido después de editarlo"
+                );
+            }
+        }
 
         // Cambiar estado a CONFIRMADO
         partido.setEstado("CONFIRMADO");
@@ -555,7 +598,7 @@ public class PartidoService {
         
         log.info("Partido {} confirmado manualmente por organizador {}", id, userId);
 
-        // Notificar a todos los inscritos
+        // Notificar a todos los inscritos Y al organizador
         List<Inscripcion> inscripciones = inscripcionRepository
                 .findByPartidoId(id);
         
@@ -563,10 +606,15 @@ public class PartidoService {
                 .map(i -> i.getUsuario().getId())
                 .collect(Collectors.toList());
         
+        // ✅ Agregar organizador a la lista de notificaciones
+        if (!usuariosIds.contains(userId)) {
+            usuariosIds.add(userId);
+        }
+        
         if (!usuariosIds.isEmpty()) {
             String nombrePartido = partido.getTipoPartido() + " - " + partido.getNombreUbicacion();
             notificacionService.notificarPartidoConfirmado(usuariosIds, id, nombrePartido);
-            log.info("Notificaciones de confirmación enviadas a {} jugadores", usuariosIds.size());
+            log.info("Notificaciones de confirmación enviadas a {} personas (jugadores + organizador)", usuariosIds.size());
         }
 
         // Publicar evento
@@ -676,7 +724,8 @@ public class PartidoService {
             throw new SecurityException("Solo el organizador puede invitar jugadores");
         }
 
-        Usuario usuario = usuarioRepository.findById(usuarioId)
+        // Verificar que el usuario existe
+        usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
 
         // ✅ PERFORMANCE: Usar COUNT query optimizada

@@ -397,6 +397,22 @@ public class NotificacionService {
     }
 
     @Transactional
+    public void notificarPartidoActualizado(List<UUID> usuariosIds, UUID partidoId, String nombrePartido) {
+        for (UUID usuarioId : usuariosIds) {
+            crearNotificacion(
+                    usuarioId,
+                    Notificacion.TipoNotificacion.PARTIDO_ACTUALIZADO,
+                    "Partido actualizado",
+                    "El partido " + nombrePartido + " ha sido modificado. Revisa los cambios",
+                    partidoId,
+                    "PARTIDO",
+                    "/matches/" + partidoId,
+                    Notificacion.Prioridad.NORMAL
+            );
+        }
+    }
+
+    @Transactional
     public void notificarPartidoListo(UUID organizadorId, UUID partidoId, String nombrePartido) {
         crearNotificacion(
                 organizadorId,
