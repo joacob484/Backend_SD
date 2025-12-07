@@ -217,13 +217,6 @@ google:
   vision:
     credentials-path: ${GOOGLE_VISION_CREDENTIALS_PATH:}
 
-# Google Cloud Pub/Sub Configuration
-gcp:
-  pubsub:
-    enabled: ${GCP_PUBSUB_ENABLED:false}
-    topic: ${GCP_PUBSUB_TOPIC:faltauno-events}
-    subscription: ${GCP_PUBSUB_SUBSCRIPTION:faltauno-events-sub}
-
 # Logging (niveles sensatos para producción)
 logging:
   level:

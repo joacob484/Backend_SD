@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Manejador de errores de cache que ignora fallos silenciosamente
- * Útil cuando Redis no está disponible pero queremos que la app funcione
+ * Loguea errores de cache pero permite que la app continúe funcionando
  */
 @Component
 @Slf4j

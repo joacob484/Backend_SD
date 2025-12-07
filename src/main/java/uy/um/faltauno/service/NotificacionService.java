@@ -27,6 +27,7 @@ public class NotificacionService {
     private final NotificacionRepository notificacionRepository;
     private final NotificacionMapper notificacionMapper;
     private final EmailService emailService;
+    private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
     
     // Lazy injection to avoid circular dependency
     private UsuarioService usuarioService;
@@ -106,7 +107,12 @@ public class NotificacionService {
             // NO propagar el error - el email es secundario
         }
 
-        return notificacionMapper.toDTO(guardada);
+        NotificacionDTO dto = notificacionMapper.toDTO(guardada);
+        
+        // ✅ WebSocket: Notificar en tiempo real
+        webSocketEventPublisher.notifyNewNotification(usuarioId.toString(), dto);
+
+        return dto;
     }
 
     /**

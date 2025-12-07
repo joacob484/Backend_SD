@@ -1,8 +1,6 @@
 package uy.um.faltauno.service;
 
-import com.google.cloud.pubsub.v1.Publisher;
-import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.PubsubMessage;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +39,6 @@ import java.time.LocalTime;
 import java.util.*;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import io.micrometer.core.instrument.Counter;
 import java.util.stream.Collectors;
 
 @Service
@@ -58,9 +55,6 @@ public class PartidoService {
     private final NotificacionService notificacionService;
     private final ReviewService reviewService;
     private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
-    // Pub/Sub publisher is optional in environments where Pub/Sub isn't configured.
-    // Make it non-final so it's not required by Lombok's generated constructor.
-    private Publisher pubSubPublisher;
     
     private final MeterRegistry meterRegistry;
     
@@ -129,19 +123,13 @@ public class PartidoService {
         log.info("Inscripción automática creada para organizador: partidoId={}, userId={}", 
                 guardado.getId(), organizador.getId());
 
-        // 🔥 Publicar evento asíncrono
-        publicarEvento("partidos.created", Map.of(
-            "event", "PARTIDO_CREADO",
-            "partidoId", guardado.getId().toString(),
-            "organizadorId", organizador.getId().toString(),
-            "tipoPartido", guardado.getTipoPartido(),
-            "fecha", guardado.getFecha().toString(),
-            "ubicacion", guardado.getNombreUbicacion()
-        ));
-
         PartidoDTO result = entityToDtoCompleto(guardado);
         meterRegistry.counter("faltauno_partidos_created_total").increment();
         sample.stop(meterRegistry.timer("faltauno_partido_create_duration_seconds"));
+        
+        // ✅ WebSocket: Notificar creación a todos los usuarios
+        webSocketEventPublisher.notifyPartidoCreated(result);
+        
         return result;
     }
 
@@ -509,19 +497,13 @@ public class PartidoService {
         // 🔥 WebSocket: Notificar cancelación en tiempo real
         try {
             webSocketEventPublisher.notifyPartidoCancelled(id.toString(), motivo);
+            // ✅ WebSocket: Notificar cancelación global
+            webSocketEventPublisher.notifyPartidoCancelledGlobal(id.toString());
             log.info("[PartidoService] 📡 WebSocket: Cancelación de partido notificada");
         } catch (Exception e) {
             log.error("[PartidoService] ⚠️ Error notificando WebSocket", e);
         }
 
-        // 🔥 Publicar evento asíncrono
-        publicarEvento("partidos.cancelado", Map.of(
-            "event", "PARTIDO_CANCELADO",
-            "partidoId", id.toString(),
-            "organizadorId", userId.toString(),
-            "motivo", motivo != null ? motivo : "Sin motivo especificado",
-            "jugadoresAfectados", String.valueOf(usuariosIds.size())
-        ));
         meterRegistry.counter("faltauno_partidos_cancelled_total").increment();
         sample.stop(meterRegistry.timer("faltauno_partido_cancel_duration_seconds"));
     }
@@ -565,13 +547,6 @@ public class PartidoService {
             log.error("[PartidoService] ⚠️ Error notificando WebSocket", e);
         }
 
-        // 🔥 Publicar evento asíncrono
-        publicarEvento("partidos.completado", Map.of(
-            "event", "PARTIDO_COMPLETADO",
-            "partidoId", id.toString(),
-            "organizadorId", userId.toString(),
-            "jugadoresParticipantes", String.valueOf(usuariosIds.size())
-        ));
         meterRegistry.counter("faltauno_partidos_completed_total").increment();
         sample.stop(meterRegistry.timer("faltauno_partido_complete_duration_seconds"));
     }
@@ -634,13 +609,6 @@ public class PartidoService {
             log.info("Notificaciones de confirmación enviadas a {} personas (jugadores + organizador)", usuariosIds.size());
         }
 
-        // Publicar evento
-        publicarEvento("partidos.confirmado", Map.of(
-            "event", "PARTIDO_CONFIRMADO",
-            "partidoId", id.toString(),
-            "organizadorId", userId.toString(),
-            "jugadoresInscritos", String.valueOf(usuariosIds.size())
-        ));
         meterRegistry.counter("faltauno_partidos_confirmed_total").increment();
         sample.stop(meterRegistry.timer("faltauno_partido_confirm_duration_seconds"));
     }
@@ -858,23 +826,7 @@ public class PartidoService {
         return sanitized;
     }
 
-    private void publicarEvento(String topicId, Map<String, String> payload) {
-        try {
-            PubsubMessage message = PubsubMessage.newBuilder()
-                .setData(ByteString.copyFromUtf8(payload.toString()))
-                .putAllAttributes(payload)
-                .build();
 
-            if (pubSubPublisher != null) {
-                pubSubPublisher.publish(message);
-                log.info("Evento publicado en Pub/Sub: {} -> {}", topicId, payload.get("event"));
-            } else {
-                log.info("Pub/Sub publisher not available, skipping publish for topic {}", topicId);
-            }
-        } catch (Exception e) {
-            log.error("Error publicando evento en Pub/Sub {}: {}", topicId, e.getMessage());
-        }
-    }
 
     private void validarDatosPartido(PartidoDTO dto) {
         if (dto.getTipoPartido() == null || dto.getTipoPartido().isBlank()) {

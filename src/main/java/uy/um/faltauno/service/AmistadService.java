@@ -28,6 +28,7 @@ public class AmistadService {
     private final AmistadRepository amistadRepository;
     private final UsuarioRepository usuarioRepository;
     private final NotificacionService notificacionService;
+    private final uy.um.faltauno.websocket.WebSocketEventPublisher webSocketEventPublisher;
     
     // Lazy injection to avoid circular dependency
     private UsuarioService usuarioService;
@@ -84,7 +85,12 @@ public class AmistadService {
         String nombreCompleto = usuario.getNombre() + " " + usuario.getApellido();
         notificacionService.notificarSolicitudAmistad(amigoId, usuarioId, nombreCompleto);
 
-        return convertToDTO(guardada, usuario, amigo);
+        AmistadDTO dto = convertToDTO(guardada, usuario, amigo);
+        
+        // ✅ WebSocket: Notificar solicitud en tiempo real
+        webSocketEventPublisher.notifyFriendRequest(amigoId.toString(), dto);
+        
+        return dto;
     }
 
     @Transactional
@@ -128,6 +134,13 @@ public class AmistadService {
         if (amigo != null) {
             String nombreAceptante = amigo.getNombre() + " " + amigo.getApellido();
             notificacionService.notificarAmistadAceptada(amistad.getUsuarioId(), usuarioId, nombreAceptante);
+            
+            // ✅ WebSocket: Notificar aceptación en tiempo real
+            webSocketEventPublisher.notifyFriendRequestAccepted(
+                amistad.getUsuarioId().toString(), 
+                usuarioId.toString(), 
+                nombreAceptante
+            );
         }
 
         return convertToDTO(actualizada, usuario, amigo);

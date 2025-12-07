@@ -24,10 +24,6 @@ jobs:
       SPRING_DATASOURCE_NAME: faltauno_db
       SPRING_DATASOURCE_URL: jdbc:postgresql:///faltauno_db?cloudSqlInstance=master-might-274420:us-central1:faltauno-db&socketFactory=com.google.cloud.sql.postgres.SocketFactory
       POSTGRES_HOST: postgres
-      # Pub/Sub configuration - set to false to disable Pub/Sub features
-      GCP_PUBSUB_ENABLED: "true"
-      GCP_PUBSUB_TOPIC: faltauno-events
-      GCP_PUBSUB_SUBSCRIPTION: faltauno-events-sub
       IMAGE: "us-central1-docker.pkg.dev/master-might-274420/faltauno/faltauno-backend:${{ github.sha }}"
     steps:
     - name: Checkout code
@@ -88,35 +84,6 @@ jobs:
         
         echo "✓ Deployed successfully"
         echo "✓ Service: $SERVICE_URL"
-    - name: Detect Service Changes
-      id: detect-changes
-      run: |
-        # Detect changes in Pub/Sub related files
-        PUBSUB_CHANGED=false
-        if git diff --name-only HEAD~1 HEAD | grep -iE "(pubsub|PubSub|EventPublisher|EventSubscriber)" > /dev/null 2>&1; then
-          PUBSUB_CHANGED=true
-        fi
-        
-        echo "pubsub_changed=$PUBSUB_CHANGED" >> $GITHUB_OUTPUT
-    - name: Verify Pub/Sub Setup
-      if: steps.detect-changes.outputs.pubsub_changed == 'true' || env.GCP_PUBSUB_ENABLED == 'true'
-      run: |
-        # Create topic if it doesn't exist
-        if ! gcloud pubsub topics describe ${{ env.GCP_PUBSUB_TOPIC }} --project=${{ env.GCP_PROJECT_ID }} > /dev/null 2>&1; then
-          gcloud pubsub topics create ${{ env.GCP_PUBSUB_TOPIC }} --project=${{ env.GCP_PROJECT_ID }} --quiet
-        fi
-        
-        # Create subscription if it doesn't exist
-        if ! gcloud pubsub subscriptions describe ${{ env.GCP_PUBSUB_SUBSCRIPTION }} --project=${{ env.GCP_PROJECT_ID }} > /dev/null 2>&1; then
-          gcloud pubsub subscriptions create ${{ env.GCP_PUBSUB_SUBSCRIPTION }} \
-            --topic=${{ env.GCP_PUBSUB_TOPIC }} \
-            --ack-deadline=60 \
-            --message-retention-duration=7d \
-            --project=${{ env.GCP_PROJECT_ID }} \
-            --quiet
-        fi
-        
-        echo "✓ Pub/Sub configured"
     - name: Notify on Failure (create issue)
       if: failure()
       uses: actions/github-script@v6

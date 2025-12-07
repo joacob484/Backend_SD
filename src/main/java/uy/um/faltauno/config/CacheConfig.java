@@ -15,8 +15,7 @@ import java.util.Arrays;
 /**
  * 💰 CONFIGURACION ULTRA-ECONOMICA DE CACHE
  * 
- * ESTRATEGIA: Cache agresivo con Caffeine (GRATIS) para 1K usuarios
- * FUTURO: Feature flag para activar Redis cuando escales (app.cache.redis.enabled=true)
+ * ESTRATEGIA: Cache agresivo con Caffeine (en memoria) para 1K usuarios
  * 
  * BENEFICIOS:
  * - 90%+ cache hit rate = menos queries DB = menor costo
@@ -29,9 +28,6 @@ import java.util.Arrays;
 public class CacheConfig implements CachingConfigurer {
     
     private final CustomCacheErrorHandler customCacheErrorHandler;
-    
-    @Value("${app.cache.redis.enabled:false}")
-    private boolean redisEnabled;
     
     @Value("${app.cache.ttl.minutes:15}")
     private int cacheTtlMinutes;
@@ -48,8 +44,6 @@ public class CacheConfig implements CachingConfigurer {
      * - expireAfterWrite: 15 minutos (balancear frescura vs queries)
      * - recordStats: true (monitorear hit rate en Grafana)
      * - Pre-crear cachés: usuarios, partidos, inscripciones, contactos, amistades
-     * 
-     * FEATURE FLAG: Si redisEnabled=true, usa Redis (cuando escales a 10K+)
      */
     @Bean
     public CaffeineCacheManager cacheManager() {

@@ -231,7 +231,7 @@ public class NovedadesService {
         if (lowerMessage.contains("oauth") || lowerMessage.contains("login") || lowerMessage.contains("auth")) {
             tags.add("Autenticación");
         }
-        if (lowerMessage.contains("redis") || lowerMessage.contains("cache")) {
+        if (lowerMessage.contains("cache") || lowerMessage.contains("caffeine")) {
             tags.add("Cache");
         }
         if (lowerMessage.contains("estadistica") || lowerMessage.contains("stats")) {

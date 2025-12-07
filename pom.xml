@@ -23,12 +23,6 @@
 
   <dependencyManagement>
     <dependencies>
-    <!-- Google Cloud Pub/Sub para eventos asíncronos -->
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>spring-cloud-gcp-starter-pubsub</artifactId>
-      <version>1.2.8.RELEASE</version>
-    </dependency>
       <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>
@@ -135,15 +129,6 @@
     </dependency>
 
     <!-- RabbitMQ for STOMP WebSocket message broker (scalability) -->
-    <!-- Redis for session/cache (optional but recommended for multi-instance) -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-redis</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.lettuce</groupId>
-      <artifactId>lettuce-core</artifactId>
-    </dependency>
 
     <!-- Validation -->
     <dependency>
@@ -232,33 +217,6 @@
       <artifactId>lombok-mapstruct-binding</artifactId>
       <version>0.2.0</version>
       <scope>provided</scope>
-    </dependency>
-
-    <!-- Google Cloud Pub/Sub - EXCLUIR Spring Cloud GCP SQL autoconfigure -->
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>spring-cloud-gcp-starter-pubsub</artifactId>
-      <version>4.0.0</version>
-      <exclusions>
-        <!-- EXCLUIR: Causa IllegalAccessError con Cloud SQL Connector -->
-        <exclusion>
-          <groupId>com.google.cloud</groupId>
-          <artifactId>spring-cloud-gcp-starter-sql-postgresql</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.cloud</groupId>
-          <artifactId>spring-cloud-gcp-autoconfigure</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.google.cloud.sql</groupId>
-          <artifactId>jdbc-socket-factory-core</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>com.google.cloud</groupId>
-      <artifactId>google-cloud-pubsub</artifactId>
-      <version>1.123.0</version>
     </dependency>
 
     <!-- Google Cloud Vision API for photo validation -->

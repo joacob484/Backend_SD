@@ -202,4 +202,95 @@ public class WebSocketEventPublisher {
             log.error("[WebSocket] Error notificando typing", e);
         }
     }
+
+    /**
+     * Notificar creación de partido a todos los usuarios (lista global)
+     */
+    public void notifyPartidoCreated(PartidoDTO partido) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("type", "PARTIDO_CREATED");
+            payload.put("partido", partido);
+            payload.put("timestamp", System.currentTimeMillis());
+
+            messagingTemplate.convertAndSend("/topic/partidos", payload);
+            
+            log.info("[WebSocket] Notificado partido creado: {}", partido.getId());
+        } catch (Exception e) {
+            log.error("[WebSocket] Error notificando partido creado", e);
+        }
+    }
+
+    /**
+     * Notificar cancelación de partido a todos los usuarios (lista global)
+     */
+    public void notifyPartidoCancelledGlobal(String partidoId) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("type", "PARTIDO_CANCELLED_GLOBAL");
+            payload.put("partidoId", partidoId);
+            payload.put("timestamp", System.currentTimeMillis());
+
+            messagingTemplate.convertAndSend("/topic/partidos", payload);
+            
+            log.info("[WebSocket] Notificado partido cancelado globalmente: {}", partidoId);
+        } catch (Exception e) {
+            log.error("[WebSocket] Error notificando partido cancelado global", e);
+        }
+    }
+
+    /**
+     * Notificar nueva solicitud de amistad al receptor
+     */
+    public void notifyFriendRequest(String userId, Object solicitud) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("type", "FRIEND_REQUEST_RECEIVED");
+            payload.put("solicitud", solicitud);
+            payload.put("timestamp", System.currentTimeMillis());
+
+            messagingTemplate.convertAndSendToUser(userId, "/queue/notifications", payload);
+            
+            log.info("[WebSocket] Notificada nueva solicitud de amistad a usuario: {}", userId);
+        } catch (Exception e) {
+            log.error("[WebSocket] Error notificando solicitud de amistad", e);
+        }
+    }
+
+    /**
+     * Notificar solicitud de amistad aceptada al emisor
+     */
+    public void notifyFriendRequestAccepted(String userId, String friendId, String friendName) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("type", "FRIEND_REQUEST_ACCEPTED");
+            payload.put("friendId", friendId);
+            payload.put("friendName", friendName);
+            payload.put("timestamp", System.currentTimeMillis());
+
+            messagingTemplate.convertAndSendToUser(userId, "/queue/notifications", payload);
+            
+            log.info("[WebSocket] Notificada solicitud aceptada a usuario: {}", userId);
+        } catch (Exception e) {
+            log.error("[WebSocket] Error notificando solicitud aceptada", e);
+        }
+    }
+
+    /**
+     * Notificar nueva notificación al usuario (actualizar contador)
+     */
+    public void notifyNewNotification(String userId, Object notificacion) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("type", "NEW_NOTIFICATION");
+            payload.put("notificacion", notificacion);
+            payload.put("timestamp", System.currentTimeMillis());
+
+            messagingTemplate.convertAndSendToUser(userId, "/queue/notifications", payload);
+            
+            log.info("[WebSocket] Notificada nueva notificación a usuario: {}", userId);
+        } catch (Exception e) {
+            log.error("[WebSocket] Error notificando nueva notificación", e);
+        }
+    }
 }
