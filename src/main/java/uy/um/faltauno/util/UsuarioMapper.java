@@ -28,6 +28,9 @@ public interface UsuarioMapper {
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "localDateTimeToString")
     @Mapping(source = "deletedAt", target = "deletedAt", qualifiedByName = "localDateTimeToString")
     @Mapping(source = "bannedAt", target = "bannedAt", qualifiedByName = "localDateTimeToString")
+    @Mapping(source = "banUntil", target = "banUntil", qualifiedByName = "localDateTimeToString")
+    @Mapping(source = "banReason", target = "banReason")
+    @Mapping(source = "bannedBy", target = "bannedBy", qualifiedByName = "uuidToString")
     @Mapping(target = "cedulaVerificada", ignore = true) // Calculated in DTO getter
     @Mapping(target = "perfilCompleto", ignore = true) // Calculated in DTO getter
     @Mapping(target = "hasFotoPerfil", ignore = true) // Set in @AfterMapping
@@ -44,6 +47,9 @@ public interface UsuarioMapper {
     @Mapping(source = "createdAt", target = "createdAt", qualifiedByName = "localDateTimeToString")
     @Mapping(source = "deletedAt", target = "deletedAt", qualifiedByName = "localDateTimeToString")
     @Mapping(source = "bannedAt", target = "bannedAt", qualifiedByName = "localDateTimeToString")
+    @Mapping(source = "banUntil", target = "banUntil", qualifiedByName = "localDateTimeToString")
+    @Mapping(source = "banReason", target = "banReason")
+    @Mapping(source = "bannedBy", target = "bannedBy", qualifiedByName = "uuidToString")
     @Mapping(target = "cedulaVerificada", ignore = true)
     @Mapping(target = "perfilCompleto", ignore = true)
     @Mapping(target = "hasFotoPerfil", ignore = true) // Set in @AfterMapping
@@ -103,6 +109,12 @@ public interface UsuarioMapper {
     @Named("localDateTimeToString")
     default String mapLocalDateTimeToString(LocalDateTime dateTime) {
         return dateTime != null ? dateTime.toString() : null;
+    }
+
+    // Convertir UUID a String
+    @Named("uuidToString")
+    default String mapUuidToString(java.util.UUID uuid) {
+        return uuid != null ? uuid.toString() : null;
     }
 
     // Conversores para byte[] <-> Base64
