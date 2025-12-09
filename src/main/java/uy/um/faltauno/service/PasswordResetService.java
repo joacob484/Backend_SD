@@ -40,14 +40,21 @@ public class PasswordResetService {
      */
     @Transactional
     public String solicitarRecuperacion(String email) {
+        log.info("[PasswordReset] 🔍 Buscando usuario con email: {}", email);
+        
         // Buscar usuario (incluso si está eliminado, puede querer recuperar contraseña)
         Usuario usuario = usuarioRepository.findByEmail(email).orElse(null);
         
         if (usuario == null) {
-            // Por seguridad, no revelar si el email existe o no
-            log.warn("[PasswordReset] Intento de recuperación para email no registrado: {}", email);
-            return null;
+            // Por seguridad, no revelar si el email existe o no al cliente
+            // pero loguear para debugging
+            log.warn("[PasswordReset] ❌ Usuario NO encontrado para email: {}", email);
+            log.warn("[PasswordReset] ⚠️ No se enviará email porque el usuario no existe");
+            return null; // Retornar null para no revelar existencia de usuario
         }
+        
+        log.info("[PasswordReset] ✅ Usuario encontrado: {} {} (ID: {})", 
+                usuario.getNombre(), usuario.getApellido(), usuario.getId());
 
         // Verificar que no esté spameando (máximo 3 solicitudes por hora)
         LocalDateTime unaHoraAtras = LocalDateTime.now().minusHours(1);
@@ -80,21 +87,29 @@ public class PasswordResetService {
 
         // ⚡ CORREGIDO: Usar valor inyectado por Spring en lugar de System.getenv
         boolean isEmailConfigured = mailUsername != null && !mailUsername.isBlank();
+        
+        log.info("[PasswordReset] 📧 Configuración de email: {}", 
+                isEmailConfigured ? "CONFIGURADO" : "NO CONFIGURADO");
+        log.info("[PasswordReset] 📝 MAIL_USERNAME: {}", 
+                mailUsername != null && !mailUsername.isBlank() ? "***@***" : "(vacío)");
 
         if (isEmailConfigured) {
             // Enviar email (modo producción)
+            log.info("[PasswordReset] 📤 Intentando enviar email a: {}", email);
             try {
                 emailService.enviarEmailRecuperacionPassword(usuario, resetLink);
-                log.info("[PasswordReset] ✅ Token generado y email enviado a: {}", email);
+                log.info("[PasswordReset] ✅ Token generado y email ENVIADO a: {}", email);
             } catch (Exception e) {
-                log.error("[PasswordReset] ❌ Error enviando email a {}: {}", email, e.getMessage(), e);
+                log.error("[PasswordReset] ❌ ERROR enviando email a {}: {}", email, e.getMessage(), e);
+                log.error("[PasswordReset] 🐛 Stacktrace completo:", e);
                 // No lanzar error - el token ya fue creado, el usuario puede intentar solicitar otro
             }
             return null; // No devolver link en producción
         } else {
             // Modo desarrollo: NO enviar email, devolver link
             log.warn("[PasswordReset] ⚠️ Email NO configurado - Devolviendo link directamente (SOLO DEV)");
-            log.warn("[PasswordReset] 🔍 Reset link (SOLO DEV): {}", resetLink);
+            log.warn("[PasswordReset] 🔗 Reset link (SOLO DEV): {}", resetLink);
+            log.warn("[PasswordReset] 💡 Para habilitar emails: configurar MAIL_USERNAME y MAIL_PASSWORD");
             return resetLink; // Devolver link para modo desarrollo
         }
     }

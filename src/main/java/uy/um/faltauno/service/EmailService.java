@@ -518,13 +518,22 @@ public class EmailService {
      */
     @Async
     public void enviarEmailRecuperacionPassword(Usuario usuario, String resetLink) {
+        log.info("[EmailService] 🔐 === INICIO enviarEmailRecuperacionPassword ===");
+        log.info("[EmailService] 👤 Usuario: {} ({})", usuario.getEmail(), usuario.getId());
+        log.info("[EmailService] 🔗 Reset link: {}", resetLink);
+        
         // Verificar si el email está configurado
-        if (!isEmailConfigured()) {
-            log.warn("[EmailService] ⚠️ Email no configurado. Saltando envío de recuperación de contraseña.");
+        boolean configured = isEmailConfigured();
+        log.info("[EmailService] 📧 Email configurado: {}", configured);
+        log.info("[EmailService] 📝 fromEmail value: '{}'", fromEmail);
+        
+        if (!configured) {
+            log.error("[EmailService] ❌ Email NO configurado. NO se puede enviar email de recuperación.");
+            log.error("[EmailService] 💡 Configurar MAIL_USERNAME y MAIL_PASSWORD en variables de entorno");
             return;
         }
 
-        log.info("[EmailService] 📧 Iniciando envío de email de recuperación a: {}", usuario.getEmail());
+        log.info("[EmailService] ✅ Configuración OK. Procediendo a enviar email a: {}", usuario.getEmail());
 
         try {
             String nombre = usuario.getNombre() != null ? usuario.getNombre() : "";
@@ -655,16 +664,22 @@ public class EmailService {
             helper.setSubject(asunto);
             helper.setText(cuerpoHtml, true);
 
+            log.info("[EmailService] 📤 Enviando email via mailSender...");
             mailSender.send(mimeMessage);
             
-            log.info("[EmailService] ✅ Email de recuperación de contraseña enviado exitosamente a: {}", usuario.getEmail());
+            log.info("[EmailService] ✅✅✅ Email de recuperación ENVIADO EXITOSAMENTE a: {}", usuario.getEmail());
+            log.info("[EmailService] 🔐 === FIN enviarEmailRecuperacionPassword (EXITOSO) ===");
 
         } catch (MessagingException e) {
             log.error("[EmailService] ❌ Error de mensajería enviando email de recuperación a {}: {}", 
-                usuario.getEmail(), e.getMessage(), e);
+                usuario.getEmail(), e.getMessage());
+            log.error("[EmailService] 🐛 Stacktrace completo:", e);
+            log.error("[EmailService] 🔐 === FIN enviarEmailRecuperacionPassword (ERROR) ===");
         } catch (Exception e) {
             log.error("[EmailService] ❌ Error inesperado enviando email de recuperación a {}: {}", 
-                usuario.getEmail(), e.getMessage(), e);
+                usuario.getEmail(), e.getMessage());
+            log.error("[EmailService] 🐛 Stacktrace completo:", e);
+            log.error("[EmailService] 🔐 === FIN enviarEmailRecuperacionPassword (ERROR) ===");
         }
     }
 }
