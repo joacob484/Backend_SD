@@ -73,9 +73,37 @@ public class PasswordResetController {
     }
 
     /**
-     * GET /api/auth/password/validate-token
-     * Validar si un token es válido
+     * POST /api/auth/password/verify-code
+     * Verificar si un código es válido
      */
+    @PostMapping("/verify-code")
+    public ResponseEntity<ApiResponse<Boolean>> verificarCodigo(
+            @Valid @RequestBody VerifyCodeRequest request
+    ) {
+        try {
+            boolean valido = passwordResetService.validarCodigo(request.email(), request.codigo());
+            
+            return ResponseEntity.ok(new ApiResponse<>(
+                    valido,
+                    valido ? "Código válido" : "Código inválido o expirado",
+                    true
+            ));
+            
+        } catch (Exception e) {
+            log.error("[PasswordReset] Error validando código: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new ApiResponse<>(
+                    false,
+                    e.getMessage(),
+                    false
+            ));
+        }
+    }
+    
+    /**
+     * GET /api/auth/password/validate-token (DEPRECATED - mantener para compatibilidad)
+     * @deprecated Usar /verify-code en su lugar
+     */
+    @Deprecated
     @GetMapping("/validate-token")
     public ResponseEntity<ApiResponse<Boolean>> validarToken(
             @RequestParam("token") String token
@@ -101,16 +129,16 @@ public class PasswordResetController {
 
     /**
      * POST /api/auth/password/reset
-     * Restablecer contraseña con token
+     * Restablecer contraseña con email y código
      */
     @PostMapping("/reset")
     public ResponseEntity<ApiResponse<Void>> restablecerPassword(
             @Valid @RequestBody ResetPasswordRequest request
     ) {
         try {
-            log.info("[PasswordReset] Intentando restablecer contraseña con token");
+            log.info("[PasswordReset] Intentando restablecer contraseña para email: {}", request.email());
             
-            passwordResetService.restablecerPassword(request.token(), request.newPassword());
+            passwordResetService.restablecerPasswordConCodigo(request.email(), request.codigo(), request.newPassword());
             
             return ResponseEntity.ok(new ApiResponse<>(
                     null,
@@ -143,9 +171,24 @@ public class PasswordResetController {
             String email
     ) {}
 
+    public record VerifyCodeRequest(
+            @NotBlank(message = "El email es obligatorio")
+            @Email(message = "Formato de email inválido")
+            String email,
+            
+            @NotBlank(message = "El código es obligatorio")
+            @Size(min = 6, max = 6, message = "El código debe tener 6 dígitos")
+            String codigo
+    ) {}
+
     public record ResetPasswordRequest(
-            @NotBlank(message = "El token es obligatorio")
-            String token,
+            @NotBlank(message = "El email es obligatorio")
+            @Email(message = "Formato de email inválido")
+            String email,
+            
+            @NotBlank(message = "El código es obligatorio")
+            @Size(min = 6, max = 6, message = "El código debe tener 6 dígitos")
+            String codigo,
             
             @NotBlank(message = "La contraseña es obligatoria")
             @Size(min = 8, message = "La contraseña debe tener al menos 8 caracteres")

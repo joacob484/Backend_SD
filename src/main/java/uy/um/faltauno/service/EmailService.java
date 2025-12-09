@@ -514,11 +514,164 @@ public class EmailService {
     }
 
     /**
-     * Enviar email de recuperación de contraseña
+     * Enviar código de recuperación de contraseña (igual que verificación)
      */
     @Async
+    public void enviarCodigoRecuperacionPassword(
+            String email,
+            String nombre,
+            String codigo,
+            int minutosExpiracion
+    ) {
+        log.info("[EmailService] 🔐 === INICIO enviarCodigoRecuperacionPassword ===");
+        log.info("[EmailService] 👤 Email: {}", email);
+        log.info("[EmailService] 🔢 Código: {}", codigo);
+        
+        // Verificar si el email está configurado
+        boolean configured = isEmailConfigured();
+        log.info("[EmailService] 📧 Email configurado: {}", configured);
+        
+        if (!configured) {
+            log.error("[EmailService] ❌ Email NO configurado. NO se puede enviar código de recuperación.");
+            log.error("[EmailService] 💡 Configurar MAIL_USERNAME y MAIL_PASSWORD en variables de entorno");
+            throw new RuntimeException("Email no configurado");
+        }
+
+        log.info("[EmailService] ✅ Configuración OK. Procediendo a enviar código a: {}", email);
+
+        try {
+            String asunto = "[Falta Uno] Código de recuperación de contraseña";
+            String cuerpoHtml = construirEmailRecuperacionCodigo(nombre, codigo, minutosExpiracion);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setFrom(fromEmail, "Falta Uno");
+            helper.setTo(email);
+            helper.setSubject(asunto);
+            helper.setText(cuerpoHtml, true);
+
+            log.info("[EmailService] 📤 Enviando email via mailSender...");
+            mailSender.send(mimeMessage);
+            
+            log.info("[EmailService] ✅✅✅ Código de recuperación ENVIADO EXITOSAMENTE a: {}", email);
+            log.info("[EmailService] 🔐 === FIN enviarCodigoRecuperacionPassword (EXITOSO) ===");
+
+        } catch (MessagingException e) {
+            log.error("[EmailService] ❌ Error de mensajería enviando código a {}: {}", 
+                email, e.getMessage());
+            log.error("[EmailService] 🐛 Stacktrace completo:", e);
+            log.error("[EmailService] 🔐 === FIN enviarCodigoRecuperacionPassword (ERROR) ===");
+            throw new RuntimeException("Error al enviar el código de recuperación", e);
+        } catch (Exception e) {
+            log.error("[EmailService] ❌ Error inesperado enviando código a {}: {}", 
+                email, e.getMessage());
+            log.error("[EmailService] 🐛 Stacktrace completo:", e);
+            log.error("[EmailService] 🔐 === FIN enviarCodigoRecuperacionPassword (ERROR) ===");
+            throw new RuntimeException("Error al enviar el código de recuperación", e);
+        }
+    }
+
+    /**
+     * Construir HTML para email de recuperación con código
+     */
+    private String construirEmailRecuperacionCodigo(String nombre, String codigo, int minutosExpiracion) {
+        return """
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Recuperación de Contraseña</title>
+            </head>
+            <body style="margin: 0; padding: 0; background-color: #f9fafb;">
+                <table role="presentation" style="width: 100%%; border-collapse: collapse;">
+                    <tr>
+                        <td align="center" style="padding: 40px 16px;">
+                            <table role="presentation" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                                <!-- Header -->
+                                <tr>
+                                    <td style="background: linear-gradient(135deg, #ef4444 0%%, #dc2626 100%%); padding: 32px 24px; text-align: center; border-radius: 12px 12px 0 0;">
+                                        <h1 style="color: #ffffff; font-size: 28px; font-weight: 700; margin: 0;">
+                                            🔐 Recuperación de Contraseña
+                                        </h1>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Content -->
+                                <tr>
+                                    <td style="padding: 32px 24px;">
+                                        <h2 style="color: #1f2937; font-size: 20px; font-weight: 600; margin: 0 0 16px 0;">
+                                            Hola%s,
+                                        </h2>
+                                        <p style="color: #1f2937; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
+                                            Recibimos una solicitud para restablecer la contraseña de tu cuenta en <strong>Falta Uno</strong>.
+                                        </p>
+                                        <p style="color: #1f2937; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">
+                                            Usa el siguiente código para crear una nueva contraseña:
+                                        </p>
+                                        
+                                        <!-- Código de Recuperación -->
+                                        <div style="background-color: #fef2f2; color: #dc2626; padding: 20px 24px; border-radius: 8px; font-size: 36px; font-weight: 700; letter-spacing: 8px; text-align: center; margin: 24px 0; border: 2px dashed #dc2626; font-family: 'Courier New', monospace;">
+                                            %s
+                                        </div>
+                                        
+                                        <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 4px; margin: 24px 0;">
+                                            <p style="color: #92400e; font-size: 14px; line-height: 1.5; margin: 0;">
+                                                ⏱️ <strong>Este código expira en %d minutos</strong> por seguridad.
+                                            </p>
+                                        </div>
+                                        
+                                        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+                                        
+                                        <div style="background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 16px; border-radius: 4px;">
+                                            <p style="color: #7f1d1d; font-size: 14px; line-height: 1.5; margin: 0 0 8px;">
+                                                🛡️ <strong>¿No solicitaste esto?</strong>
+                                            </p>
+                                            <p style="color: #7f1d1d; font-size: 14px; line-height: 1.5; margin: 0;">
+                                                Si no solicitaste restablecer tu contraseña, puedes ignorar este email. Tu cuenta permanecerá segura.
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                
+                                <!-- Footer -->
+                                <tr>
+                                    <td style="background-color: #f9fafb; padding: 24px; text-align: center; border-top: 1px solid #e5e7eb; border-radius: 0 0 12px 12px;">
+                                        <p style="color: #6b7280; font-size: 14px; margin: 8px 0;">
+                                            © 2025 Falta Uno. Todos los derechos reservados.
+                                        </p>
+                                        <p style="color: #6b7280; font-size: 14px; margin: 8px 0;">
+                                            <a href="%s/help" style="color: #ef4444; text-decoration: none; font-weight: 500;">Centro de Ayuda</a> • 
+                                            <a href="%s/terms" style="color: #ef4444; text-decoration: none; font-weight: 500;">Términos</a> • 
+                                            <a href="%s/privacy" style="color: #ef4444; text-decoration: none; font-weight: 500;">Privacidad</a>
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+            """.formatted(
+                nombre.isEmpty() ? "" : " " + nombre, 
+                codigo, 
+                minutosExpiracion, 
+                frontendUrl, 
+                frontendUrl, 
+                frontendUrl
+            );
+    }
+
+    /**
+     * Enviar email de recuperación de contraseña (DEPRECATED - usar enviarCodigoRecuperacionPassword)
+     * @deprecated Usar enviarCodigoRecuperacionPassword que usa códigos en lugar de links
+     */
+    @Deprecated
+    @Async
     public void enviarEmailRecuperacionPassword(Usuario usuario, String resetLink) {
-        log.info("[EmailService] 🔐 === INICIO enviarEmailRecuperacionPassword ===");
+        log.info("[EmailService] 🔐 === INICIO enviarEmailRecuperacionPassword (DEPRECATED) ===");
         log.info("[EmailService] 👤 Usuario: {} ({})", usuario.getEmail(), usuario.getId());
         log.info("[EmailService] 🔗 Reset link: {}", resetLink);
         
